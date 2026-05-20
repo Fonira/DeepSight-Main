@@ -180,17 +180,19 @@ export const Settings: React.FC = () => {
     description,
     children,
   }) => (
-    <div className="flex items-center justify-between py-3">
-      <div className="flex items-center gap-3 flex-1 min-w-0">
-        <Icon className={`w-5 h-5 flex-shrink-0 ${iconColor}`} />
-        <div className="min-w-0">
-          <p className="font-medium text-text-primary">{title}</p>
-          <p className="text-sm text-text-tertiary line-clamp-3">
+    <div className="flex items-center justify-between gap-3 py-3">
+      <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+        <Icon className={`w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0 ${iconColor}`} />
+        <div className="min-w-0 flex-1">
+          <p className="font-medium text-sm sm:text-base text-text-primary truncate">
+            {title}
+          </p>
+          <p className="text-xs sm:text-sm text-text-tertiary line-clamp-2 sm:line-clamp-3">
             {description}
           </p>
         </div>
       </div>
-      <div className="flex-shrink-0 ml-4">{children}</div>
+      <div className="flex-shrink-0">{children}</div>
     </div>
   );
 
@@ -212,19 +214,21 @@ export const Settings: React.FC = () => {
 
       <main
         id="main-content"
-        className={`transition-all duration-200 ease-out relative z-10 lg:${sidebarCollapsed ? "ml-[60px]" : "ml-[240px]"}`}
+        className={`transition-all duration-200 ease-out relative z-10 ${
+          sidebarCollapsed ? "lg:ml-[60px]" : "lg:ml-[240px]"
+        }`}
       >
-        <div className="min-h-screen pt-14 lg:pt-0 p-4 sm:p-6 lg:p-8 pb-8">
-          <div className="max-w-2xl mx-auto space-y-6">
+        <div className="min-h-screen pt-16 lg:pt-0 p-3 sm:p-6 lg:p-8 pb-8">
+          <div className="max-w-2xl mx-auto space-y-4 sm:space-y-6">
             {/* Header */}
-            <header className="mb-8">
-              <h1 className="text-xl sm:text-2xl font-semibold mb-2 flex items-center gap-3 text-text-primary">
-                <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center">
-                  <SettingsIcon className="w-5 h-5 text-accent-primary" />
+            <header className="mb-6 sm:mb-8 ml-12 sm:ml-0 lg:ml-0">
+              <h1 className="text-lg sm:text-2xl font-semibold mb-2 flex items-center gap-2 sm:gap-3 text-text-primary">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center flex-shrink-0">
+                  <SettingsIcon className="w-4 h-4 sm:w-5 sm:h-5 text-accent-primary" />
                 </div>
-                {tr("Paramètres", "Settings")}
+                <span className="truncate">{tr("Paramètres", "Settings")}</span>
               </h1>
-              <p className="text-text-secondary text-sm ml-[52px]">
+              <p className="text-text-secondary text-xs sm:text-sm sm:ml-[52px]">
                 {tr(
                   "Personnalisez l'apparence et le comportement de Deep Sight.",
                   "Customize the appearance and behavior of Deep Sight.",

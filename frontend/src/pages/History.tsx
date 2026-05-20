@@ -1217,24 +1217,26 @@ export const History: React.FC = () => {
         onMobileClose={() => setMobileMenuOpen(false)}
       />
       <main
-        className={`transition-all duration-200 ease-out relative z-10 lg:${sidebarCollapsed ? "ml-[60px]" : "ml-[240px]"}`}
+        className={`transition-all duration-200 ease-out relative z-10 ${
+          sidebarCollapsed ? "lg:ml-[60px]" : "lg:ml-[240px]"
+        }`}
       >
-        <div className="min-h-screen p-4 sm:p-6 lg:p-8 pb-8 pt-14 lg:pt-8">
+        <div className="min-h-screen p-3 sm:p-6 lg:p-8 pb-8 pt-16 lg:pt-8">
           <div className="max-w-6xl mx-auto">
             {/* Header */}
-            <header className="mb-8">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h1 className="font-semibold text-xl sm:text-2xl mb-2 text-text-primary">
+            <header className="mb-6 sm:mb-8">
+              <div className="flex items-start sm:items-center justify-between gap-2 mb-4 ml-12 sm:ml-0 lg:ml-0">
+                <div className="min-w-0 flex-1">
+                  <h1 className="font-semibold text-lg sm:text-2xl mb-1 sm:mb-2 text-text-primary truncate">
                     {language === "fr" ? "Historique" : "History"}
                   </h1>
-                  <p className="text-text-secondary text-sm">
+                  <p className="text-text-secondary text-xs sm:text-sm">
                     {language === "fr"
                       ? "Retrouvez toutes vos analyses passées."
                       : "Find all your past analyses."}
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
                   <button
                     onClick={() => setShowClearModal(true)}
                     className="btn btn-ghost text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
@@ -1260,62 +1262,62 @@ export const History: React.FC = () => {
 
               {/* Stats */}
               {stats && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6">
-                  <div className="card p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-accent-primary-muted flex items-center justify-center">
-                        <Video className="w-5 h-5 text-accent-primary" />
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 mb-6">
+                  <div className="card p-3 sm:p-4">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-accent-primary-muted flex items-center justify-center flex-shrink-0">
+                        <Video className="w-4 h-4 sm:w-5 sm:h-5 text-accent-primary" />
                       </div>
-                      <div>
-                        <p className="text-lg sm:text-2xl font-semibold text-text-primary">
+                      <div className="min-w-0">
+                        <p className="text-base sm:text-2xl font-semibold text-text-primary truncate">
                           {stats.total_videos}
                         </p>
-                        <p className="text-xs text-text-tertiary">
+                        <p className="text-[10px] sm:text-xs text-text-tertiary truncate">
                           {language === "fr" ? "Vidéos" : "Videos"}
                         </p>
                       </div>
                     </div>
                   </div>
-                  <div className="card p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
-                        <Swords className="w-5 h-5 text-indigo-600" />
+                  <div className="card p-3 sm:p-4">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center flex-shrink-0">
+                        <Swords className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600" />
                       </div>
-                      <div>
-                        <p className="text-lg sm:text-2xl font-semibold text-text-primary">
+                      <div className="min-w-0">
+                        <p className="text-base sm:text-2xl font-semibold text-text-primary truncate">
                           {debatesTotal}
                         </p>
-                        <p className="text-xs text-text-tertiary">
+                        <p className="text-[10px] sm:text-xs text-text-tertiary truncate">
                           {language === "fr" ? "Débats" : "Debates"}
                         </p>
                       </div>
                     </div>
                   </div>
-                  <div className="card p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                        <BarChart2 className="w-5 h-5 text-green-600" />
+                  <div className="card p-3 sm:p-4">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center flex-shrink-0">
+                        <BarChart2 className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
                       </div>
-                      <div>
-                        <p className="text-lg sm:text-2xl font-semibold text-text-primary">
+                      <div className="min-w-0">
+                        <p className="text-base sm:text-2xl font-semibold text-text-primary truncate">
                           {(stats.total_words / 1000).toFixed(0)}k
                         </p>
-                        <p className="text-xs text-text-tertiary">
+                        <p className="text-[10px] sm:text-xs text-text-tertiary truncate">
                           {language === "fr" ? "Mots" : "Words"}
                         </p>
                       </div>
                     </div>
                   </div>
-                  <div className="card p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                        <Clock className="w-5 h-5 text-amber-600" />
+                  <div className="card p-3 sm:p-4">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
+                        <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600" />
                       </div>
-                      <div>
-                        <p className="text-lg sm:text-2xl font-semibold text-text-primary">
+                      <div className="min-w-0">
+                        <p className="text-base sm:text-2xl font-semibold text-text-primary truncate">
                           {stats.total_duration_formatted || "0h"}
                         </p>
-                        <p className="text-xs text-text-tertiary">
+                        <p className="text-[10px] sm:text-xs text-text-tertiary truncate">
                           {language === "fr" ? "Durée" : "Duration"}
                         </p>
                       </div>
@@ -1328,13 +1330,13 @@ export const History: React.FC = () => {
               <IntellectualProfileBanner />
 
               {/* Tabs - Séparation claire Vidéos / Playlists */}
-              <div className="flex items-center gap-2 border-b border-border-subtle">
+              <div className="flex items-center gap-1 sm:gap-2 border-b border-border-subtle overflow-x-auto -mx-3 sm:mx-0 px-3 sm:px-0 scrollbar-thin">
                 <button
                   onClick={() => {
                     setActiveTab("videos");
                     setSelectedPlaylist(null);
                   }}
-                  className={`pb-3 px-4 text-sm font-medium border-b-2 transition-all flex items-center gap-2 ${
+                  className={`pb-3 px-3 sm:px-4 text-sm font-medium border-b-2 transition-all flex items-center gap-2 whitespace-nowrap flex-shrink-0 ${
                     activeTab === "videos"
                       ? "border-blue-500 text-blue-600 dark:text-blue-400"
                       : "border-transparent text-text-tertiary hover:text-text-primary"
@@ -1363,7 +1365,7 @@ export const History: React.FC = () => {
                 {/* Onglet Débat IA */}
                 <button
                   onClick={() => setActiveTab("debates")}
-                  className={`pb-3 px-4 text-sm font-medium border-b-2 transition-all flex items-center gap-2 ${
+                  className={`pb-3 px-3 sm:px-4 text-sm font-medium border-b-2 transition-all flex items-center gap-2 whitespace-nowrap flex-shrink-0 ${
                     activeTab === "debates"
                       ? "border-indigo-500 text-indigo-600 dark:text-indigo-400"
                       : "border-transparent text-text-tertiary hover:text-text-primary"
