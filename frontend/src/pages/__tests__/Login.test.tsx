@@ -349,6 +349,9 @@ describe("Login Page - Google OAuth", () => {
   });
 
   it("should call loginWithApple when Apple button clicked", async () => {
+    // Le bouton Apple n'est rendu que si VITE_APPLE_CLIENT_ID est defini —
+    // sinon il reste masque pour eviter d'afficher un bouton casse en prod.
+    vi.stubEnv("VITE_APPLE_CLIENT_ID", "com.deepsightsynthesis.signin");
     const user = userEvent.setup();
     const mockLoginWithApple = vi.fn().mockResolvedValue(undefined);
     mockUseAuth.mockReturnValue({
@@ -364,6 +367,16 @@ describe("Login Page - Google OAuth", () => {
     await user.click(appleButton);
 
     expect(mockLoginWithApple).toHaveBeenCalled();
+    vi.unstubAllEnvs();
+  });
+
+  it("should hide Apple button when VITE_APPLE_CLIENT_ID is undefined", () => {
+    vi.unstubAllEnvs();
+    mockUseAuth.mockReturnValue(defaultAuthState);
+    renderWithProviders(<Login />);
+    expect(
+      screen.queryByRole("button", { name: /Continuer avec Apple/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("should show loading state spinner when authLoading", () => {

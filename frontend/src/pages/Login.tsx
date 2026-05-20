@@ -477,16 +477,21 @@ export const Login: React.FC = () => {
                 {t.auth.loginWithGoogle}
               </motion.button>
 
-              <motion.button
-                onClick={handleAppleLogin}
-                disabled={loading}
-                className="mt-2.5 w-full flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-md border border-border-default bg-bg-secondary text-text-primary text-sm font-medium hover:bg-bg-hover hover:border-border-strong transition-all disabled:opacity-40"
-                whileTap={{ scale: 0.98 }}
-                aria-label={t.auth.loginWithApple}
-              >
-                <AppleIcon className="w-4.5 h-4.5" />
-                {t.auth.loginWithApple}
-              </motion.button>
+              {/* Bouton Apple masque tant que VITE_APPLE_CLIENT_ID n'est pas
+                  configure cote Vercel — evite d'afficher un bouton casse en
+                  prod le temps que la config Apple Developer Console soit faite. */}
+              {import.meta.env.VITE_APPLE_CLIENT_ID && (
+                <motion.button
+                  onClick={handleAppleLogin}
+                  disabled={loading}
+                  className="mt-2.5 w-full flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-md border border-border-default bg-bg-secondary text-text-primary text-sm font-medium hover:bg-bg-hover hover:border-border-strong transition-all disabled:opacity-40"
+                  whileTap={{ scale: 0.98 }}
+                  aria-label={t.auth.loginWithApple}
+                >
+                  <AppleIcon className="w-4.5 h-4.5" />
+                  {t.auth.loginWithApple}
+                </motion.button>
+              )}
 
               <div className="relative my-6">
                 <div className="absolute inset-0 flex items-center">
