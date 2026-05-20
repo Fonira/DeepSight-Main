@@ -146,12 +146,14 @@ async def collect_user_concepts(
             if not norm or norm in seen_norms:
                 continue
             seen_norms.add(norm)
-            out.append({
-                "term": term[:200],
-                "term_hash": _term_hash(term, style="tutor_doodle"),
-                "category": "concept",
-                "source_summary_id": sid,
-            })
+            out.append(
+                {
+                    "term": term[:200],
+                    "term_hash": _term_hash(term, style="tutor_doodle"),
+                    "category": "concept",
+                    "source_summary_id": sid,
+                }
+            )
             if len(out) >= limit:
                 return out
         # 2. entities.concepts
@@ -160,12 +162,14 @@ async def collect_user_concepts(
             if not norm or norm in seen_norms:
                 continue
             seen_norms.add(norm)
-            out.append({
-                "term": term[:200],
-                "term_hash": _term_hash(term, style="tutor_doodle"),
-                "category": "concept",
-                "source_summary_id": sid,
-            })
+            out.append(
+                {
+                    "term": term[:200],
+                    "term_hash": _term_hash(term, style="tutor_doodle"),
+                    "category": "concept",
+                    "source_summary_id": sid,
+                }
+            )
             if len(out) >= limit:
                 return out
     return out
@@ -204,8 +208,7 @@ async def check_lookup_pending(concepts: list[dict]) -> list[dict]:
     pool = await _get_image_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(
-            "SELECT term_hash, status FROM keyword_images "
-            "WHERE term_hash = ANY($1) AND style = 'tutor_doodle'",
+            "SELECT term_hash, status FROM keyword_images WHERE term_hash = ANY($1) AND style = 'tutor_doodle'",
             missing_hashes,
         )
     status_map = {r["term_hash"]: r["status"] for r in rows}
@@ -300,9 +303,7 @@ async def enqueue_top_concepts_doodles(
     from db.database import async_session_maker, Summary
 
     async with async_session_maker() as db:
-        stmt = select(Summary.summary_content, Summary.entities_extracted).where(
-            Summary.id == summary_id
-        )
+        stmt = select(Summary.summary_content, Summary.entities_extracted).where(Summary.id == summary_id)
         result = await db.execute(stmt)
         row = result.first()
         if not row:
@@ -337,8 +338,7 @@ async def enqueue_top_concepts_doodles(
     hashes = [_term_hash(t, style="tutor_doodle") for t in picks]
     async with pool.acquire() as conn:
         existing = await conn.fetch(
-            "SELECT term_hash FROM keyword_images "
-            "WHERE term_hash = ANY($1) AND style = 'tutor_doodle'",
+            "SELECT term_hash FROM keyword_images WHERE term_hash = ANY($1) AND style = 'tutor_doodle'",
             hashes,
         )
     existing_set = {r["term_hash"] for r in existing}

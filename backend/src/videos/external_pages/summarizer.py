@@ -162,7 +162,7 @@ def _build_prompt(
         f"{context_line}"
         f"Titre de la page : {page_title or 'inconnu'}\n\n"
         f"Contenu de la page (extrait) :\n{page_text[:MAX_TEXT_FOR_PROMPT]}\n\n"
-        f'Résume cette page en 2-3 phrases claires en {target_lang}. '
+        f"Résume cette page en 2-3 phrases claires en {target_lang}. "
         f"Liste 1-3 affirmations clés. Réponds en JSON "
         f'{{"summary": "...", "key_claims": ["...", "..."]}}'
     )
@@ -254,11 +254,7 @@ async def summarize_page(
 
     if cached_raw is not None:
         try:
-            cached_data = (
-                json.loads(cached_raw)
-                if isinstance(cached_raw, (str, bytes, bytearray))
-                else cached_raw
-            )
+            cached_data = json.loads(cached_raw) if isinstance(cached_raw, (str, bytes, bytearray)) else cached_raw
             if isinstance(cached_data, dict):
                 summary = cached_data.get("summary")
                 key_claims = cached_data.get("key_claims") or []

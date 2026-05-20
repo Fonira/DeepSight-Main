@@ -2367,7 +2367,9 @@ async def _analyze_video_background_v2_1(
             )
             web_context = _web_ctx
             enrichment_sources = _enrich_src
-            logger.info("⚡ [v2.1.1] Category + comments + metadata + web + community + external_pages computed in PARALLEL")
+            logger.info(
+                "⚡ [v2.1.1] Category + comments + metadata + web + community + external_pages computed in PARALLEL"
+            )
 
             # ═══════════════════════════════════════════════════════════════════
             # 7. 🆕 CONSTRUIRE LE PROMPT PERSONNALISÉ
@@ -3635,9 +3637,7 @@ async def _analyze_video_background_v6(
             try:
                 from tutor.concepts_service import enqueue_top_concepts_doodles
 
-                asyncio.create_task(
-                    enqueue_top_concepts_doodles(summary_id, user_id, top_n=3)
-                )
+                asyncio.create_task(enqueue_top_concepts_doodles(summary_id, user_id, top_n=3))
             except Exception as td_err:
                 logger.warning(f"⚠️ enqueue_top_concepts_doodles failed: {td_err}")
 

@@ -1335,9 +1335,7 @@ class IntelligentDiscovery:
         # 5. 🌻 Promotion Tournesol discrète : 1 seule vidéo, uniquement si aucune
         # Tournesol n'est déjà présente naturellement. Pas de fallback hardcodé.
         # Le ranking YouTube domine ; Tournesol reste un bonus.
-        has_tournesol_naturally = any(
-            c.is_tournesol_pick or c.tournesol_score > 0.55 for c in final_candidates[:10]
-        )
+        has_tournesol_naturally = any(c.is_tournesol_pick or c.tournesol_score > 0.55 for c in final_candidates[:10])
 
         if not has_tournesol_naturally and len(final_candidates) >= 3:
             existing_ids = [c.video_id for c in final_candidates]
@@ -1527,9 +1525,7 @@ class IntelligentDiscoveryService:
         # 5. 🌻 Promotion Tournesol discrète : 1 seule vidéo ajoutée UNIQUEMENT si
         # aucune vidéo Tournesol n'est déjà présente naturellement dans les résultats
         # YouTube. Pas de fallback hardcodé — on respecte le ranking YouTube.
-        has_tournesol_naturally = any(
-            c.is_tournesol_pick or c.tournesol_score > 0.55 for c in final_candidates[:10]
-        )
+        has_tournesol_naturally = any(c.is_tournesol_pick or c.tournesol_score > 0.55 for c in final_candidates[:10])
 
         if not has_tournesol_naturally and len(final_candidates) >= 3:
             existing_ids = [c.video_id for c in final_candidates]

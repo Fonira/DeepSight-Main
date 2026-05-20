@@ -67,9 +67,7 @@ def get_scholar_daily_limit(plan: Optional[str]) -> int:
     return SCHOLAR_DAILY_LIMITS.get(_normalize_plan(plan), 0)
 
 
-async def check_and_increment_scholar_quota(
-    session: AsyncSession, user: User
-) -> Tuple[bool, Optional[Dict[str, Any]]]:
+async def check_and_increment_scholar_quota(session: AsyncSession, user: User) -> Tuple[bool, Optional[Dict[str, Any]]]:
     """Atomically check the daily Scholar quota and increment if allowed.
 
     Returns:

@@ -50,6 +50,7 @@ from core.http_client import get_proxied_client, shared_http_client
 try:
     from middleware.proxy_telemetry import record_proxy_usage
 except Exception:  # pragma: no cover — defensive import (tests / minimal env)
+
     async def record_proxy_usage(**_kwargs):  # type: ignore
         return None
 
@@ -62,8 +63,8 @@ logger = logging.getLogger("deepsight.external_pages.scraper")
 # ═══════════════════════════════════════════════════════════════════════════════
 
 MAX_HTML_BYTES: int = 500 * 1024  # 500 KB — au-delà on truncate
-SCRAPE_TIMEOUT: float = 12.0      # spec §4 — par URL
-MIN_TEXT_LEN: int = 200           # spec §4 edge cases — < 200 chars → status="empty"
+SCRAPE_TIMEOUT: float = 12.0  # spec §4 — par URL
+MIN_TEXT_LEN: int = 200  # spec §4 edge cases — < 200 chars → status="empty"
 
 # Patterns détection paywall (case-insensitive sur HTML lowered)
 # Spec §4 — couvre Substack premium, Medium, Bloomberg/WSJ/NYT, Le Monde, etc.
@@ -185,10 +186,7 @@ async def _fetch_html(
                 status = int(resp.status_code)
 
                 # Skip non-HTML content-types tôt — pas la peine de stream
-                if content_type and any(
-                    content_type.startswith(prefix)
-                    for prefix in SKIP_CONTENT_TYPE_PREFIXES
-                ):
+                if content_type and any(content_type.startswith(prefix) for prefix in SKIP_CONTENT_TYPE_PREFIXES):
                     return None, 0, content_type, status
 
                 buf = bytearray()
@@ -206,16 +204,13 @@ async def _fetch_html(
                     html = buf.decode("latin-1", errors="replace")
                 return html, len(buf), content_type, status
     except httpx.TimeoutException as exc:
-        logger.debug("[EXTERNAL_PAGES] timeout fetching %s (proxy=%s): %s",
-                     url, use_proxy, exc)
+        logger.debug("[EXTERNAL_PAGES] timeout fetching %s (proxy=%s): %s", url, use_proxy, exc)
         return None, 0, "", 0
     except httpx.HTTPError as exc:
-        logger.debug("[EXTERNAL_PAGES] http error fetching %s (proxy=%s): %s",
-                     url, use_proxy, exc)
+        logger.debug("[EXTERNAL_PAGES] http error fetching %s (proxy=%s): %s", url, use_proxy, exc)
         return None, 0, "", 0
     except Exception as exc:  # noqa: BLE001 — best-effort
-        logger.debug("[EXTERNAL_PAGES] unexpected error fetching %s (proxy=%s): %s",
-                     url, use_proxy, exc)
+        logger.debug("[EXTERNAL_PAGES] unexpected error fetching %s (proxy=%s): %s", url, use_proxy, exc)
         return None, 0, "", 0
 
 
@@ -333,9 +328,7 @@ async def scrape_page(
     fetched_via_proxy = False
 
     # — Tentative 1 : direct (IP Hetzner)
-    html, bytes_fetched, content_type, status = await _fetch_html(
-        target, use_proxy=False, timeout=timeout
-    )
+    html, bytes_fetched, content_type, status = await _fetch_html(target, use_proxy=False, timeout=timeout)
 
     # — Détection d'un block : 403/429 OU signal Cloudflare dans le HTML
     cf_in_html = bool(html) and _detect_cloudflare(html)
@@ -344,11 +337,11 @@ async def scrape_page(
     if block_signal:
         logger.info(
             "[EXTERNAL_PAGES] %s → block signal (status=%s, cf=%s), retry via proxy",
-            target, status, cf_in_html,
+            target,
+            status,
+            cf_in_html,
         )
-        html_p, bytes_p, ct_p, status_p = await _fetch_html(
-            target, use_proxy=True, timeout=timeout
-        )
+        html_p, bytes_p, ct_p, status_p = await _fetch_html(target, use_proxy=True, timeout=timeout)
         # Si le retry a réussi à tirer quelque chose, on remplace l'état
         if status_p != 0:
             html = html_p
@@ -384,12 +377,7 @@ async def scrape_page(
         )
 
     # 2) Content-type non-HTML rejeté tôt
-    if (
-        content_type
-        and any(
-            content_type.startswith(prefix) for prefix in SKIP_CONTENT_TYPE_PREFIXES
-        )
-    ):
+    if content_type and any(content_type.startswith(prefix) for prefix in SKIP_CONTENT_TYPE_PREFIXES):
         return ScrapedPage(
             url=url,
             final_url=target,
