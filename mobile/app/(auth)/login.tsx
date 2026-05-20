@@ -17,6 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as Google from "expo-auth-session/providers/google";
 import * as WebBrowser from "expo-web-browser";
+import * as AppleAuthentication from "expo-apple-authentication";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -37,12 +38,15 @@ WebBrowser.maybeCompleteAuthSession();
 export default function LoginScreen() {
   const router = useRouter();
   const { colors, isDark } = useTheme();
-  const { login: contextLogin, loginWithGoogleToken } = useAuth();
+  const { login: contextLogin, loginWithGoogleToken, loginWithApple } =
+    useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [appleLoading, setAppleLoading] = useState(false);
+  const [appleAvailable, setAppleAvailable] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>(
     {},
   );
@@ -139,6 +143,61 @@ export default function LoginScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     promptAsync();
   }, [promptAsync]);
+
+  // Sign in with Apple — iOS only. Indispo sur Android & Expo Go web,
+  // donc on check `isAvailableAsync` au mount + on cache le bouton sinon.
+  React.useEffect(() => {
+    if (Platform.OS !== "ios") return;
+    AppleAuthentication.isAvailableAsync()
+      .then((available) => setAppleAvailable(available))
+      .catch(() => setAppleAvailable(false));
+  }, []);
+
+  const handleApplePress = useCallback(async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setAppleLoading(true);
+    try {
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+        ],
+      });
+      if (!credential.identityToken) {
+        Alert.alert(
+          "Erreur Apple",
+          "Apple n'a pas retourné de jeton d'identité.",
+        );
+        return;
+      }
+      const fullName = credential.fullName
+        ? `${credential.fullName.givenName ?? ""} ${
+            credential.fullName.familyName ?? ""
+          }`.trim() || null
+        : null;
+      await loginWithApple({
+        identityToken: credential.identityToken,
+        email: credential.email ?? null,
+        fullName,
+      });
+    } catch (error) {
+      // Apple lance `ERR_REQUEST_CANCELED` quand l'user annule la sheet — pas une erreur réelle
+      const code = (error as { code?: string } | null)?.code;
+      if (code === "ERR_REQUEST_CANCELED") {
+        return;
+      }
+      if (error instanceof ApiError) {
+        Alert.alert(
+          "Erreur Apple",
+          error.message || "Échec de la connexion Apple",
+        );
+      } else {
+        Alert.alert("Erreur", "Impossible de se connecter avec Apple.");
+      }
+    } finally {
+      setAppleLoading(false);
+    }
+  }, [loginWithApple]);
 
   return (
     <SafeAreaView
@@ -308,7 +367,7 @@ export default function LoginScreen() {
               size="lg"
               fullWidth
               loading={googleLoading}
-              disabled={loading || googleLoading}
+              disabled={loading || googleLoading || appleLoading}
               onPress={handleGooglePress}
               icon={
                 <Ionicons
@@ -318,6 +377,34 @@ export default function LoginScreen() {
                 />
               }
             />
+
+            {/* Apple button — iOS only (Apple Authentication SDK indispo Android) */}
+            {Platform.OS === "ios" && appleAvailable && (
+              <View style={styles.appleButtonWrap} pointerEvents="box-none">
+                <AppleAuthentication.AppleAuthenticationButton
+                  buttonType={
+                    AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN
+                  }
+                  buttonStyle={
+                    isDark
+                      ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
+                      : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
+                  }
+                  cornerRadius={borderRadius.md}
+                  style={styles.appleButton}
+                  onPress={handleApplePress}
+                />
+                {appleLoading && (
+                  <View
+                    style={[
+                      styles.appleButtonOverlay,
+                      { backgroundColor: colors.bgPrimary + "AA" },
+                    ]}
+                    pointerEvents="auto"
+                  />
+                )}
+              </View>
+            )}
           </View>
 
           {/* Register link */}
@@ -462,5 +549,21 @@ const styles = StyleSheet.create({
   footerLink: {
     fontFamily: fontFamily.bodySemiBold,
     fontSize: fontSize.sm,
+  },
+  appleButtonWrap: {
+    marginTop: sp.md,
+    position: "relative",
+  },
+  appleButton: {
+    width: "100%",
+    height: 48,
+  },
+  appleButtonOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: borderRadius.md,
   },
 });

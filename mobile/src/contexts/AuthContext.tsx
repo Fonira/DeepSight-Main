@@ -59,6 +59,11 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   loginWithGoogleToken: (accessToken: string) => Promise<void>;
+  loginWithApple: (payload: {
+    identityToken: string;
+    email?: string | null;
+    fullName?: string | null;
+  }) => Promise<void>;
   register: (
     username: string,
     email: string,
@@ -141,6 +146,42 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
               : "Échec de la connexion Google",
           );
         }
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [registerPushToken],
+  );
+
+  // Sign in with Apple (iOS only — appele depuis (auth)/login.tsx avec les
+  // claims retournes par expo-apple-authentication). Le caller doit passer
+  // email + fullName sur le PREMIER sign-in (Apple ne les renvoie pas apres).
+  const loginWithApple = useCallback(
+    async (payload: {
+      identityToken: string;
+      email?: string | null;
+      fullName?: string | null;
+    }) => {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const response = await authApi.appleTokenLogin(payload);
+        setUser(response.user);
+        await userStorage.setUser(response.user);
+        analytics.identify(String(response.user.id), response.user.plan);
+        analytics.track("login", { method: "apple" });
+        registerPushToken();
+      } catch (err) {
+        if (__DEV__) {
+          console.error("Apple token exchange failed:", err);
+        }
+        setError(
+          err instanceof ApiError
+            ? err.message
+            : "Échec de la connexion Apple",
+        );
+        throw err;
       } finally {
         setIsLoading(false);
       }
@@ -481,6 +522,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         login,
         loginWithGoogle,
         loginWithGoogleToken,
+        loginWithApple,
         register,
         verifyEmail,
         logout,

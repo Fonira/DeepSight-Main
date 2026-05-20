@@ -15,11 +15,14 @@ const mockRegister = jest.fn();
 const mockVerifyEmail = jest.fn();
 const mockResendVerification = jest.fn();
 
+const mockAppleTokenLogin = jest.fn();
+
 jest.mock("../../src/services/api", () => ({
   authApi: {
     login: (...args: any[]) => mockLogin(...args),
     getMe: (...args: any[]) => mockGetMe(...args),
     googleTokenLogin: (...args: any[]) => mockGoogleTokenLogin(...args),
+    appleTokenLogin: (...args: any[]) => mockAppleTokenLogin(...args),
     logout: (...args: any[]) => mockLogout(...args),
     forgotPassword: (...args: any[]) => mockForgotPassword(...args),
     register: (...args: any[]) => mockRegister(...args),
@@ -420,6 +423,61 @@ describe("AuthContext", () => {
 
       expect(result.current.user).toBeNull();
       expect(mockClearTokens).toHaveBeenCalled();
+    });
+  });
+
+  describe("loginWithApple", () => {
+    it("exchanges identityToken for session and sets user", async () => {
+      mockHasTokens.mockResolvedValue(false);
+      mockAppleTokenLogin.mockResolvedValue({
+        access_token: "apple-access",
+        refresh_token: "apple-refresh",
+        user: mockUser,
+      });
+
+      const { result } = renderHook(() => useAuth(), { wrapper });
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+      await act(async () => {
+        await result.current.loginWithApple({
+          identityToken: "fake.apple.idtoken",
+          email: "test@privaterelay.appleid.com",
+          fullName: "Test User",
+        });
+      });
+
+      expect(mockAppleTokenLogin).toHaveBeenCalledWith({
+        identityToken: "fake.apple.idtoken",
+        email: "test@privaterelay.appleid.com",
+        fullName: "Test User",
+      });
+      expect(result.current.user).toEqual(mockUser);
+      expect(result.current.isAuthenticated).toBe(true);
+    });
+
+    it("surfaces error on backend failure", async () => {
+      const { ApiError } = require("../../src/services/api");
+      mockHasTokens.mockResolvedValue(false);
+      mockAppleTokenLogin.mockRejectedValue(
+        new ApiError("Invalid Apple ID token", 401),
+      );
+
+      const { result } = renderHook(() => useAuth(), { wrapper });
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+      await expect(
+        act(async () => {
+          await result.current.loginWithApple({
+            identityToken: "bad.token",
+          });
+        }),
+      ).rejects.toBeInstanceOf(ApiError);
+
+      // User reste null (pas de session creee), backend a bien ete appele
+      expect(result.current.user).toBeNull();
+      expect(mockAppleTokenLogin).toHaveBeenCalledWith({
+        identityToken: "bad.token",
+      });
     });
   });
 });

@@ -344,6 +344,32 @@ export const authApi = {
     return response;
   },
 
+  // Sign in with Apple (iOS only via expo-apple-authentication).
+  // Apple ne renvoie email/fullName QU'AU PREMIER sign-in — le caller doit
+  // nous les passer sur first login, sinon le backend genere un placeholder.
+  async appleTokenLogin(payload: {
+    identityToken: string;
+    email?: string | null;
+    fullName?: string | null;
+  }): Promise<{ access_token: string; refresh_token: string; user: User }> {
+    const response = await request<{
+      access_token: string;
+      refresh_token: string;
+      user: User;
+    }>("/api/auth/apple/token", {
+      method: "POST",
+      body: {
+        id_token: payload.identityToken,
+        email: payload.email ?? undefined,
+        full_name: payload.fullName ?? undefined,
+        client_platform: Platform.OS === "ios" ? "ios" : "android",
+      },
+      requiresAuth: false,
+    });
+    await tokenStorage.setTokens(response.access_token, response.refresh_token);
+    return response;
+  },
+
   async getMe(): Promise<User> {
     return request("/api/auth/me");
   },

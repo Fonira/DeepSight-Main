@@ -29,6 +29,8 @@ const mockAuthContext = {
   pendingVerificationEmail: null,
   login: jest.fn(),
   loginWithGoogle: jest.fn(),
+  loginWithGoogleToken: jest.fn(),
+  loginWithApple: jest.fn(),
   register: jest.fn(),
   verifyEmail: jest.fn(),
   logout: jest.fn(),

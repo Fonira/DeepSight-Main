@@ -53,6 +53,24 @@ jest.mock("expo-linear-gradient", () => ({
   LinearGradient: "LinearGradient",
 }));
 
+// expo-apple-authentication — natif iOS only, mock complet pour Jest
+jest.mock("expo-apple-authentication", () => ({
+  isAvailableAsync: jest.fn().mockResolvedValue(true),
+  signInAsync: jest.fn().mockResolvedValue({
+    identityToken: "fake.apple.identitytoken",
+    authorizationCode: "fake_code",
+    email: "test@privaterelay.appleid.com",
+    fullName: { givenName: "Test", familyName: "User" },
+    user: "001234.testuser.5678",
+    realUserStatus: 1,
+    state: null,
+  }),
+  AppleAuthenticationScope: { EMAIL: 0, FULL_NAME: 1 },
+  AppleAuthenticationButton: "AppleAuthenticationButton",
+  AppleAuthenticationButtonStyle: { WHITE: 0, BLACK: 1, WHITE_OUTLINE: 2 },
+  AppleAuthenticationButtonType: { SIGN_IN: 0, CONTINUE: 1, SIGN_UP: 2 },
+}));
+
 jest.mock("@react-native-google-signin/google-signin", () => ({
   GoogleSignin: {
     configure: jest.fn(),
