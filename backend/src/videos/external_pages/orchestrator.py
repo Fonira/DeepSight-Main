@@ -150,11 +150,7 @@ def _compute_stats(
     """Calcule les stats du pipeline (spec §6)."""
     successful = sum(1 for p in summaries if p.status == "ok")
     paywalled = sum(1 for p in summaries if p.status == "paywall")
-    errored = sum(
-        1
-        for p in summaries
-        if p.status in ("error", "non_html", "http_error", "timeout", "empty")
-    )
+    errored = sum(1 for p in summaries if p.status in ("error", "non_html", "http_error", "timeout", "empty"))
     return {
         "candidates_found": candidates_found,
         "after_dedup": after_cleanup,
@@ -205,9 +201,7 @@ async def extract_external_pages(
         # ── Inputs
         description = _extract_video_field(video_info, "description", "video_description")
         video_title = _extract_video_field(video_info, "title", "video_title")
-        creator_channel = _extract_video_field(
-            video_info, "channel", "channel_name", "video_channel"
-        )
+        creator_channel = _extract_video_field(video_info, "channel", "channel_name", "video_channel")
         channel_url = _extract_video_field(video_info, "channel_url")
 
         if not description:

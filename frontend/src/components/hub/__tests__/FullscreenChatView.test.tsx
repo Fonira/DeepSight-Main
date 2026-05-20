@@ -12,8 +12,20 @@ beforeAll(() => {
     vi.fn() as unknown as typeof Element.prototype.scrollTo;
 });
 
-vi.mock("../../../contexts/LanguageContext", () => ({
-  useLanguage: () => ({ language: "fr" }),
+vi.mock("../../../contexts/LanguageContext", async () => {
+  const React = await import("react");
+  return {
+    useLanguage: () => ({ language: "fr" }),
+    LanguageContext: React.createContext({ language: "fr" }),
+  };
+});
+
+vi.mock("../../../contexts/AuthContext", () => ({
+  useAuthContext: () => ({
+    user: { id: 1, plan: "expert", is_admin: false },
+    isAuthenticated: true,
+    loading: false,
+  }),
 }));
 
 vi.mock("../../../services/api", () => ({

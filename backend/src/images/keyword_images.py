@@ -634,9 +634,7 @@ async def _stage2_gemini_doodle(visual_prompt: str) -> tuple[bytes, str]:
             import base64
 
             image_bytes = base64.b64decode(inline["data"])
-            logger.info(
-                f"🖼️ Doodle generated (Gemini 3 Pro Image): {len(image_bytes)} bytes"
-            )
+            logger.info(f"🖼️ Doodle generated (Gemini 3 Pro Image): {len(image_bytes)} bytes")
             return image_bytes, IMAGE_MODEL_GEMINI_DOODLE
     raise RuntimeError(f"Gemini response missing inlineData: {result}")
 
@@ -652,18 +650,12 @@ async def _stage2_generate_doodle(visual_prompt: str) -> tuple[bytes, str]:
         try:
             return await _stage2_gemini_doodle(visual_prompt)
         except Exception as e:
-            logger.warning(
-                f"⚠️ Gemini doodle failed, trying DALL-E 3 fallback: {e}"
-            )
+            logger.warning(f"⚠️ Gemini doodle failed, trying DALL-E 3 fallback: {e}")
 
     if get_openai_key():
-        return await _stage2_dalle3(
-            f"{visual_prompt}. {TUTOR_DOODLE_STYLE_SUFFIX}"
-        )
+        return await _stage2_dalle3(f"{visual_prompt}. {TUTOR_DOODLE_STYLE_SUFFIX}")
 
-    raise RuntimeError(
-        "No doodle backend available (need GEMINI_API_KEY or OPENAI_API_KEY)"
-    )
+    raise RuntimeError("No doodle backend available (need GEMINI_API_KEY or OPENAI_API_KEY)")
 
 
 def _post_process_doodle(image_bytes: bytes) -> bytes:
@@ -829,16 +821,13 @@ async def get_doodle_url(term: str, pool=None) -> Optional[str]:
     thash = _term_hash(term, style="tutor_doodle")
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
-            "SELECT image_url FROM keyword_images "
-            "WHERE term_hash = $1 AND style = 'tutor_doodle' AND status = 'ready'",
+            "SELECT image_url FROM keyword_images WHERE term_hash = $1 AND style = 'tutor_doodle' AND status = 'ready'",
             thash,
         )
     return row["image_url"] if row else None
 
 
-async def batch_get_doodle_urls(
-    terms: list[str], pool=None
-) -> dict[str, str]:
+async def batch_get_doodle_urls(terms: list[str], pool=None) -> dict[str, str]:
     """Batch lookup doodle URLs for multiple terms. Returns {term_hash: image_url}.
 
     Hashes are computed with `style='tutor_doodle'`, so they discriminate from

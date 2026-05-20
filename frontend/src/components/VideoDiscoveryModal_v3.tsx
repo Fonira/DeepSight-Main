@@ -730,7 +730,7 @@ export const VideoDiscoveryModal: React.FC<VideoDiscoveryModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-stretch sm:items-center justify-center p-0 sm:p-4">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
@@ -738,15 +738,15 @@ export const VideoDiscoveryModal: React.FC<VideoDiscoveryModalProps> = ({
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-6xl max-h-[92vh] bg-bg-primary rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-scaleIn">
+      <div className="relative w-full max-w-6xl h-full sm:h-auto max-h-[100dvh] sm:max-h-[92vh] bg-bg-primary rounded-none sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-scaleIn">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border-default">
-          <div>
-            <h2 className="text-lg font-semibold text-text-primary flex items-center gap-2">
-              <Search className="w-5 h-5 text-purple-500" />
-              {t.title}
+        <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4 border-b border-border-default">
+          <div className="min-w-0">
+            <h2 className="text-base sm:text-lg font-semibold text-text-primary flex items-center gap-2">
+              <Search className="w-5 h-5 text-purple-500 shrink-0" />
+              <span className="truncate">{t.title}</span>
             </h2>
-            <p className="text-sm text-text-secondary mt-0.5">
+            <p className="text-xs sm:text-sm text-text-secondary mt-0.5 truncate">
               {allowMultiple
                 ? t.subtitleMultiple.replace("{max}", maxSelection.toString())
                 : t.subtitle}
@@ -755,7 +755,7 @@ export const VideoDiscoveryModal: React.FC<VideoDiscoveryModalProps> = ({
 
           <button
             onClick={onClose}
-            className="p-2 rounded-lg text-text-tertiary hover:text-text-primary hover:bg-bg-hover transition-colors"
+            className="p-2 rounded-lg text-text-tertiary hover:text-text-primary hover:bg-bg-hover transition-colors shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
@@ -763,10 +763,10 @@ export const VideoDiscoveryModal: React.FC<VideoDiscoveryModalProps> = ({
 
         {/* Stats bar */}
         {discovery && (
-          <div className="px-6 py-3 bg-bg-tertiary/50 border-b border-border-subtle space-y-3">
+          <div className="px-4 sm:px-6 py-3 bg-bg-tertiary/50 border-b border-border-subtle space-y-3">
             {/* First row: Stats and filters */}
-            <div className="flex items-center justify-between flex-wrap gap-3">
-              <div className="flex items-center gap-4 text-sm text-text-secondary">
+            <div className="flex items-start sm:items-center justify-between flex-col sm:flex-row gap-3">
+              <div className="flex flex-wrap items-center gap-x-2 sm:gap-x-3 gap-y-1 text-xs sm:text-sm text-text-secondary">
                 <span>
                   <strong className="text-text-primary">
                     {discovery.candidates.length}
@@ -774,28 +774,20 @@ export const VideoDiscoveryModal: React.FC<VideoDiscoveryModalProps> = ({
                   {t.found.replace("{count}", "")}
                 </span>
                 <span className="text-text-tertiary">•</span>
-                <span>
+                <span className="truncate max-w-[50vw] sm:max-w-none">
                   {t.searchedIn}: {discovery.languages_searched.join(", ")}
                 </span>
-                <span className="text-text-tertiary">•</span>
-                <span>
+                <span className="text-text-tertiary hidden sm:inline">•</span>
+                <span className="hidden sm:inline">
                   {t.duration.replace(
                     "{ms}",
                     discovery.search_duration_ms.toString(),
                   )}
                 </span>
-                {discovery.tournesol_available && (
-                  <>
-                    <span className="text-text-tertiary">•</span>
-                    <span className="flex items-center gap-1">
-                      🌻 Tournesol
-                    </span>
-                  </>
-                )}
               </div>
 
               {/* Filters */}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                 {/* Sort */}
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-text-tertiary">{t.sortBy}</span>
@@ -849,7 +841,7 @@ export const VideoDiscoveryModal: React.FC<VideoDiscoveryModalProps> = ({
         )}
 
         {/* Content */}
-        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-6">
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-3 sm:p-6">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-12">
               <DeepSightSpinner
@@ -910,8 +902,8 @@ export const VideoDiscoveryModal: React.FC<VideoDiscoveryModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-border-default bg-bg-tertiary/50">
-          <div className="flex items-center gap-4 text-sm">
+        <div className="flex items-center justify-between gap-2 flex-wrap px-4 py-3 sm:px-6 sm:py-4 border-t border-border-default bg-bg-tertiary/50">
+          <div className="flex items-center gap-2 sm:gap-4 text-xs sm:text-sm">
             {selectedIds.size > 0 && (
               <span className="text-text-primary font-medium">
                 {t.selected.replace("{count}", selectedIds.size.toString())}
@@ -924,19 +916,21 @@ export const VideoDiscoveryModal: React.FC<VideoDiscoveryModalProps> = ({
             </span>
           </div>
 
-          <div className="flex items-center gap-3">
-            <button onClick={onClose} className="btn btn-ghost">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button onClick={onClose} className="btn btn-ghost text-sm">
               {language === "fr" ? "Annuler" : "Cancel"}
             </button>
             <button
               onClick={handleConfirm}
               disabled={selectedIds.size === 0 || !hasEnoughCredits}
-              className="btn btn-primary"
+              className="btn btn-primary text-sm"
             >
               {!hasEnoughCredits ? (
                 <>
                   <AlertTriangle className="w-4 h-4" />
-                  {t.insufficientCredits}
+                  <span className="hidden sm:inline">
+                    {t.insufficientCredits}
+                  </span>
                 </>
               ) : (
                 <>

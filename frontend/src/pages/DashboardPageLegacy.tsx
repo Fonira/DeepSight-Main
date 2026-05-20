@@ -278,6 +278,34 @@ export const DashboardPage: React.FC = () => {
   // L'onglet Analyse est TOUJOURS vide quand on y arrive depuis un autre onglet.
   // Les synthèses de l'historique s'affichent désormais inline dans l'onglet Historique.
 
+  // === 🔍 Pre-fill + auto-search depuis query string (?q=...) ===
+  // Arrive ici quand l'utilisateur lance une recherche depuis DashboardPageMinimal,
+  // qui redirige vers /?legacy=1&q=<query>. On pré-remplit le SmartInputBar et
+  // déclenche immédiatement la découverte pour éviter à l'utilisateur de retaper.
+  const [pendingAutoSearch, setPendingAutoSearch] = useState<string | null>(
+    null,
+  );
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get("q");
+    if (q && q.trim().length > 0) {
+      setSmartInput((prev) => ({
+        ...prev,
+        mode: "search",
+        searchQuery: q,
+        searchLanguages: prev.searchLanguages || ["fr", "en"],
+      }));
+      setPendingAutoSearch(q);
+      // Nettoyer le query param sans recharger pour éviter de re-trigger
+      params.delete("q");
+      const newSearch = params.toString();
+      const newUrl =
+        window.location.pathname + (newSearch ? `?${newSearch}` : "");
+      window.history.replaceState({}, "", newUrl);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // === 🕐 Charger les données de fiabilité quand un résumé est sélectionné ===
 
   useEffect(() => {
@@ -485,6 +513,54 @@ export const DashboardPage: React.FC = () => {
       pollingRef.current = false;
     }
   };
+
+  // === 🔍 Auto-trigger discover dès que smartInput est aligné avec pendingAutoSearch ===
+  useEffect(() => {
+    if (!pendingAutoSearch) return;
+    if (
+      smartInput.mode !== "search" ||
+      smartInput.searchQuery !== pendingAutoSearch
+    )
+      return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        setLoading(true);
+        setLoadingMessage(
+          language === "fr" ? "Recherche intelligente..." : "Smart search...",
+        );
+        const discovery = await videoApi.discover(pendingAutoSearch, {
+          languages: smartInput.searchLanguages || ["fr", "en"],
+          limit: 20,
+          minQuality: 30,
+          targetDuration: "default",
+        });
+        if (cancelled) return;
+        setDiscoveryResult(discovery);
+        setShowDiscoveryModal(true);
+      } catch (err) {
+        if (!cancelled) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : language === "fr"
+                ? "Erreur de recherche"
+                : "Search error",
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+          setPendingAutoSearch(null);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingAutoSearch, smartInput.mode, smartInput.searchQuery]);
 
   const handleAnalyze = async () => {
     // Validation selon le mode

@@ -19,7 +19,7 @@ const basePaper: AcademicPaper = {
   abstract: "An abstract of the test paper.",
   citation_count: 42,
   url: "https://example.com/p-1",
-  pdf_url: null,
+  pdf_url: undefined,
   source: "semantic_scholar",
   relevance_score: 0.95,
   is_open_access: false,

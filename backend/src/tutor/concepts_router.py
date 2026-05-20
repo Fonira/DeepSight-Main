@@ -80,9 +80,7 @@ async def list_concepts(
 
     concepts = await collect_user_concepts(user.id, db, limit=limit)
     if not concepts:
-        return TutorConceptsResponse(
-            concepts=[], total=0, ready_count=0, pending_count=0
-        )
+        return TutorConceptsResponse(concepts=[], total=0, ready_count=0, pending_count=0)
 
     concepts = await attach_image_urls(concepts)
     concepts = await check_lookup_pending(concepts)

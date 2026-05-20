@@ -61,7 +61,9 @@ class _DeepSightSettings(BaseSettings):
     TOGETHER_API_KEY: str = ""
     MISTRAL_IMAGE_AGENT_ID: str = ""  # Mistral Agents API — DeepSight Art Director
     GEMINI_API_KEY: str = ""  # Google AI Studio — Gemini 3 Pro Image (Nano Banana Pro) pour doodles Tuteur
-    TUTOR_DOODLE_DAILY_CAP: int = 300  # Cap global quotidien images doodle Tuteur (Redis counter, anti-abuse + plafond coût)
+    TUTOR_DOODLE_DAILY_CAP: int = (
+        300  # Cap global quotidien images doodle Tuteur (Redis counter, anti-abuse + plafond coût)
+    )
 
     # -- Miro (Débat IA v2 — boards générés sur compte org DeepSight) --
     # Cf. docs/superpowers/specs/2026-05-04-debate-ia-v2.md §7.4.

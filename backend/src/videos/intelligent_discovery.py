@@ -71,11 +71,13 @@ OPTIMAL_DURATIONS = {
 }
 
 # Poids du scoring - RELEVANCE est le plus important !
+# 2026-05-20 : rebalance pour rapprocher des résultats YouTube standards.
+# Tournesol passe de 0.20 → 0.05 (bonus discret), engagement bumpé.
 SCORING_WEIGHTS = {
-    "relevance": 0.40,  # ⭐ Priorité aux termes de recherche exacts
-    "tournesol": 0.20,
-    "academic": 0.15,
-    "engagement": 0.10,
+    "relevance": 0.45,  # ⭐ Priorité aux termes de recherche exacts
+    "tournesol": 0.05,  # Bonus discret pour vidéos Tournesol-scorées
+    "academic": 0.10,
+    "engagement": 0.20,  # YouTube-like : vues/likes pèsent davantage
     "freshness": 0.08,
     "duration": 0.07,
     "clickbait_penalty": 0.10,
@@ -1330,94 +1332,23 @@ class IntelligentDiscovery:
                 if len(final_candidates) >= max_results:
                     break
 
-        # 5. 🌻 PROMOTION TOURNESOL - Garantir au moins 1 vidéo Tournesol visible en haut
-        #    Stratégie: Chercher la meilleure vidéo avec score Tournesol et la promouvoir
+        # 5. 🌻 Promotion Tournesol discrète : 1 seule vidéo, uniquement si aucune
+        # Tournesol n'est déjà présente naturellement. Pas de fallback hardcodé.
+        # Le ranking YouTube domine ; Tournesol reste un bonus.
+        has_tournesol_naturally = any(c.is_tournesol_pick or c.tournesol_score > 0.55 for c in final_candidates[:10])
 
-        # 5a. Compter les vidéos Tournesol et leurs positions
-        tournesol_videos = [
-            (i, c) for i, c in enumerate(final_candidates) if c.is_tournesol_pick or c.tournesol_score > 0.55
-        ]
-        print(f"🌻 [PROMO] Found {len(tournesol_videos)} Tournesol videos in results", flush=True)
-
-        for idx, vid in tournesol_videos:
-            print(
-                f"   Position {idx + 1}: {vid.title[:50]} (score={vid.tournesol_score:.2f}, pick={vid.is_tournesol_pick})",
-                flush=True,
-            )
-
-        # 5b. Trouver la meilleure vidéo Tournesol (la plus pertinente)
-        best_tournesol_in_results = None
-        best_tournesol_index = -1
-        best_tournesol_relevance = -1.0
-
-        for i, candidate in enumerate(final_candidates):
-            # Marquer comme pick si score Tournesol positif (au cas où ça n'a pas été fait)
-            if candidate.tournesol_score > 0.55 and not candidate.is_tournesol_pick:
-                candidate.is_tournesol_pick = True
-                print(f"🌻 [FIX] Marked {candidate.video_id} as Tournesol pick", flush=True)
-
-            if candidate.is_tournesol_pick:
-                if candidate.relevance_score > best_tournesol_relevance:
-                    best_tournesol_in_results = candidate
-                    best_tournesol_index = i
-                    best_tournesol_relevance = candidate.relevance_score
-
-        # 5c. Promouvoir la vidéo Tournesol en position 3 si elle est plus bas
-        if best_tournesol_in_results and best_tournesol_index > 2:
-            # Retirer de sa position actuelle
-            final_candidates.pop(best_tournesol_index)
-            # Insérer en position 3 (index 2)
-            insert_pos = min(2, len(final_candidates))
-            final_candidates.insert(insert_pos, best_tournesol_in_results)
-            print(
-                f"🌻 [PROMO] Promoted '{best_tournesol_in_results.title[:40]}' from #{best_tournesol_index + 1} to #{insert_pos + 1}",
-                flush=True,
-            )
-        elif best_tournesol_in_results:
-            print(f"🌻 [PROMO] Tournesol video already in top 3 at position #{best_tournesol_index + 1}", flush=True)
-
-        # 5d. Si AUCUNE vidéo Tournesol dans les résultats, essayer l'API Tournesol
-        has_tournesol_in_top5 = any(c.is_tournesol_pick for c in final_candidates[:5])
-
-        if not has_tournesol_in_top5:
-            print("🌻 [PROMO] No Tournesol in top 5, calling Tournesol API...", flush=True)
+        if not has_tournesol_naturally and len(final_candidates) >= 3:
             existing_ids = [c.video_id for c in final_candidates]
             tournesol_pick = await TournesolPromotion.get_tournesol_pick(query, existing_ids)
-
             if tournesol_pick:
                 tournesol_pick.relevance_score = QualityScorer._calculate_relevance_score(tournesol_pick, query)
-                tournesol_pick.final_score = 100.0
+                tournesol_pick.final_score = 50.0  # Score modeste, pas de promotion artificielle
                 tournesol_pick.is_tournesol_pick = True
-
-                insert_position = min(2, len(final_candidates))
+                insert_position = min(4, len(final_candidates))
                 final_candidates.insert(insert_position, tournesol_pick)
-
                 if len(final_candidates) > max_results:
                     final_candidates.pop()
-
-                print(
-                    f"🌻 [PROMO] API pick added at position {insert_position + 1}: {tournesol_pick.title[:40]}",
-                    flush=True,
-                )
-            else:
-                # 🌻 FALLBACK HARDCODÉ - Toujours avoir une vidéo Tournesol
-                print("🌻 [PROMO] Using hardcoded Tournesol fallback", flush=True)
-                fallback_pick = TournesolPromotion.get_hardcoded_fallback(existing_ids)
-                if fallback_pick:
-                    fallback_pick.is_tournesol_pick = True
-                    fallback_pick.tournesol_score = 1.0
-                    fallback_pick.final_score = 90.0
-
-                    insert_position = min(2, len(final_candidates))
-                    final_candidates.insert(insert_position, fallback_pick)
-
-                    if len(final_candidates) > max_results:
-                        final_candidates.pop()
-
-                    print(
-                        f"🌻 [PROMO] Hardcoded fallback added at position {insert_position + 1}: {fallback_pick.title[:40]}",
-                        flush=True,
-                    )
+                logger.info(f"🌻 Discreet Tournesol pick added at position {insert_position + 1}")
 
         elapsed_ms = int((time.time() - start_time) * 1000)
 
@@ -1588,24 +1519,32 @@ class IntelligentDiscoveryService:
                 final_candidates.append(candidate)
                 channel_counts[candidate.channel_id] += 1
 
-                if len(final_candidates) >= max_results - 1:  # -1 pour Tournesol
+                if len(final_candidates) >= max_results:
                     break
 
-        # 5. 🌻 Ajouter la vidéo Tournesol sponsorisée
-        existing_ids = [c.video_id for c in final_candidates]
-        logger.info(f"🌻 Searching Tournesol pick for query: '{query}'")
-        tournesol_pick = await TournesolPromotion.get_tournesol_pick(query, existing_ids)
+        # 5. 🌻 Promotion Tournesol discrète : 1 seule vidéo ajoutée UNIQUEMENT si
+        # aucune vidéo Tournesol n'est déjà présente naturellement dans les résultats
+        # YouTube. Pas de fallback hardcodé — on respecte le ranking YouTube.
+        has_tournesol_naturally = any(c.is_tournesol_pick or c.tournesol_score > 0.55 for c in final_candidates[:10])
 
-        if tournesol_pick:
-            tournesol_pick.relevance_score = QualityScorer._calculate_relevance_score(tournesol_pick, query)
-            tournesol_pick.final_score = 100.0
+        if not has_tournesol_naturally and len(final_candidates) >= 3:
+            existing_ids = [c.video_id for c in final_candidates]
+            logger.info(f"🌻 No Tournesol naturally — fetching 1 discreet pick for: '{query}'")
+            tournesol_pick = await TournesolPromotion.get_tournesol_pick(query, existing_ids)
 
-            # Insérer en position 3 (après les 2 meilleures)
-            insert_position = min(2, len(final_candidates))
-            final_candidates.insert(insert_position, tournesol_pick)
-            logger.info(f"🌻 Tournesol pick added at position {insert_position + 1}: {tournesol_pick.title[:50]}")
-        else:
-            logger.warning(f"⚠️ No Tournesol pick found for query: '{query}'")
+            if tournesol_pick:
+                tournesol_pick.relevance_score = QualityScorer._calculate_relevance_score(tournesol_pick, query)
+                # Score modeste : pas de 100.0 artificiel, juste mid-pack pour ne pas
+                # truster le sommet de la liste
+                tournesol_pick.final_score = 50.0
+
+                # Insérer en position 5 (plus discret qu'avant), seulement si on a la place
+                insert_position = min(4, len(final_candidates))
+                final_candidates.insert(insert_position, tournesol_pick)
+                # Cap à max_results : retirer le dernier si on dépasse
+                if len(final_candidates) > max_results:
+                    final_candidates.pop()
+                logger.info(f"🌻 Tournesol pick added at position {insert_position + 1}: {tournesol_pick.title[:50]}")
 
         duration_ms = int((time.time() - start_time) * 1000)
 
