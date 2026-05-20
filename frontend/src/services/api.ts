@@ -1001,6 +1001,33 @@ export const authApi = {
     return response;
   },
 
+  /**
+   * Sign in with Apple — envoie l'id_token Apple au backend qui le vérifie
+   * (JWKs Apple) puis retourne nos JWT. Le client_platform est "web" depuis
+   * le frontend, "ios"/"android" depuis mobile, "extension" depuis Chrome.
+   */
+  async loginWithApple(payload: {
+    id_token: string;
+    email?: string | null;
+    full_name?: string | null;
+    client_platform?: "web" | "ios" | "android" | "extension";
+    device_name?: string;
+  }): Promise<TokenResponse> {
+    const response = await request<TokenResponse>("/api/auth/apple/token", {
+      method: "POST",
+      body: {
+        id_token: payload.id_token,
+        email: payload.email ?? undefined,
+        full_name: payload.full_name ?? undefined,
+        client_platform: payload.client_platform ?? "web",
+        device_name: payload.device_name,
+      },
+      skipAuth: true,
+    });
+    setTokens(response.access_token, response.refresh_token);
+    return response;
+  },
+
   async me(_options?: { skipCache?: boolean }): Promise<User> {
     // Note: skipCache non implémenté côté client, géré côté serveur
     return request("/api/auth/me");

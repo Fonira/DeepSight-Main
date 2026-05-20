@@ -43,6 +43,7 @@ interface UseAuthReturn extends AuthState {
   // Actions
   login: (email: string, password: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
+  loginWithApple: () => Promise<void>;
   register: (
     username: string,
     email: string,
@@ -442,6 +443,55 @@ export function useAuth(): UseAuthReturn {
   }, []);
 
   // ═══════════════════════════════════════════════════════════════════════════
+  // 🍎 LOGIN APPLE
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  const loginWithApple = useCallback(async () => {
+    setState((prev) => ({ ...prev, isLoading: true, error: null }));
+    try {
+      // Lazy import — n'embarque le SDK Apple que si l'user clique vraiment
+      // sur le bouton. Évite de charger Apple JS sur toutes les routes.
+      const { signInWithApple } = await import("../lib/appleSignIn");
+      const appleData = await signInWithApple();
+      const response = await authApi.loginWithApple({
+        id_token: appleData.id_token,
+        email: appleData.email,
+        full_name: appleData.full_name,
+        client_platform: "web",
+      });
+      const apiUser = response.user ?? null;
+      if (mountedRef.current) {
+        setState((prev) => ({
+          ...prev,
+          user: apiUser,
+          isAuthenticated: apiUser !== null,
+          isLoading: false,
+          error: null,
+        }));
+      }
+      if (apiUser) {
+        setSentryUser(apiUser);
+      }
+    } catch (error) {
+      const message =
+        error instanceof ApiError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : "Erreur de connexion Apple";
+
+      if (mountedRef.current) {
+        setState((prev) => ({
+          ...prev,
+          isLoading: false,
+          error: message,
+        }));
+      }
+      throw error;
+    }
+  }, []);
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // 📝 REGISTER
   // ═══════════════════════════════════════════════════════════════════════════
 
@@ -690,6 +740,7 @@ export function useAuth(): UseAuthReturn {
     loading: state.isLoading,
     login,
     loginWithGoogle,
+    loginWithApple,
     register,
     verifyEmail,
     logout,

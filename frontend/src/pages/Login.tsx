@@ -42,6 +42,13 @@ const GoogleIcon: React.FC<{ className?: string }> = ({ className }) => (
   </svg>
 );
 
+// === Apple Icon (logo officiel monochrome) ===
+const AppleIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M17.05 12.04c-.03-2.93 2.4-4.34 2.51-4.4-1.37-2-3.5-2.28-4.25-2.31-1.81-.18-3.53 1.06-4.45 1.06-.92 0-2.34-1.04-3.85-1.01-1.98.03-3.81 1.15-4.83 2.91-2.06 3.58-.53 8.87 1.48 11.78.98 1.43 2.15 3.02 3.68 2.96 1.48-.06 2.04-.96 3.83-.96 1.79 0 2.29.96 3.86.93 1.59-.03 2.6-1.45 3.57-2.88 1.13-1.66 1.59-3.27 1.62-3.35-.04-.02-3.11-1.19-3.17-4.73zM14.13 3.6c.82-.99 1.36-2.37 1.21-3.74-1.17.05-2.59.78-3.43 1.77-.75.87-1.41 2.27-1.23 3.62 1.31.1 2.63-.66 3.45-1.65z" />
+  </svg>
+);
+
 // === Logo ===
 const Logo: React.FC = () => {
   return (
@@ -67,6 +74,7 @@ export const Login: React.FC = () => {
   const {
     login,
     loginWithGoogle,
+    loginWithApple,
     register,
     verifyEmail,
     isAuthenticated,
@@ -238,6 +246,19 @@ export const Login: React.FC = () => {
     } catch (err: unknown) {
       const msg = (err as { message?: string } | null)?.message;
       setError(msg || t.errors.generic);
+      setLoading(false);
+    }
+  };
+
+  const handleAppleLogin = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      await loginWithApple();
+    } catch (err: unknown) {
+      const msg = (err as { message?: string } | null)?.message;
+      setError(msg || t.errors.generic);
+    } finally {
       setLoading(false);
     }
   };
@@ -443,7 +464,7 @@ export const Login: React.FC = () => {
             </p>
           </div>
 
-          {/* Google OAuth */}
+          {/* Google + Apple OAuth */}
           {!showVerification && (
             <>
               <motion.button
@@ -454,6 +475,17 @@ export const Login: React.FC = () => {
               >
                 <GoogleIcon className="w-4.5 h-4.5" />
                 {t.auth.loginWithGoogle}
+              </motion.button>
+
+              <motion.button
+                onClick={handleAppleLogin}
+                disabled={loading}
+                className="mt-2.5 w-full flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-md border border-border-default bg-bg-secondary text-text-primary text-sm font-medium hover:bg-bg-hover hover:border-border-strong transition-all disabled:opacity-40"
+                whileTap={{ scale: 0.98 }}
+                aria-label={t.auth.loginWithApple}
+              >
+                <AppleIcon className="w-4.5 h-4.5" />
+                {t.auth.loginWithApple}
               </motion.button>
 
               <div className="relative my-6">

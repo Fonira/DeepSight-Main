@@ -39,6 +39,7 @@ const defaultAuthState = {
   loading: false,
   login: vi.fn(),
   loginWithGoogle: vi.fn(),
+  loginWithApple: vi.fn(),
   register: vi.fn(),
   verifyEmail: vi.fn(),
   logout: vi.fn(),
@@ -345,6 +346,24 @@ describe("Login Page - Google OAuth", () => {
     await user.click(googleButton);
 
     expect(mockLoginWithGoogle).toHaveBeenCalled();
+  });
+
+  it("should call loginWithApple when Apple button clicked", async () => {
+    const user = userEvent.setup();
+    const mockLoginWithApple = vi.fn().mockResolvedValue(undefined);
+    mockUseAuth.mockReturnValue({
+      ...defaultAuthState,
+      loginWithApple: mockLoginWithApple,
+    });
+
+    renderWithProviders(<Login />);
+
+    const appleButton = screen.getByRole("button", {
+      name: /Continuer avec Apple/i,
+    });
+    await user.click(appleButton);
+
+    expect(mockLoginWithApple).toHaveBeenCalled();
   });
 
   it("should show loading state spinner when authLoading", () => {
