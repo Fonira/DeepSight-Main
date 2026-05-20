@@ -71,6 +71,26 @@ jest.mock("expo-apple-authentication", () => ({
   AppleAuthenticationButtonType: { SIGN_IN: 0, CONTINUE: 1, SIGN_UP: 2 },
 }));
 
+// expo-web-browser — utilise pour le flow Apple OAuth web Android
+// (useAppleAuthAndroid). Mock par defaut retourne un success avec URL
+// deeplink contenant id_token + state. Les tests peuvent override via
+// mockResolvedValueOnce.
+jest.mock("expo-web-browser", () => ({
+  openAuthSessionAsync: jest.fn().mockResolvedValue({
+    type: "success",
+    url: "deepsight://auth/apple/callback?id_token=mock.apple.token&code=mock_code&state=MOCK_STATE",
+  }),
+  maybeCompleteAuthSession: jest.fn(),
+}));
+
+// expo-crypto — utilise pour generer state + nonce CSRF dans le flow Apple
+// OAuth web Android. Le mock retourne des bytes deterministes pour les tests.
+jest.mock("expo-crypto", () => ({
+  getRandomBytesAsync: jest.fn((length) =>
+    Promise.resolve(new Uint8Array(length).fill(0xab)),
+  ),
+}));
+
 jest.mock("@react-native-google-signin/google-signin", () => ({
   GoogleSignin: {
     configure: jest.fn(),

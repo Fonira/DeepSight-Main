@@ -11,6 +11,7 @@ import {
   Pressable,
   Alert,
   TextInput,
+  ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -22,6 +23,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAppleAuthAndroid } from "@/hooks/useAppleAuthAndroid";
 import { ApiError } from "@/services/api";
 import { sp, borderRadius } from "@/theme/spacing";
 import { fontFamily, fontSize, textStyles } from "@/theme/typography";
@@ -40,6 +42,7 @@ export default function LoginScreen() {
   const { colors, isDark } = useTheme();
   const { login: contextLogin, loginWithGoogleToken, loginWithApple } =
     useAuth();
+  const { signInWithAppleAndroid } = useAppleAuthAndroid();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -198,6 +201,43 @@ export default function LoginScreen() {
       setAppleLoading(false);
     }
   }, [loginWithApple]);
+
+  // Sign in with Apple — Android branch via flow OAuth web.
+  // Apple ne fournit PAS de SDK natif Android — on passe par le Service ID web
+  // configure sur Apple Dev Console (`com.deepsightsynthesis.signin`) qui
+  // redirige vers le bridge backend HTTPS, qui lui-meme redirige via deeplink
+  // `deepsight://auth/apple/callback`. Cf. hooks/useAppleAuthAndroid.ts pour
+  // les details du flow.
+  const handleApplePressAndroid = useCallback(async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setAppleLoading(true);
+    try {
+      const status = await signInWithAppleAndroid();
+      if (status.type === "cancel") {
+        return; // User a ferme le Custom Tab — silencieux
+      }
+      if (status.type === "error") {
+        Alert.alert("Erreur Apple", status.message);
+        return;
+      }
+      await loginWithApple({
+        identityToken: status.result.identityToken,
+        email: status.result.email,
+        fullName: status.result.fullName,
+      });
+    } catch (error) {
+      if (error instanceof ApiError) {
+        Alert.alert(
+          "Erreur Apple",
+          error.message || "Échec de la connexion Apple",
+        );
+      } else {
+        Alert.alert("Erreur", "Impossible de se connecter avec Apple.");
+      }
+    } finally {
+      setAppleLoading(false);
+    }
+  }, [signInWithAppleAndroid, loginWithApple]);
 
   return (
     <SafeAreaView
@@ -405,6 +445,53 @@ export default function LoginScreen() {
                 )}
               </View>
             )}
+
+            {/* Apple button — Android via flow OAuth web (pas de SDK natif).
+               Look noir sur dark theme, noir sur light theme — Apple HIG style.
+               Le bouton iOS natif (AppleAuthenticationButton) fait l'inverse
+               automatiquement, donc on aligne ici sur la convention iOS. */}
+            {Platform.OS === "android" && (
+              <Pressable
+                onPress={handleApplePressAndroid}
+                disabled={loading || googleLoading || appleLoading}
+                style={({ pressed }) => [
+                  styles.appleButtonAndroid,
+                  {
+                    backgroundColor: isDark ? "#ffffff" : "#000000",
+                    opacity: pressed ? 0.85 : 1,
+                  },
+                  (loading || googleLoading || appleLoading) && {
+                    opacity: 0.6,
+                  },
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel="Continuer avec Apple"
+              >
+                {appleLoading ? (
+                  <ActivityIndicator
+                    size="small"
+                    color={isDark ? "#000000" : "#ffffff"}
+                  />
+                ) : (
+                  <>
+                    <Ionicons
+                      name="logo-apple"
+                      size={20}
+                      color={isDark ? "#000000" : "#ffffff"}
+                      style={styles.appleButtonAndroidIcon}
+                    />
+                    <Text
+                      style={[
+                        styles.appleButtonAndroidText,
+                        { color: isDark ? "#000000" : "#ffffff" },
+                      ]}
+                    >
+                      Continuer avec Apple
+                    </Text>
+                  </>
+                )}
+              </Pressable>
+            )}
           </View>
 
           {/* Register link */}
@@ -565,5 +652,21 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     borderRadius: borderRadius.md,
+  },
+  appleButtonAndroid: {
+    marginTop: sp.md,
+    height: 48,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: borderRadius.md,
+    paddingHorizontal: sp.lg,
+  },
+  appleButtonAndroidIcon: {
+    marginRight: sp.sm,
+  },
+  appleButtonAndroidText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: fontSize.base,
   },
 });
