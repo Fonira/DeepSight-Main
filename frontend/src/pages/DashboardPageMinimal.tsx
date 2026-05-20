@@ -94,14 +94,16 @@ const DashboardPageMinimal: React.FC = () => {
 
       <main
         id="main-content"
-        className="flex-1 flex flex-col px-4 sm:px-6 py-8 lg:ml-[240px]"
+        className="flex-1 flex flex-col px-3 sm:px-6 pt-16 lg:pt-8 pb-8 lg:ml-[240px]"
       >
         <div className="w-full max-w-2xl mx-auto">
-          <header className="text-center mb-8">
-            <h1 className="text-2xl sm:text-3xl font-medium text-text-primary mb-2">
+          <header className="text-center mb-6 sm:mb-8">
+            <h1 className="text-xl sm:text-3xl font-medium text-text-primary mb-2 px-2">
               {greeting}
             </h1>
-            <p className="text-sm text-text-tertiary">{subtitle}</p>
+            <p className="text-xs sm:text-sm text-text-tertiary px-2">
+              {subtitle}
+            </p>
           </header>
 
           <SmartInputBar
@@ -133,8 +135,8 @@ const DashboardPageMinimal: React.FC = () => {
           )}
         </div>
 
-        <div className="w-full mt-12 flex flex-col gap-10">
-          <div className="max-w-5xl w-full mx-auto px-4">
+        <div className="w-full mt-8 sm:mt-12 flex flex-col gap-8 sm:gap-10">
+          <div className="max-w-5xl w-full mx-auto px-0 sm:px-4">
             <RecentAnalysesSection
               language={language}
               onVideoSelect={() => {
