@@ -6,8 +6,8 @@
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
-from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, Response
+from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 
@@ -853,6 +853,131 @@ async def apple_token_login(data: AppleMobileTokenRequest, session: AsyncSession
 async def apple_callback_post(data: AppleMobileTokenRequest, session: AsyncSession = Depends(get_session)):
     """Alias POST de /apple/token pour rester aligne avec /google/callback (web SPA)."""
     return await apple_token_login(data, session)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🍎 SIGN IN WITH APPLE — Native bridge (mobile Android sans SDK natif)
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Apple ne fournit PAS de SDK natif pour Android — on doit passer par le flow
+# OAuth web (Service ID `com.deepsightsynthesis.signin`). L'app mobile ouvre
+# `https://appleid.apple.com/auth/authorize?response_mode=form_post&...` via
+# expo-auth-session, Apple POSTe la response form-encoded sur ce endpoint, et
+# on rend une page HTML qui auto-redirige vers le deeplink `deepsight://`.
+#
+# Apple impose `response_mode=form_post` quand on demande les scopes
+# `name` / `email`. Le redirect_uri DOIT etre un HTTPS public, pas un custom
+# scheme — d'ou ce bridge HTTPS → deeplink.
+#
+# Le client mobile (Android principalement, mais fonctionnel iOS aussi en
+# fallback) intercepte le deeplink `deepsight://auth/apple/callback?...` puis
+# envoie l'id_token recu a POST /api/auth/apple/token comme d'habitude.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+@router.post("/apple/callback/native")
+async def apple_callback_native(
+    code: Optional[str] = Form(default=None),
+    id_token: Optional[str] = Form(default=None),
+    state: Optional[str] = Form(default=None),
+    user: Optional[str] = Form(default=None),
+    error: Optional[str] = Form(default=None),
+):
+    """
+    Bridge HTTPS → deeplink pour Sign in with Apple cote mobile Android.
+
+    Apple POST form-encoded ici apres l'authentification web. On reflechit les
+    params dans une page HTML qui auto-redirige vers `deepsight://auth/apple/
+    callback?...`. L'app mobile intercepte le deeplink, extrait l'id_token, et
+    appelle POST /api/auth/apple/token pour finaliser la session.
+
+    Ce endpoint NE valide PAS l'id_token cryptographiquement — il fait juste
+    passe-plat. La validation se fait quand le mobile rappelle /apple/token.
+
+    Apple peut envoyer `user` sur le PREMIER sign-in seulement, sous forme de
+    JSON string : `{"name":{"firstName":"Tim","lastName":"Cook"},"email":"..."}`.
+    On le passe verbatim au mobile qui parse et extrait full_name + email.
+
+    Reponse : HTML 200 avec meta-refresh + redirect JS vers deeplink mobile.
+    """
+    from urllib.parse import quote
+    import html as html_lib
+
+    # Si Apple renvoie une erreur ou si rien d'utile n'est present, on
+    # redirige vers le deeplink avec error=... pour que l'app affiche un msg.
+    deeplink_params: list[str] = []
+    if error:
+        deeplink_params.append(f"error={quote(error, safe='')}")
+    if id_token:
+        deeplink_params.append(f"id_token={quote(id_token, safe='')}")
+    if code:
+        deeplink_params.append(f"code={quote(code, safe='')}")
+    if state:
+        deeplink_params.append(f"state={quote(state, safe='')}")
+    if user:
+        # `user` peut etre un JSON string Apple — on l'url-encode tel quel.
+        deeplink_params.append(f"user={quote(user, safe='')}")
+
+    if not deeplink_params:
+        deeplink_params.append("error=missing_params")
+
+    deeplink = f"deepsight://auth/apple/callback?{'&'.join(deeplink_params)}"
+    # On HTML-escape pour le `content` du meta-refresh (mais on garde le
+    # deeplink brut dans le JS — il est deja safe via quote()).
+    deeplink_attr_safe = html_lib.escape(deeplink, quote=True)
+
+    # Page HTML : meta-refresh comme fallback (no-JS browsers) + window.location
+    # immediat en JS. On affiche aussi un lien manuel au cas ou le deeplink ne
+    # se declenche pas (rare — typiquement quand l'app n'est pas installee).
+    html = f"""<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>DeepSight — Connexion Apple</title>
+    <meta http-equiv="refresh" content="0; url={deeplink_attr_safe}">
+    <style>
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #0a0a0f;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            text-align: center;
+        }}
+        h1 {{ font-size: 20px; margin: 0 0 12px; }}
+        p {{ color: #a0a0a8; margin: 0 0 24px; font-size: 14px; }}
+        a {{ color: #6366f1; text-decoration: none; font-weight: 600; }}
+    </style>
+</head>
+<body>
+    <h1>Connexion à DeepSight…</h1>
+    <p>Retour à l'application en cours…</p>
+    <p><a href="{deeplink_attr_safe}">Ouvrir DeepSight manuellement</a></p>
+    <script>
+        // Redirect immediat — fonctionne meme si meta-refresh est ignore.
+        window.location.replace({_json_dumps_str(deeplink)});
+    </script>
+</body>
+</html>"""
+
+    return HTMLResponse(content=html, status_code=200)
+
+
+def _json_dumps_str(s: str) -> str:
+    """JSON-safe stringification pour injection JS inline.
+
+    Utilise json.dumps pour escape correctement quotes/backslashes/control chars
+    afin de prevenir une XSS via le param `user` (qui contient deja du JSON
+    Apple) ou tout autre champ controle par l'utilisateur.
+    """
+    import json
+    return json.dumps(s)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

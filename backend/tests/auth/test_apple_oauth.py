@@ -411,3 +411,145 @@ async def test_apple_token_subsequent_login_no_email(mock_db_session):
     call_kwargs = mock_login.await_args.kwargs
     assert call_kwargs["apple_sub"] == "001234.returning.zzzz"
     assert call_kwargs["email"] is None
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 8. Native callback bridge (Android web flow) → HTML deeplink redirect
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_apple_callback_native_redirects_to_deeplink():
+    """
+    POST /apple/callback/native avec form-encoded → HTML 200 contenant un
+    deeplink `deepsight://auth/apple/callback?id_token=...&code=...`.
+
+    Sert de bridge HTTPS → deeplink pour Sign in with Apple cote Android (qui
+    n'a pas de SDK natif et passe par le flow web OAuth via expo-auth-session).
+    """
+    from auth.router import apple_callback_native
+
+    response = await apple_callback_native(
+        code="apple-auth-code-xyz",
+        id_token="apple.id.token.signed",
+        state="state-csrf-token",
+        user=None,
+        error=None,
+    )
+
+    assert response.status_code == 200
+    assert "text/html" in response.headers.get("content-type", "")
+    body = response.body.decode("utf-8")
+    # Le deeplink doit etre present et contenir tous les params URL-encodes
+    assert "deepsight://auth/apple/callback?" in body
+    assert "id_token=apple.id.token.signed" in body
+    assert "code=apple-auth-code-xyz" in body
+    assert "state=state-csrf-token" in body
+    # Meta-refresh fallback
+    assert "<meta http-equiv=\"refresh\"" in body
+    # JS redirect immediat
+    assert "window.location.replace" in body
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_apple_callback_native_forwards_user_json_first_login():
+    """
+    Apple envoie `user` (JSON string) UNIQUEMENT au premier sign-in. Le bridge
+    doit le forwarder url-encode dans le deeplink — le mobile parse derriere.
+    """
+    from auth.router import apple_callback_native
+
+    apple_user_json = '{"name":{"firstName":"Tim","lastName":"Cook"},"email":"tim@privaterelay.appleid.com"}'
+
+    response = await apple_callback_native(
+        code="c123",
+        id_token="t123",
+        state="s123",
+        user=apple_user_json,
+        error=None,
+    )
+
+    body = response.body.decode("utf-8")
+    # `user` doit etre present URL-encode (les `:` `{` `}` `"` sont encodes)
+    assert "user=" in body
+    assert "%7B%22name%22" in body  # `{"name"` encoded
+    # Et l'injection JSON Apple ne doit PAS s'echapper du contexte JS
+    # (json.dumps escape correctement les quotes)
+    assert "</script>" not in body.split("window.location.replace")[1].split(";")[0]
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_apple_callback_native_handles_error_param():
+    """
+    Si Apple renvoie `error=user_cancelled` → le bridge passe l'erreur au
+    deeplink pour que le mobile l'affiche.
+    """
+    from auth.router import apple_callback_native
+
+    response = await apple_callback_native(
+        code=None,
+        id_token=None,
+        state=None,
+        user=None,
+        error="user_cancelled_authorize",
+    )
+
+    body = response.body.decode("utf-8")
+    assert "error=user_cancelled_authorize" in body
+    assert "deepsight://auth/apple/callback?" in body
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_apple_callback_native_missing_params_returns_error_deeplink():
+    """
+    Si Apple POST vide (cas limite) → deeplink avec `error=missing_params`
+    plutot que de crasher ou retourner une page blanche.
+    """
+    from auth.router import apple_callback_native
+
+    response = await apple_callback_native(
+        code=None,
+        id_token=None,
+        state=None,
+        user=None,
+        error=None,
+    )
+
+    body = response.body.decode("utf-8")
+    assert "error=missing_params" in body
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_apple_callback_native_html_escapes_attribute_context():
+    """
+    Smoke test XSS : un id_token contenant des caracteres HTML-meta (rare mais
+    possible si Apple devait jamais changer son format) doit etre HTML-escape
+    dans les attributs `href` et `content`.
+    """
+    from auth.router import apple_callback_native
+
+    # Tentative d'injection HTML/JS dans l'id_token (purement defensif —
+    # Apple ne fait jamais ca, mais on defense-in-depth).
+    malicious = 'fake"><script>alert(1)</script>'
+
+    response = await apple_callback_native(
+        code=None,
+        id_token=malicious,
+        state=None,
+        user=None,
+        error=None,
+    )
+
+    body = response.body.decode("utf-8")
+    # Le `<script>` ne doit JAMAIS apparaitre litteralement dans le body — il
+    # doit etre soit url-encode (dans l'href) soit json-escape (dans le JS).
+    # On verifie qu'aucun tag script non echappe ne se baladne dans le body
+    # apres la balise <script> legitime qui contient window.location.
+    legitimate_script_block = body.split("<script>")[1].split("</script>")[0]
+    # Le bloc legitime ne contient PAS le payload en clair
+    assert "alert(1)" not in legitimate_script_block
