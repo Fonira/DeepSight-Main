@@ -78,6 +78,7 @@ function renderDrawer(
     logout: vi.fn(),
     register: vi.fn(),
     loginWithGoogle: vi.fn(),
+    loginWithApple: vi.fn(),
   };
   return render(
     <MemoryRouter>

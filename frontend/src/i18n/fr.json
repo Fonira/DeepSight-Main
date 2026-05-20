@@ -68,6 +68,7 @@
     "login": "Connexion",
     "register": "Inscription",
     "loginWithGoogle": "Continuer avec Google",
+    "loginWithApple": "Continuer avec Apple",
     "loginWithEmail": "Se connecter par email",
     "email": "Adresse email",
     "password": "Mot de passe",

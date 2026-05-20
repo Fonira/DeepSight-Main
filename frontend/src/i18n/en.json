@@ -68,6 +68,7 @@
     "login": "Sign in",
     "register": "Sign up",
     "loginWithGoogle": "Continue with Google",
+    "loginWithApple": "Continue with Apple",
     "loginWithEmail": "Sign in with email",
     "email": "Email address",
     "password": "Password",
