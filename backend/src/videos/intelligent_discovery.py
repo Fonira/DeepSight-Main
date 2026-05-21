@@ -540,6 +540,84 @@ class YouTubeSearcher:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# 🎵 TIKTOK SEARCH VIA TIKWM
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class TikTokSearcher:
+    """Recherche TikTok via l'API publique tikwm.com (no API key, no auth).
+
+    Empiriquement (2026-05-21) : depuis l'IP Hetzner sans proxy, le call
+    /api/feed/search retourne ~20 vidéos en 1.6s. Le proxy résidentiel
+    Decodo bloque cet endpoint — on appelle direct.
+    """
+
+    SEARCH_URL = "https://www.tikwm.com/api/feed/search"
+    SEARCH_TIMEOUT = 10.0
+
+    @classmethod
+    async def search(cls, query: str, max_results: int = 20):
+        if not query or not query.strip():
+            return []
+        try:
+            async with shared_http_client() as client:
+                response = await client.get(
+                    cls.SEARCH_URL,
+                    params={
+                        "keywords": query,
+                        "count": min(max_results, 30),
+                        "cursor": 0,
+                        "HD": 0,
+                    },
+                    timeout=cls.SEARCH_TIMEOUT,
+                )
+            if response.status_code != 200:
+                logger.warning(f"tikwm search HTTP {response.status_code}")
+                return []
+            payload = response.json()
+            if payload.get("code") != 0:
+                logger.warning(f"tikwm search error: {payload.get('msg')}")
+                return []
+            raw_videos = payload.get("data", {}).get("videos", []) or []
+            logger.info(f"🎵 tikwm found {len(raw_videos)} TikTok videos for '{query}'")
+            return [c for c in (cls._parse_video(v) for v in raw_videos) if c is not None]
+        except Exception as e:
+            logger.error(f"TikTok search error: {e}")
+            return []
+
+    @staticmethod
+    def _parse_video(raw):
+        try:
+            video_id = raw.get("video_id") or raw.get("aweme_id") or raw.get("id")
+            if not video_id:
+                return None
+            author = raw.get("author") or {}
+            create_time = raw.get("create_time", 0) or 0
+            try:
+                published_at = (
+                    datetime.fromtimestamp(int(create_time)) if create_time else datetime.now()
+                )
+            except (ValueError, OSError, OverflowError):
+                published_at = datetime.now()
+            title_text = (raw.get("title") or "").strip()
+            return VideoCandidate(
+                video_id=str(video_id),
+                title=title_text[:200] or "TikTok video",
+                channel=(author.get("nickname") or author.get("unique_id") or "TikTok").strip(),
+                channel_id=str(author.get("unique_id") or ""),
+                description=title_text[:500],
+                thumbnail_url=raw.get("cover") or raw.get("origin_cover") or "",
+                duration=int(raw.get("duration") or 0),
+                view_count=int(raw.get("play_count") or 0),
+                like_count=int(raw.get("digg_count") or 0),
+                published_at=published_at,
+            )
+        except Exception as e:
+            logger.error(f"Error parsing tikwm result: {e}")
+            return None
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # 📊 QUALITY SCORER
 # ═══════════════════════════════════════════════════════════════════════════════
 

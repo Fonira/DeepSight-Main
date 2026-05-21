@@ -903,6 +903,7 @@ export const videoApi = {
       limit?: number;
       language?: string;
       sort_by?: "quality" | "views" | "date" | "academic";
+      platform?: "youtube" | "tiktok";
     },
   ): Promise<{
     videos: Array<{
@@ -916,9 +917,12 @@ export const videoApi = {
       tournesol_score: number;
       published_at: string | null;
       is_tournesol_pick: boolean;
+      platform?: "youtube" | "tiktok";
+      video_url?: string;
     }>;
     total: number;
     query: string;
+    platform?: "youtube" | "tiktok";
     timeout?: boolean;
   }> {
     const langs = options?.language || "fr,en";
@@ -927,6 +931,7 @@ export const videoApi = {
       languages: langs,
       limit: String(options?.limit || 20),
       sort_by: options?.sort_by || "quality",
+      platform: options?.platform || "youtube",
     });
     // Backend has a 25s backstop (returns 200 with timeout:true). We keep a 30s
     // client timeout for headroom + network latency, then surface the timeout
