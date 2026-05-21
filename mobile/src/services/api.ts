@@ -919,6 +919,7 @@ export const videoApi = {
     }>;
     total: number;
     query: string;
+    timeout?: boolean;
   }> {
     const langs = options?.language || "fr,en";
     const params = new URLSearchParams({
@@ -927,9 +928,13 @@ export const videoApi = {
       limit: String(options?.limit || 20),
       sort_by: options?.sort_by || "quality",
     });
-    return requestPatient(`/api/videos/discover/search?${params.toString()}`, {
+    // Backend has a 25s backstop (returns 200 with timeout:true). We keep a 30s
+    // client timeout for headroom + network latency, then surface the timeout
+    // signal to the UI for a clear error message rather than the legacy
+    // 120s "loads forever" experience.
+    return request(`/api/videos/discover/search?${params.toString()}`, {
       method: "POST",
-      timeout: 120000,
+      timeout: 30000,
     });
   },
 

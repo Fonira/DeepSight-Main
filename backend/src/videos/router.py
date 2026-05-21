@@ -4735,11 +4735,17 @@ async def discover_search_videos(
     lang_list = [l.strip() for l in languages.split(",")]
 
     try:
-        result = await IntelligentDiscoveryService.discover(
-            query=query,
-            languages=lang_list,
-            max_results=limit,
-            min_quality=15.0,
+        # 🛡️ Backstop 25s : si discover() hang sur Mistral/yt-dlp, on coupe net
+        # et on renvoie une liste vide plutôt que de laisser le mobile attendre
+        # son propre timeout 30s. Évite "ça charge à l'infini" côté UI.
+        result = await asyncio.wait_for(
+            IntelligentDiscoveryService.discover(
+                query=query,
+                languages=lang_list,
+                max_results=limit,
+                min_quality=15.0,
+            ),
+            timeout=25.0,
         )
 
         # Convert candidates to dicts
@@ -4782,6 +4788,14 @@ async def discover_search_videos(
             "query": query,
         }
 
+    except asyncio.TimeoutError:
+        logger.warning(f"⏱️ [DISCOVER/SEARCH] Backstop 25s hit for query='{query}' — returning empty")
+        return {
+            "videos": [],
+            "total": 0,
+            "query": query,
+            "timeout": True,
+        }
     except Exception as e:
         logger.error(f"❌ [DISCOVER/SEARCH] Error: {e}")
         # Always return valid JSON, never 404

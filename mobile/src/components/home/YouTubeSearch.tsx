@@ -83,10 +83,24 @@ export const YouTubeSearch: React.FC<YouTubeSearchProps> = ({
         language: options.language || "fr,en",
         sort_by: "quality",
       });
-      setResults(response.videos || []);
+      if (response.timeout) {
+        setError("Recherche YouTube indisponible — réessaie dans un instant.");
+        setResults([]);
+      } else {
+        setResults(response.videos || []);
+      }
     } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Erreur de recherche";
+      let message = "Erreur de recherche";
+      if (err instanceof Error) {
+        if (
+          err.message.toLowerCase().includes("timeout") ||
+          err.message.toLowerCase().includes("abort")
+        ) {
+          message = "Recherche trop lente — réessaie dans un instant.";
+        } else {
+          message = err.message;
+        }
+      }
       setError(message);
       setResults([]);
     } finally {
