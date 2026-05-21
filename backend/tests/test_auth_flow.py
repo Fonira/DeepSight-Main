@@ -235,8 +235,10 @@ class TestGetMe:
     @pytest.mark.asyncio
     async def test_me_expired_token(self, client):
         """GET /me avec token expiré → 401."""
+        # Wave 1 Step 4 — dependencies.py utilise verify_token_with_flow,
+        # qui retourne (payload, flow). Mock-er la nouvelle fonction.
         with patch("auth.dependencies.SECURITY_AVAILABLE", False), \
-             patch("auth.dependencies.verify_token", return_value=None):
+             patch("auth.dependencies.verify_token_with_flow", return_value=(None, "v1")):
             resp = await client.get(
                 "/api/auth/me",
                 headers={"Authorization": "Bearer expired.token.here"}
