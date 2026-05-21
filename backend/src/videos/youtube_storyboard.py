@@ -477,6 +477,51 @@ async def _decodo_scrape_youtube_info(video_id: str, log_tag: str) -> Optional[D
     }
 
 
+async def get_youtube_info_with_fallback(video_id: str, log_tag: str) -> Optional[Dict[str, Any]]:
+    """Async cascade : yt-dlp first, Decodo Scraping fallback on KO.
+
+    This is the single entry-point that `extract_storyboard_frames` uses to
+    obtain video info. The yt-dlp path is kept intact (still ran through the
+    Decodo Residential proxy) — when it fails (bot challenge from Hetzner,
+    timeout, malformed JSON, etc.) we fall through to the Web Scraping API
+    which has Premium+JS Cloudflare/anti-bot bypass.
+
+    Returns the same dict shape `_ytdlp_info_sync` would have returned on
+    success, with an optional `_source` key indicating which path produced
+    it ("ytdlp" or "decodo_scrape"). Callers should treat absent `_source`
+    as legacy yt-dlp behavior.
+
+    NEVER raises — both legs return None on failure. The caller decides what
+    to do when nothing comes back (today: `extract_storyboard_frames` exits
+    at L308 and the visual analyse becomes a no-op).
+
+    Bail-early audit (Phase 1.3, anti-PR #468-trap):
+      * `videos/router.py:1507` v6 → `enrich_and_capture_visual` ✓
+      * `videos/router.py:2444` v2.1 → `enrich_and_capture_visual` ✓
+      * `videos/visual_integration.py:303` `enrich_and_capture_visual` →
+        `extract_storyboard_frames` (no `_extract_youtube_visual_frames`
+        intermediate in current code) ✓
+      * `videos/youtube_storyboard.py:extract_storyboard_frames` calls this
+        wrapper — yt-dlp KO no longer short-circuits, Decodo gets its turn.
+    """
+    loop = asyncio.get_event_loop()
+
+    # 1. yt-dlp (current path, unchanged) — runs in the executor since it
+    # spawns a subprocess.
+    info = await loop.run_in_executor(executor, _ytdlp_info_sync, video_id, log_tag)
+    if info:
+        return info
+
+    # 2. Decodo Web Scraping API fallback — Premium+JS, ~3-12s typical.
+    logger.info("[%s] yt-dlp returned None, attempting Decodo Scraping", log_tag)
+    info = await _decodo_scrape_youtube_info(video_id, log_tag)
+    if info:
+        logger.info("[%s] Decodo Scraping recovered YouTube info", log_tag)
+        return info
+
+    return None
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🚀 API PUBLIQUE
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -523,13 +568,24 @@ async def extract_storyboard_frames(
     loop = asyncio.get_event_loop()
 
     try:
-        # ── 1. yt-dlp -j ──
+        # ── 1. yt-dlp -j (+ 6e fallback Decodo Scraping on KO) ──
+        # Phase 1.3 (2026-05-21) : `get_youtube_info_with_fallback` chains
+        # yt-dlp → Decodo Premium+JS so a Hetzner bot challenge no longer
+        # short-circuits the visual pipeline. The `_source` key inside info
+        # tracks which leg produced the dict (for telemetry & debugging).
         t0 = time.time()
-        info = await loop.run_in_executor(executor, _ytdlp_info_sync, video_id, log_tag)
+        info = await get_youtube_info_with_fallback(video_id, log_tag)
         if not info:
             shutil.rmtree(workdir, ignore_errors=True)
             return None
-        logger.info("[%s] yt-dlp info OK in %.1fs (video_id=%s)", log_tag, time.time() - t0, video_id)
+        info_source = info.get("_source", "ytdlp")
+        logger.info(
+            "[%s] info OK in %.1fs (video_id=%s, source=%s)",
+            log_tag,
+            time.time() - t0,
+            video_id,
+            info_source,
+        )
 
         duration_s = float(info.get("duration") or 0)
 

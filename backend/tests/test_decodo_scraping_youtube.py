@@ -241,3 +241,43 @@ class TestGetYoutubeInfoWithFallback:
         ):
             info = await ys.get_youtube_info_with_fallback("abcdefghijk", "TEST")
         assert info is None
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# extract_storyboard_frames — cascade is wired in
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestExtractStoryboardFramesUsesFallback:
+    """One integration test confirming that `extract_storyboard_frames` reaches
+    the Decodo fallback when yt-dlp returns None. We don't drive the full
+    pipeline (sheet download / PIL slicing happens against a real CDN); we
+    only assert that the wrapper is called and yields enough to exit cleanly.
+    """
+
+    @pytest.mark.asyncio
+    async def test_ytdlp_ko_routes_through_decodo(self, player_response_fixture):
+        # yt-dlp KO → Decodo returns info with duration > 0 but storyboards=[]
+        # (a realistic MVP outcome). The function should NOT raise, and it
+        # should detect "No storyboard format available" then exit None.
+        fake_info = {
+            "id": "dQw4w9WgXcQ",
+            "title": "test",
+            "duration": int(player_response_fixture["videoDetails"]["lengthSeconds"]),
+            "formats": [],
+            "_source": "decodo_scrape",
+        }
+        with (
+            patch.object(ys, "_ytdlp_info_sync", return_value=None),
+            patch.object(ys, "_decodo_scrape_youtube_info", new=AsyncMock(return_value=fake_info)) as dec_mock,
+        ):
+            result = await ys.extract_storyboard_frames(
+                "dQw4w9WgXcQ",
+                log_tag="TEST",
+            )
+        # Decodo was reached (no bail-early before it).
+        dec_mock.assert_awaited_once()
+        # storyboards=[] → select_storyboard_format returns None → function
+        # cleans up workdir and returns None. The non-bail-early goal is the
+        # asserting condition: the AsyncMock above being awaited.
+        assert result is None
