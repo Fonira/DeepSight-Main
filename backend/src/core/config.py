@@ -91,6 +91,17 @@ class _DeepSightSettings(BaseSettings):
     PROXY_CIRCUIT_BREAKER_WINDOW_S: int = 60
     PROXY_CIRCUIT_BREAKER_RESET_S: int = 300
 
+    # -- Decodo Web Scraping API (Phase 0 — distinct from Residential Proxy above) --
+    # Tier $49/mois souscrit 2026-05-21. Endpoint: POST scraper-api.decodo.com/v2/scrape.
+    # Wrapper code: backend/src/decodo/ + table `decodo_scraping_usage` (Alembic 033).
+    # Spec: 01-Projects/DeepSight/Ideas/2026-05-21-decodo-scraping-phase1-quick-wins.md
+    # Quotas tier: Standard 98K/mo, Standard+JS 75K/mo, Premium 54K/mo, Premium+JS 39 200/mo.
+    DECODO_SCRAPING_API_KEY: str = ""  # "Basic <base64>" — provisioned Hetzner only
+    DECODO_SCRAPING_DISABLED: bool = False  # kill-switch (no restart needed)
+    # Hard-stop monthly request count. Default 31360 = 80% of Premium+JS 39 200/mo
+    # cap. Set to 0 to disable the monthly hard-stop (e.g. dev/staging).
+    DECODO_SCRAPING_MAX_MONTHLY_REQ: int = 31360
+
     # -- Email --
     EMAIL_ENABLED: str = "true"
     RESEND_API_KEY: str = ""
@@ -377,6 +388,10 @@ YOUTUBE_PROXY_LEGACY = _settings.YOUTUBE_PROXY_LEGACY
 PROXY_CIRCUIT_BREAKER_THRESHOLD: int = _settings.PROXY_CIRCUIT_BREAKER_THRESHOLD
 PROXY_CIRCUIT_BREAKER_WINDOW_S: int = _settings.PROXY_CIRCUIT_BREAKER_WINDOW_S
 PROXY_CIRCUIT_BREAKER_RESET_S: int = _settings.PROXY_CIRCUIT_BREAKER_RESET_S
+# Decodo Web Scraping API (Phase 0)
+DECODO_SCRAPING_API_KEY: str = _settings.DECODO_SCRAPING_API_KEY
+DECODO_SCRAPING_DISABLED: bool = _settings.DECODO_SCRAPING_DISABLED
+DECODO_SCRAPING_MAX_MONTHLY_REQ: int = _settings.DECODO_SCRAPING_MAX_MONTHLY_REQ
 
 
 def get_fal_key() -> str:
