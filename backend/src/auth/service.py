@@ -8,20 +8,32 @@
 ║  ✅ Refresh token rotation sécurisée                                               ║
 ║  ✅ Persistance robuste côté serveur                                               ║
 ║  ✅ Validation session à chaque requête                                            ║
+║                                                                                    ║
+║  Wave 1 Step 2 (2026-05-21) — Auth V2 session lifecycle :                          ║
+║  ✅ create_session_v2 / rotate_refresh_session / revoke_session_v2                 ║
+║  ✅ list_user_sessions / validate_session_v2                                       ║
+║  ✅ TTLs sliding 30j (24h si !stay_signed_in) + absolute cap 90j                   ║
+║  ✅ Rotation single-use refresh token + Redis blocklist                            ║
+║  ✅ Device label parsé du user-agent + IP hash anonymisée                          ║
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
+import hashlib
+import os
+import re
 import secrets
+import uuid
 import httpx
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 from jose import jwt, JWTError
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import JWT_CONFIG, GOOGLE_OAUTH_CONFIG, APPLE_OAUTH_CONFIG, EMAIL_CONFIG, APP_URL, ADMIN_CONFIG
+from core.logging import logger
 from billing.plan_config import get_limits
-from db.database import User, ChatQuota, WebSearchUsage, hash_password, verify_password
+from db.database import User, ChatQuota, WebSearchUsage, UserSession, hash_password, verify_password
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🔑 SESSION TOKEN FUNCTIONS
@@ -1024,3 +1036,617 @@ async def login_or_register_apple_user(
 
     session_token = await create_user_session(session, user.id)
     return True, user, "✅ Compte créé avec Apple", session_token
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🔐 AUTH V2 — SESSION LIFECYCLE (Wave 1 Step 2, 2026-05-21)
+# ═══════════════════════════════════════════════════════════════════════════════
+# Cycle de vie complet des sessions multi-device + rotation single-use refresh.
+# Spec : 01-Projects/DeepSight/Specs/2026-05-21-auth-v2-complet-design.md §4.
+#
+# Pattern global :
+#   1. Login → create_session_v2 → INSERT UserSession (id=UUID, hash="")
+#      → caller émet refresh_jwt avec jti=session.id
+#      → update_session_refresh_hash met le hash final.
+#   2. Refresh → rotate_refresh_session (decode JWT, lookup par jti, vérif
+#      sliding+absolute+hash, mark old as revoked, blocklist Redis, nouvelle
+#      session avec stay_signed_in préservé).
+#   3. Logout/Settings → revoke_session_v2 (soft-delete revoked_at=now).
+#   4. Settings « Appareils actifs » → list_user_sessions.
+#   5. Dependency get_current_user_v2 → validate_session_v2.
+#
+# Step 3 (séparé, autre sub-agent) wirera /api/auth/login, /api/auth/refresh,
+# /api/auth/sessions/* dans router.py — ce module ne touche PAS au router.
+# Step 4 (séparé) ajoutera le feature flag AUTH_V2_ENABLED qui décidera entre
+# le flow legacy (create_user_session/validate_session_token au-dessus) et ce
+# nouveau flow V2.
+
+# Constantes TTL — surchargeables via env pour les tests + Hetzner override.
+_ACCESS_TOKEN_TTL_MIN = int(os.getenv("ACCESS_TOKEN_TTL_MIN", "60"))
+_REFRESH_TOKEN_STAY_SIGNED_IN_DAYS = int(os.getenv("REFRESH_TOKEN_STAY_SIGNED_IN_DAYS", "30"))
+_REFRESH_TOKEN_SHORT_HOURS = int(os.getenv("REFRESH_TOKEN_SHORT_HOURS", "24"))
+_REFRESH_TOKEN_ABSOLUTE_DAYS = int(os.getenv("REFRESH_TOKEN_ABSOLUTE_DAYS", "90"))
+
+
+def _hash_ip(ip: Optional[str]) -> Optional[str]:
+    """SHA-256(ip + IP_HASH_SALT) tronqué à 16 chars hex.
+
+    Anonymise l'IP pour la compliance RGPD : permet de détecter une connexion
+    suspecte depuis une « autre IP » sans stocker l'IP brute. Le salt est
+    requis pour empêcher la table arc-en-ciel triviale sur l'espace IPv4.
+
+    Returns:
+        16 chars hex ou None si ip est None/empty.
+    """
+    if not ip:
+        return None
+    salt = os.getenv("IP_HASH_SALT", "")
+    digest = hashlib.sha256((ip + salt).encode("utf-8")).hexdigest()
+    return digest[:16]
+
+
+def _parse_device_label(user_agent: Optional[str]) -> Optional[str]:
+    """Parse un user-agent en label lisible « <Browser> on <OS> ».
+
+    Implémentation inline (pas de dépendance externe `user-agents` ajoutée —
+    requirements.txt déjà ~80 packages). Détection best-effort des navigateurs
+    majoritaires + OS. Si parsing échoue, retourne le UA tronqué à 100 chars
+    pour préserver un signal utilisateur (« Mozilla/5.0 ... »).
+
+    Examples:
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36
+         (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        → "Chrome on macOS"
+
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15
+         (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1"
+        → "Safari on iOS"
+
+    Returns:
+        Label parsé ou None si user_agent est None/empty.
+    """
+    if not user_agent:
+        return None
+
+    ua = user_agent.strip()
+
+    # Browser detection — order matters (Edge contains Chrome, Chrome contains Safari).
+    browser = None
+    if re.search(r"Edg/|EdgA/|EdgiOS/", ua):
+        browser = "Edge"
+    elif re.search(r"OPR/|Opera/", ua):
+        browser = "Opera"
+    elif "Firefox/" in ua and "Seamonkey/" not in ua:
+        browser = "Firefox"
+    elif "Chrome/" in ua and "Chromium/" not in ua and "Edg" not in ua:
+        browser = "Chrome"
+    elif "Chromium/" in ua:
+        browser = "Chromium"
+    elif "Safari/" in ua and "Chrome/" not in ua:
+        browser = "Safari"
+
+    # OS detection — order matters (iPad contains Mac OS X).
+    os_label = None
+    if "Windows NT" in ua or "Windows " in ua:
+        os_label = "Windows"
+    elif "Android" in ua:
+        os_label = "Android"
+    elif re.search(r"iPad|iPhone|iPod|iOS", ua):
+        os_label = "iOS"
+    elif "Mac OS X" in ua or "Macintosh" in ua:
+        os_label = "macOS"
+    elif "Linux" in ua:
+        os_label = "Linux"
+    elif "CrOS" in ua:
+        os_label = "ChromeOS"
+
+    if browser and os_label:
+        return f"{browser} on {os_label}"
+    if browser:
+        return browser
+    if os_label:
+        return os_label
+    # Fallback : préserver un signal exploitable
+    return ua[:100]
+
+
+def _hash_refresh_jwt(refresh_jwt: str) -> str:
+    """SHA-256 hex digest d'un JWT (64 chars).
+
+    Utilisé pour stocker l'intégrité du refresh token en DB sans le token brut.
+    Permet de détecter une modification du token (tampering) ET d'invalider
+    instantanément via blocklist.
+    """
+    return hashlib.sha256(refresh_jwt.encode("utf-8")).hexdigest()
+
+
+def _utcnow() -> datetime:
+    """UTC now sans tzinfo — match les colonnes DateTime SQLAlchemy (naive UTC)."""
+    return datetime.utcnow()
+
+
+def _request_user_agent(request) -> Optional[str]:
+    """Extrait le user-agent d'un FastAPI Request, tolérant à None/Mock.
+
+    Sépare l'extraction pour faciliter les tests (mock Request sans starlette).
+    """
+    if request is None:
+        return None
+    try:
+        headers = getattr(request, "headers", None)
+        if headers is None:
+            return None
+        # FastAPI headers est case-insensitive (starlette MutableHeaders)
+        return headers.get("user-agent") or headers.get("User-Agent")
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _request_client_host(request) -> Optional[str]:
+    """Extrait request.client.host, tolérant à None/Mock."""
+    if request is None:
+        return None
+    try:
+        client = getattr(request, "client", None)
+        if client is None:
+            return None
+        return getattr(client, "host", None)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def create_refresh_token_v2(user_id: int, jti: str, ttl_seconds: int) -> str:
+    """Émet un refresh JWT V2 avec `jti=session.id` + TTL custom.
+
+    NE remplace PAS `create_refresh_token` (legacy) — coexistent jusqu'au
+    Step 4 qui branchera via feature flag AUTH_V2_ENABLED.
+
+    Args:
+        user_id: ID de l'utilisateur (sub).
+        jti: UUID String(36) — primary key de UserSession en DB.
+        ttl_seconds: durée de vie du JWT (typiquement = sliding TTL).
+
+    Returns:
+        JWT encodé HS256 avec claims {sub, exp, iat, type:"refresh", jti}.
+    """
+    now = datetime.now(timezone.utc)
+    expire = now + timedelta(seconds=ttl_seconds)
+    payload = {
+        "sub": str(user_id),
+        "exp": expire,
+        "iat": now,
+        "type": "refresh",
+        "jti": jti,
+    }
+    return jwt.encode(payload, JWT_CONFIG["SECRET_KEY"], algorithm=JWT_CONFIG["ALGORITHM"])
+
+
+def create_access_token_v2(user_id: int, jti: str, is_admin: bool = False) -> str:
+    """Émet un access JWT V2 avec `jti=session.id` (au lieu de `session` legacy).
+
+    NE remplace PAS `create_access_token` (legacy) — coexistent jusqu'au
+    Step 4 qui branchera via feature flag AUTH_V2_ENABLED.
+    """
+    now = datetime.now(timezone.utc)
+    expire = now + timedelta(minutes=_ACCESS_TOKEN_TTL_MIN)
+    payload = {
+        "sub": str(user_id),
+        "exp": expire,
+        "iat": now,
+        "type": "access",
+        "is_admin": is_admin,
+        "jti": jti,
+    }
+    return jwt.encode(payload, JWT_CONFIG["SECRET_KEY"], algorithm=JWT_CONFIG["ALGORITHM"])
+
+
+async def create_session_v2(
+    session: AsyncSession,
+    user_id: int,
+    stay_signed_in: bool,
+    request=None,
+) -> UserSession:
+    """Crée une nouvelle UserSession en DB (Auth V2).
+
+    Workflow en 2 étapes nécessaire — la PK `session.id` doit être connue
+    AVANT d'émettre le refresh JWT (jti=session.id) :
+
+      1. INSERT UserSession (refresh_token_hash="" placeholder, sera updaté
+         juste après par le caller via update_session_refresh_hash).
+      2. session.flush() pour matérialiser l'id (UUID assigné par default
+         lambda côté model).
+      3. Caller émet refresh_jwt = create_refresh_token_v2(user_id, session.id, ttl)
+      4. Caller appelle update_session_refresh_hash(session, session.id, refresh_jwt)
+      5. Caller commit (ou laisse le caller upstream commit).
+
+    Pourquoi 2 étapes : le `refresh_token_hash` est UNIQUE en DB et porte
+    l'intégrité du JWT. Le JWT contient le `jti=session.id`. Donc on a un
+    cycle « id → JWT → hash → DB → id ». La résolution = INSERT avec hash
+    vide puis UPDATE. Une seule transaction côté caller, atomique.
+
+    Args:
+        session: AsyncSession SQLAlchemy.
+        user_id: ID utilisateur.
+        stay_signed_in: True → sliding 30j, False → sliding 24h hard.
+        request: FastAPI Request (pour User-Agent + client.host). Optionnel
+            pour faciliter les tests / endpoints sans contexte HTTP.
+
+    Returns:
+        UserSession ORM instance (id assigné, refresh_token_hash="").
+    """
+    now = _utcnow()
+
+    # Sliding TTL piloté par stay_signed_in (cf spec §4.2)
+    if stay_signed_in:
+        sliding_delta = timedelta(days=_REFRESH_TOKEN_STAY_SIGNED_IN_DAYS)
+    else:
+        sliding_delta = timedelta(hours=_REFRESH_TOKEN_SHORT_HOURS)
+
+    sliding_expires_at = now + sliding_delta
+    absolute_expires_at = now + timedelta(days=_REFRESH_TOKEN_ABSOLUTE_DAYS)
+
+    # Parse contexte client
+    user_agent = _request_user_agent(request)
+    device_label = _parse_device_label(user_agent)
+    ip = _request_client_host(request)
+    ip_hash = _hash_ip(ip)
+
+    # Génère l'UUID explicitement pour qu'il soit dispo AVANT le flush
+    # (sinon le default lambda du model ne se déclenche qu'au flush, et on
+    # peut avoir besoin de l'id côté caller pour émettre le JWT).
+    session_id = str(uuid.uuid4())
+
+    user_session = UserSession(
+        id=session_id,
+        user_id=user_id,
+        # Placeholder — sera updaté par update_session_refresh_hash après
+        # émission du JWT. Forced unique via DB constraint, donc on prefixe
+        # par session_id pour garantir l'unicité même entre 2 placeholders
+        # concurrents.
+        refresh_token_hash=f"pending:{session_id}",
+        device_label=device_label,
+        ip_hash=ip_hash,
+        user_agent=user_agent,
+        stay_signed_in=stay_signed_in,
+        sliding_expires_at=sliding_expires_at,
+        absolute_expires_at=absolute_expires_at,
+    )
+
+    session.add(user_session)
+    await session.flush()  # matérialise l'id sans commit
+
+    logger.info(
+        "auth_v2.session_created",
+        user_id=user_id,
+        session_id=session_id,
+        device_label=device_label,
+        stay_signed_in=stay_signed_in,
+        sliding_expires_at=sliding_expires_at.isoformat(),
+        absolute_expires_at=absolute_expires_at.isoformat(),
+    )
+
+    return user_session
+
+
+async def update_session_refresh_hash(
+    session: AsyncSession,
+    session_id: str,
+    refresh_jwt: str,
+) -> None:
+    """Met à jour `refresh_token_hash` après émission du JWT.
+
+    Workaround au cycle id → JWT → hash → DB : create_session_v2 insère
+    un placeholder, on update ici une fois le JWT émis.
+
+    Args:
+        session: AsyncSession SQLAlchemy (mêmes que create_session_v2).
+        session_id: PK de la UserSession à updater.
+        refresh_jwt: Le JWT émis (sera hashé SHA-256).
+    """
+    new_hash = _hash_refresh_jwt(refresh_jwt)
+    await session.execute(update(UserSession).where(UserSession.id == session_id).values(refresh_token_hash=new_hash))
+
+
+async def rotate_refresh_session(
+    session: AsyncSession,
+    old_refresh_jwt: str,
+    request=None,
+) -> Tuple[Optional[UserSession], bool, str]:
+    """Rotation single-use du refresh token (Auth V2).
+
+    Workflow critique de sécurité — détecte les replays (token déjà rotaté
+    qui revient) et blocklist les anciens JTIs.
+
+    Steps :
+      1. Decode JWT (verify_token type="refresh").
+      2. Lookup UserSession by jti = payload["jti"] = session.id.
+      3. Vérifier intégrité : refresh_token_hash DB == sha256(old_refresh_jwt).
+         Mismatch = JWT modifié OU déjà rotaté → REJECT.
+      4. Vérifier revoked_at IS NULL.
+      5. Vérifier sliding_expires_at > now.
+      6. Vérifier absolute_expires_at > now.
+      7. Marquer ancienne session : revoked_at=now, sliding_expires_at=now
+         (defense in depth — empêche une re-rotation même si la blocklist
+         tombe).
+      8. Add old_jti à Redis blocklist (TTL = sliding restante de l'ancienne).
+      9. Create new UserSession (stay_signed_in préservé depuis l'ancienne).
+      10. Émettre nouveau refresh JWT avec jti = new_session.id.
+      11. Update new session refresh_token_hash.
+      12. Return new session.
+
+    Important : pas de commit ici — c'est au caller (router endpoint) de
+    commit ou rollback. Permet une transaction atomique côté router.
+
+    Args:
+        session: AsyncSession SQLAlchemy.
+        old_refresh_jwt: Le refresh JWT envoyé par le client.
+        request: FastAPI Request pour le nouveau device context.
+
+    Returns:
+        (new_session, ok, reason) :
+        - (UserSession, True, "ok") si rotation OK
+        - (None, False, "invalid_token") si JWT invalide/expiré
+        - (None, False, "session_not_found") si session inexistante
+        - (None, False, "replay_detected") si hash mismatch (rotation déjà
+           consommée OU JWT modifié)
+        - (None, False, "session_revoked") si déjà révoquée
+        - (None, False, "sliding_expired") si sliding TTL expiré
+        - (None, False, "absolute_expired") si cap 90j atteint
+
+    Note: le caller (router /api/auth/refresh) doit émettre lui-même les
+    nouveaux access+refresh JWTs et appeler update_session_refresh_hash
+    + commit. Ce service ne fait QUE l'orchestration DB.
+    """
+    # Step 1 : decode JWT (signature + exp)
+    payload = verify_token(old_refresh_jwt, token_type="refresh")
+    if payload is None:
+        logger.warning("auth_v2.rotate.invalid_token")
+        return None, False, "invalid_token"
+
+    jti = payload.get("jti")
+    if not jti:
+        logger.warning("auth_v2.rotate.no_jti", payload_keys=list(payload.keys()))
+        return None, False, "invalid_token"
+
+    # Step 2 : lookup UserSession by id (= jti)
+    result = await session.execute(select(UserSession).where(UserSession.id == jti))
+    old_session = result.scalar_one_or_none()
+
+    if old_session is None:
+        logger.warning("auth_v2.rotate.session_not_found", jti=jti)
+        return None, False, "session_not_found"
+
+    # Step 3 : vérifier intégrité du token (anti-tampering + replay detection)
+    expected_hash = _hash_refresh_jwt(old_refresh_jwt)
+    if old_session.refresh_token_hash != expected_hash:
+        # Hash mismatch = ce JWT n'est plus le « current » refresh de cette
+        # session. Causes possibles : déjà rotaté (replay attack) OU JWT
+        # modifié. Dans les 2 cas → security incident.
+        logger.warning(
+            "auth_v2.rotate.replay_or_tamper_detected",
+            session_id=jti,
+            user_id=old_session.user_id,
+        )
+        # Defensive : on révoque la session puisqu'un replay = compromission.
+        # (Cas où l'attaquant a le JWT mais pas le hash actualisé suggère que
+        # le legitimate user a refresh entre-temps. On bloque par sécurité.)
+        old_session.revoked_at = _utcnow()
+        return None, False, "replay_detected"
+
+    # Step 4 : vérifier non-révoquée
+    if old_session.revoked_at is not None:
+        logger.warning(
+            "auth_v2.rotate.session_revoked",
+            session_id=jti,
+            user_id=old_session.user_id,
+            revoked_at=old_session.revoked_at.isoformat(),
+        )
+        return None, False, "session_revoked"
+
+    now = _utcnow()
+
+    # Step 5 : sliding TTL
+    if old_session.sliding_expires_at <= now:
+        logger.info(
+            "auth_v2.rotate.sliding_expired",
+            session_id=jti,
+            user_id=old_session.user_id,
+        )
+        return None, False, "sliding_expired"
+
+    # Step 6 : absolute cap (90j depuis issued_at)
+    if old_session.absolute_expires_at <= now:
+        logger.info(
+            "auth_v2.rotate.absolute_expired",
+            session_id=jti,
+            user_id=old_session.user_id,
+        )
+        return None, False, "absolute_expired"
+
+    # Step 7 : marquer ancienne session révoquée + sliding défensif
+    user_id = old_session.user_id
+    stay_signed_in = old_session.stay_signed_in
+    old_session.revoked_at = now
+    old_session.sliding_expires_at = now  # defense in depth
+
+    # Step 8 : blocklist Redis du JWT (l'ancien, qui vient d'être rotaté).
+    # TTL = exp restante du JWT pour éviter cleanup manuel (Redis auto-expire).
+    try:
+        from core.security import blacklist_token
+
+        exp = payload.get("exp")
+        if isinstance(exp, (int, float)):
+            ttl_seconds = max(1, int(exp - now.replace(tzinfo=timezone.utc).timestamp()))
+        else:
+            # Fallback : 24h (en pratique le sliding restant est ~30j)
+            ttl_seconds = 86400
+        await blacklist_token(old_refresh_jwt, expiry_seconds=ttl_seconds)
+    except Exception as e:  # noqa: BLE001
+        # Fail-open : la révocation DB + sliding=now au step 7 protège déjà
+        # contre une nouvelle rotation. La blocklist Redis est une ceinture
+        # par-dessus la bretelle DB.
+        logger.warning(
+            "auth_v2.rotate.blocklist_failed",
+            session_id=jti,
+            error=str(e),
+        )
+
+    # Step 9 : créer la nouvelle session (stay_signed_in préservé)
+    new_session = await create_session_v2(
+        session=session,
+        user_id=user_id,
+        stay_signed_in=stay_signed_in,
+        request=request,
+    )
+
+    logger.info(
+        "auth_v2.rotate.success",
+        old_session_id=jti,
+        new_session_id=new_session.id,
+        user_id=user_id,
+        stay_signed_in=stay_signed_in,
+    )
+
+    return new_session, True, "ok"
+
+
+async def revoke_session_v2(
+    session: AsyncSession,
+    session_id: str,
+    user_id: int,
+) -> bool:
+    """Révoque une session par id (soft-delete revoked_at=now).
+
+    Sécurité : on n'accepte de révoquer QUE les sessions appartenant au
+    `user_id` fourni. Empêche un user A de révoquer la session d'un user B
+    par énumération d'UUIDs (qui sont devinables si on connaît le pattern).
+
+    Args:
+        session: AsyncSession SQLAlchemy.
+        session_id: UUID de la UserSession à révoquer.
+        user_id: ID du user qui demande la révocation (= owner).
+
+    Returns:
+        True si trouvée + appartient au user + révoquée maintenant.
+        False sinon (not found, owner mismatch, ou déjà révoquée).
+    """
+    result = await session.execute(
+        select(UserSession).where(
+            UserSession.id == session_id,
+            UserSession.user_id == user_id,
+        )
+    )
+    target = result.scalar_one_or_none()
+
+    if target is None:
+        logger.warning(
+            "auth_v2.revoke.not_found_or_unauthorized",
+            session_id=session_id,
+            requesting_user_id=user_id,
+        )
+        return False
+
+    if target.revoked_at is not None:
+        # Déjà révoquée — idempotent, on retourne False pour signaler qu'il
+        # n'y a pas eu de changement (utile pour audit).
+        return False
+
+    now = _utcnow()
+    target.revoked_at = now
+    # Defense in depth : sliding et absolute à now pour bloquer toute
+    # tentative de rotation qui contournerait revoked_at.
+    target.sliding_expires_at = now
+    target.absolute_expires_at = now
+
+    logger.info(
+        "auth_v2.revoke.success",
+        session_id=session_id,
+        user_id=user_id,
+    )
+    return True
+
+
+async def list_user_sessions(
+    session: AsyncSession,
+    user_id: int,
+) -> List[UserSession]:
+    """Liste les sessions actives d'un utilisateur.
+
+    Critère « active » : revoked_at IS NULL AND sliding_expires_at > now
+    AND absolute_expires_at > now. Pour la page « Appareils actifs » dans
+    Settings (Wave 1 Step 3 — endpoint GET /api/auth/sessions).
+
+    Index utilisé (idéalement) : `ix_user_sessions_user_id_revoked_at`
+    (déjà créé par la migration 033).
+
+    Args:
+        session: AsyncSession SQLAlchemy.
+        user_id: ID du user.
+
+    Returns:
+        Liste de UserSession actives, triées par last_seen_at DESC (plus
+        récente en premier — UX standard).
+    """
+    now = _utcnow()
+    result = await session.execute(
+        select(UserSession)
+        .where(
+            UserSession.user_id == user_id,
+            UserSession.revoked_at.is_(None),
+            UserSession.sliding_expires_at > now,
+            UserSession.absolute_expires_at > now,
+        )
+        .order_by(UserSession.last_seen_at.desc())
+    )
+    return list(result.scalars().all())
+
+
+async def validate_session_v2(
+    session: AsyncSession,
+    jti: str,
+    refresh_token_hash: Optional[str] = None,
+) -> bool:
+    """Vérifie qu'une session est encore valide.
+
+    Utilisé par `get_current_user_v2` (Step 4) pour valider que chaque
+    requête authentifiée porte un JTI qui correspond à une session active.
+
+    Args:
+        session: AsyncSession SQLAlchemy.
+        jti: UUID String(36) = UserSession.id, extrait du JWT.
+        refresh_token_hash: optionnel — si fourni, on vérifie aussi le hash
+            (anti-tampering). En général utile uniquement sur /refresh ; le
+            access token n'embarque pas le hash (juste le jti).
+
+    Returns:
+        True si:
+        - row existe par id == jti,
+        - revoked_at IS NULL,
+        - sliding_expires_at > now,
+        - absolute_expires_at > now,
+        - (si refresh_token_hash fourni) refresh_token_hash matche.
+    """
+    result = await session.execute(select(UserSession).where(UserSession.id == jti))
+    user_session = result.scalar_one_or_none()
+
+    if user_session is None:
+        return False
+
+    now = _utcnow()
+    if user_session.revoked_at is not None:
+        return False
+    if user_session.sliding_expires_at <= now:
+        return False
+    if user_session.absolute_expires_at <= now:
+        return False
+
+    if refresh_token_hash is not None:
+        if user_session.refresh_token_hash != refresh_token_hash:
+            logger.warning(
+                "auth_v2.validate.hash_mismatch",
+                session_id=jti,
+                user_id=user_session.user_id,
+            )
+            return False
+
+    return True
