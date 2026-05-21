@@ -707,6 +707,7 @@ async def get_billing_info(
     )
 
 
+# TODO Wave 1 Step 3 : add Depends(require_recent_reauth("billing")) when frontend wires the X-Reauth-Token header
 @router.post("/checkout")
 async def create_checkout_session(
     request: CreateCheckoutRequest,
@@ -814,6 +815,7 @@ class CreateCheckoutByPlanId(BaseModel):
     acquisition_channel: Optional[str] = None
 
 
+# TODO Wave 1 Step 3 : add Depends(require_recent_reauth("billing")) when frontend wires the X-Reauth-Token header
 @router.post("/create-checkout")
 async def create_checkout_by_plan_id(
     request: CreateCheckoutByPlanId,
@@ -955,6 +957,7 @@ class ChangePlanResponse(BaseModel):
     effective_date: Optional[str] = None
 
 
+# TODO Wave 1 Step 3 : add Depends(require_recent_reauth("billing")) when frontend wires the X-Reauth-Token header
 @router.post("/change-plan", response_model=ChangePlanResponse)
 async def change_subscription_plan(
     request: ChangePlanRequest,
@@ -1452,6 +1455,7 @@ async def confirm_checkout(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# TODO Wave 1 Step 3 : add Depends(require_recent_reauth("billing")) when frontend wires the X-Reauth-Token header
 @router.post("/cancel")
 async def cancel_subscription(
     request: CancelRequest = CancelRequest(),

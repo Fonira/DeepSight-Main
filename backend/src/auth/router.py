@@ -4,14 +4,17 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import RedirectResponse
+from jose import jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 
-from db.database import get_session
+import core.config as _core_config  # runtime lookup pour JWT_CONFIG (cf reload edge case dépendances)
+
+from db.database import get_session, verify_password
 from core.analytics import track_event
 from core.config import FRONTEND_URL, EMAIL_CONFIG, GOOGLE_OAUTH_CONFIG, APPLE_OAUTH_CONFIG
 from .schemas import (
@@ -33,6 +36,9 @@ from .schemas import (
     AuthUrlResponse,
     MessageResponse,
     QuotaResponse,
+    ReauthRequest,
+    ReauthResponse,
+    UserSessionResponse,
 )
 from .service import (
     create_user,
@@ -58,9 +64,11 @@ from .service import (
     verify_google_id_token,
     verify_apple_id_token,
     login_or_register_apple_user,
+    list_user_sessions,
+    revoke_session_v2,
 )
 from services.audit_log import log_audit
-from .dependencies import get_current_user
+from .dependencies import get_current_user, get_current_token_payload
 from .email import send_verification_email, send_password_reset_email, send_welcome_email
 
 router = APIRouter()
@@ -198,6 +206,7 @@ async def logout(current_user=Depends(get_current_user), session: AsyncSession =
     return MessageResponse(success=True, message="✅ Déconnecté")
 
 
+# TODO Wave 1 Step 3 : add Depends(require_recent_reauth("delete")) when frontend wires the X-Reauth-Token header
 @router.delete("/account", response_model=MessageResponse)
 async def delete_account(
     data: DeleteAccountRequest, current_user=Depends(get_current_user), session: AsyncSession = Depends(get_session)
@@ -397,6 +406,7 @@ async def reset_password_endpoint(data: ResetPasswordRequest, session: AsyncSess
     return MessageResponse(success=True, message=message)
 
 
+# TODO Wave 1 Step 3 : add Depends(require_recent_reauth("change-password")) when frontend wires the X-Reauth-Token header
 @router.post("/change-password", response_model=MessageResponse)
 async def change_password_endpoint(
     data: ChangePasswordRequest, current_user=Depends(get_current_user), session: AsyncSession = Depends(get_session)
@@ -853,6 +863,157 @@ async def apple_token_login(data: AppleMobileTokenRequest, session: AsyncSession
 async def apple_callback_post(data: AppleMobileTokenRequest, session: AsyncSession = Depends(get_session)):
     """Alias POST de /apple/token pour rester aligne avec /google/callback (web SPA)."""
     return await apple_token_login(data, session)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🔐 AUTH V2 — Sessions multi-device + Re-auth scopé (Wave 1 Step 3, 2026-05-21)
+# ═══════════════════════════════════════════════════════════════════════════════
+# Spec : 01-Projects/DeepSight/Specs/2026-05-21-auth-v2-complet-design.md §4.4 + §4.6.
+#
+# Endpoints :
+#   GET    /api/auth/sessions       → liste les sessions actives (page Settings)
+#   DELETE /api/auth/sessions/{id}  → révoque une session spécifique
+#   DELETE /api/auth/sessions       → révoque toutes les autres sessions
+#   POST   /api/auth/reauth         → émet un reauth_token scopé (5 min)
+
+
+@router.get("/sessions", response_model=list[UserSessionResponse])
+async def list_active_sessions(
+    current_user=Depends(get_current_user),
+    current_token_payload: dict = Depends(get_current_token_payload),
+    session: AsyncSession = Depends(get_session),
+):
+    """Liste les sessions actives de l'utilisateur (non révoquées, non expirées).
+
+    La session associée au JWT courant est marquée `current=True` via comparaison
+    avec le `jti` du token V2. Pour les tokens legacy (V1, sans `jti`), aucune
+    session n'est marquée current (false par défaut).
+    """
+    sessions = await list_user_sessions(session, current_user.id)
+    current_jti = current_token_payload.get("jti")  # None pour les tokens legacy V1
+    return [
+        UserSessionResponse(
+            id=s.id,
+            device_label=s.device_label,
+            ip_hash=s.ip_hash,
+            user_agent=s.user_agent,
+            last_seen_at=s.last_seen_at,
+            created_at=s.issued_at,
+            current=(s.id == current_jti),
+        )
+        for s in sessions
+    ]
+
+
+@router.delete("/sessions/{session_id}", response_model=MessageResponse)
+async def revoke_session_by_id(
+    session_id: str,
+    current_user=Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """Révoque une session spécifique par UUID.
+
+    Security : `revoke_session_v2` vérifie déjà que la session appartient au
+    user qui demande la révocation — empêche un user A de révoquer une session
+    d'un user B par énumération d'UUIDs.
+    """
+    ok = await revoke_session_v2(session, session_id, current_user.id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Session not found or already revoked")
+    await log_audit(
+        session,
+        action="session.revoked",
+        user_id=current_user.id,
+        details={"session_id": session_id, "scope": "single"},
+    )
+    await session.commit()
+    return MessageResponse(success=True, message="✅ Session révoquée")
+
+
+@router.delete("/sessions", response_model=MessageResponse)
+async def revoke_all_other_sessions(
+    current_user=Depends(get_current_user),
+    current_token_payload: dict = Depends(get_current_token_payload),
+    session: AsyncSession = Depends(get_session),
+):
+    """Révoque toutes les sessions de l'utilisateur SAUF celle du JWT courant.
+
+    Comportement « Sign out everywhere else » de la page Settings. Pour les
+    tokens legacy V1 (sans `jti`), toutes les sessions V2 sont révoquées.
+    """
+    current_jti = current_token_payload.get("jti")
+    sessions = await list_user_sessions(session, current_user.id)
+    revoked_count = 0
+    for s in sessions:
+        if s.id == current_jti:
+            continue
+        if await revoke_session_v2(session, s.id, current_user.id):
+            revoked_count += 1
+    await log_audit(
+        session,
+        action="session.revoked",
+        user_id=current_user.id,
+        details={"scope": "all_other", "revoked_count": revoked_count},
+    )
+    await session.commit()
+    return MessageResponse(success=True, message=f"✅ {revoked_count} sessions révoquées")
+
+
+@router.post("/reauth", response_model=ReauthResponse)
+async def reauth(
+    data: ReauthRequest,
+    request: Request,
+    current_user=Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """Re-vérifie le mot de passe et émet un reauth_token scopé pour une action sensible.
+
+    Spec : §4.6 — JWT 5 min, scope=reauth, aud=<audience>. Le client doit
+    re-fournir ce token dans `X-Reauth-Token: <jwt>` lors de l'appel à
+    l'endpoint sensible (via `Depends(require_recent_reauth(audience))`).
+    """
+    # Verify password (réutilise verify_password de db.database — supporte
+    # bcrypt et legacy SHA256 cf migration auto au login).
+    if not current_user.password_hash or not verify_password(data.password, current_user.password_hash):
+        # Audit log "reauth_failed_wrong_password" pour détection de brute-force
+        # (Article 30 RGPD — traçabilité des tentatives de re-authentification).
+        await log_audit(
+            session,
+            action="auth.reauth_failed",
+            user_id=current_user.id,
+            request=request,
+            details={"reason": "wrong_password", "audience": data.audience},
+        )
+        await session.commit()
+        raise HTTPException(status_code=401, detail="REAUTH_WRONG_PASSWORD")
+
+    # Émet JWT 5 min — scope=reauth + aud=audience (validé par require_recent_reauth)
+    expires_in = 5 * 60  # 300s
+    now = datetime.now(timezone.utc)
+    expire_at = now + timedelta(seconds=expires_in)
+    payload = {
+        "sub": str(current_user.id),
+        "scope": "reauth",
+        "aud": data.audience,
+        "iat": now,
+        "exp": expire_at,
+    }
+    reauth_token = jwt.encode(
+        payload,
+        _core_config.JWT_CONFIG["SECRET_KEY"],
+        algorithm=_core_config.JWT_CONFIG["ALGORITHM"],
+    )
+
+    await log_audit(
+        session,
+        action="auth.reauth_success",
+        user_id=current_user.id,
+        request=request,
+        details={"audience": data.audience, "expires_in": expires_in},
+    )
+    await session.commit()
+
+    return ReauthResponse(reauth_token=reauth_token, expires_in=expires_in)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
