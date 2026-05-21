@@ -454,13 +454,19 @@ Migration v0/v1 → v2 (Alembic 012, mergée prod 2026-04-30) : `plus → pro`, 
 
 ```
 1. POST /api/auth/register → Create user + send verification email (Resend)
-2. POST /api/auth/login    → Returns access_token (15min) + refresh_token (7d)
+2. POST /api/auth/login    → Returns access_token (60min) + refresh_token (30d)
 3. All requests            → Header: Authorization: Bearer {access_token}
 4. POST /api/auth/refresh  → New access_token (rotation)
 5. Google OAuth Web        → /api/auth/google/login → callback
 6. Google OAuth Mobile     → /api/auth/google/token  ⚠️ Backend endpoint existe mais incomplet
 7. Extension               → chrome.identity.launchWebAuthFlow() + sync tokens
 ```
+
+**TTLs** (Sprint C, 2026-05-21 — alignés Claude/ChatGPT) : access 60 min / refresh 30 jours.
+Avant Sprint C : 7 jours / 365 jours (doc historique mentionnait à tort « 15min/7d »).
+Override sans rebuild via env `ACCESS_TOKEN_TTL_MIN` / `REFRESH_TOKEN_TTL_DAYS`.
+Blocklist révocation : Redis-backed, clé `auth:blocklist:{sha256(token)[:32]}`,
+TTL = exp du token (auto-cleanup). Fail-open + audit log si Redis indispo.
 
 ---
 

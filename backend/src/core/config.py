@@ -532,8 +532,11 @@ APPLE_OAUTH_CONFIG = {
 JWT_CONFIG = {
     "SECRET_KEY": _settings.JWT_SECRET_KEY or _settings.ADMIN_SECRET_KEY,
     "ALGORITHM": "HS256",
-    "ACCESS_TOKEN_EXPIRE_MINUTES": 10080,  # 7 jours — long session UX (was 24h, then 1h originally) ; rotation actif via /refresh
-    "REFRESH_TOKEN_EXPIRE_DAYS": 365,  # 1 an — session quasi-éternelle pour user actif (rotation à chaque /refresh étend la durée)
+    # Sprint C (2026-05-21) — TTLs alignés Claude/ChatGPT (60 min / 30 j).
+    # Avant : 10080 min (7 j) / 365 j — voir audit `01-Projects/DeepSight/Sessions/2026-05-21-audit-auth-sprint-c.md`.
+    # Override sans rebuild via env `ACCESS_TOKEN_TTL_MIN` / `REFRESH_TOKEN_TTL_DAYS`.
+    "ACCESS_TOKEN_EXPIRE_MINUTES": int(os.getenv("ACCESS_TOKEN_TTL_MIN", "60")),
+    "REFRESH_TOKEN_EXPIRE_DAYS": int(os.getenv("REFRESH_TOKEN_TTL_DAYS", "30")),
 }
 
 # =============================================================================

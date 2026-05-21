@@ -54,6 +54,22 @@ async def pro_endpoint(user: User = Depends(require_plan("pro"))):
     ...
 ```
 
+## Auth JWT — TTLs & blocklist (Sprint C, 2026-05-21)
+
+| Aspect | Valeur | Override env |
+|---|---|---|
+| Access token TTL | **60 min** | `ACCESS_TOKEN_TTL_MIN` |
+| Refresh token TTL | **30 jours** | `REFRESH_TOKEN_TTL_DAYS` |
+| Lib JWT | `python-jose[cryptography]` | (pyjwt migration différée V2 — CVE-2024-33664/33663 à surveiller) |
+| Blocklist | Redis `auth:blocklist:{sha256(token)[:32]}` avec TTL=exp | `REDIS_URL` (fallback in-RAM si absent) |
+
+Avant Sprint C : 7 j / 365 j + blocklist in-RAM (perdue à chaque `docker run`).
+Pour révoquer un token côté code : `await blacklist_token(token, expiry_seconds=...)`.
+Pour vérifier : `await is_token_blacklisted(token)` — fail-open + audit log
+(`audit_logs.action="auth_blocklist_fail_open"`) si Redis indispo.
+
+Cf. audit complet : `01-Projects/DeepSight/Sessions/2026-05-21-audit-auth-sprint-c.md`.
+
 ## Feature gating (SSOT)
 
 ```python
