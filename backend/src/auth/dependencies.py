@@ -69,8 +69,8 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # 🔒 Vérifier si le token est blacklisté (logout/révoqué)
-    if SECURITY_AVAILABLE and is_token_blacklisted(actual_token):
+    # 🔒 Vérifier si le token est blacklisté (logout/révoqué) — Sprint C: now async (Redis)
+    if SECURITY_AVAILABLE and await is_token_blacklisted(actual_token):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={"code": "token_revoked", "message": "This session has been revoked. Please log in again."},
@@ -164,8 +164,8 @@ async def get_current_user_optional(
     if not actual_token:
         return None
 
-    # Vérifier le blacklist
-    if SECURITY_AVAILABLE and is_token_blacklisted(actual_token):
+    # Vérifier le blacklist — Sprint C: now async (Redis)
+    if SECURITY_AVAILABLE and await is_token_blacklisted(actual_token):
         return None
 
     payload = verify_token(actual_token, token_type="access")

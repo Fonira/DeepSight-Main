@@ -368,28 +368,137 @@ def cleanup_expired_ip_limits():
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 🔐 GESTION DES TOKENS
+# 🔐 GESTION DES TOKENS — Blocklist Redis-backed (Sprint C, 2026-05-21)
 # ═══════════════════════════════════════════════════════════════════════════════
+# Avant : `_token_blacklist: Dict[str, float]` in-process — perdue à chaque
+# `docker run`, donc un logout côté user devenait silencieusement inopérant
+# après le moindre redeploy. Maintenant : Redis SET avec TTL = exp du token
+# (auto-cleanup natif). Fallback in-RAM dict si Redis indispo (dev/CI), avec
+# log + audit `audit_logs.action="auth_blocklist_fail_open"` en prod.
+#
+# Pattern de clé : `auth:blocklist:{sha256_token_hash_32chars}`.
+# Le `core.cache.cache_service.backend.redis` est réutilisé (déjà initialisé
+# dans le lifespan `main.py:564`). Fail-open (return False) sur erreur Redis
+# pour ne pas dégrader l'UX : équivalent au comportement baseline RAM qui se
+# perdait au reboot de toute façon.
+
+# Sentinel pour indiquer une erreur Redis (fail-open + log)
+_BLOCKLIST_REDIS_KEY_PREFIX = "auth:blocklist:"
 
 
-def blacklist_token(token: str, expiry_seconds: int = 86400):
+def _get_redis_client():
+    """Récupère le client Redis depuis core.cache si disponible.
+
+    Returns:
+        Le client redis.asyncio ou None si Redis n'est pas initialisé
+        (mode dev/CI sans REDIS_URL, ou avant lifespan startup).
+    """
+    try:
+        from core.cache import cache_service
+
+        backend = getattr(cache_service, "backend", None)
+        if backend is None:
+            return None
+        # RedisCacheBackend expose `.redis` ; InMemoryCacheBackend non.
+        return getattr(backend, "redis", None)
+    except Exception:
+        return None
+
+
+async def _log_blocklist_fail_open(operation: str, error: str) -> None:
+    """Audit log d'un fail-open de la blocklist (Redis indispo).
+
+    Best-effort : si l'audit lui-même échoue on absorbe pour ne pas casser
+    le path auth. PostHog peut être ajouté plus tard côté caller si besoin.
+    """
+    try:
+        from db.database import async_session_maker, AuditLog
+
+        async with async_session_maker() as session:
+            session.add(
+                AuditLog(
+                    user_id=None,
+                    actor_id=None,
+                    action="auth_blocklist_fail_open",
+                    details={"operation": operation, "error": error[:500]},
+                )
+            )
+            await session.commit()
+    except Exception as audit_err:
+        # On log dans stderr mais on n'élève pas l'exception : la blocklist
+        # doit rester non-bloquante même en cas d'audit cassé.
+        print(
+            f"⚠️  blocklist fail-open audit failed ({operation}): {audit_err}",
+            flush=True,
+        )
+
+
+async def blacklist_token(token: str, expiry_seconds: int = 86400) -> bool:
+    """Ajoute un token à la blocklist (révocation par logout ou rotation).
+
+    Args:
+        token: Le JWT brut (sera hashé SHA-256 pour la clé Redis).
+        expiry_seconds: TTL de la clé blocklist. Devrait correspondre à
+            l'exp restante du token (clamped min 1). Default 86400 = 24h
+            pour compatibilité avec les anciens callers.
+
+    Returns:
+        True si la blocklist a été mise à jour, False en cas d'erreur Redis
+        (fail-open — le token reste valide jusqu'à son exp naturelle).
+    """
     token_hash = _hash_token(token)
-    _token_blacklist[token_hash] = time.time() + expiry_seconds
+    ttl = max(1, int(expiry_seconds))
+    redis = _get_redis_client()
 
-    now = time.time()
-    expired = [h for h, exp in _token_blacklist.items() if exp < now]
-    for h in expired:
-        del _token_blacklist[h]
+    if redis is None:
+        # Fallback in-RAM (dev/CI ou Redis pas encore init)
+        _token_blacklist[token_hash] = time.time() + ttl
+        now = time.time()
+        expired = [h for h, exp in _token_blacklist.items() if exp < now]
+        for h in expired:
+            del _token_blacklist[h]
+        return True
+
+    try:
+        await redis.set(f"{_BLOCKLIST_REDIS_KEY_PREFIX}{token_hash}", "1", ex=ttl)
+        return True
+    except Exception as e:
+        await _log_blocklist_fail_open("add", str(e))
+        # Fallback in-RAM pour ne pas perdre la révocation en cas de Redis flaky
+        _token_blacklist[token_hash] = time.time() + ttl
+        return False
 
 
-def is_token_blacklisted(token: str) -> bool:
+async def is_token_blacklisted(token: str) -> bool:
+    """Vérifie si un token est dans la blocklist.
+
+    Fail-open sur erreur Redis : retourne False (token accepté) + log audit.
+    Rationale : avant Sprint C la blocklist était in-RAM et se perdait à
+    chaque reboot, donc fail-open est strictement pas pire que le baseline.
+    """
     token_hash = _hash_token(token)
-    if token_hash in _token_blacklist:
-        if _token_blacklist[token_hash] > time.time():
-            return True
-        else:
-            del _token_blacklist[token_hash]
-    return False
+    redis = _get_redis_client()
+
+    if redis is None:
+        # Fallback in-RAM
+        if token_hash in _token_blacklist:
+            if _token_blacklist[token_hash] > time.time():
+                return True
+            else:
+                del _token_blacklist[token_hash]
+        return False
+
+    try:
+        result = await redis.exists(f"{_BLOCKLIST_REDIS_KEY_PREFIX}{token_hash}")
+        return bool(result)
+    except Exception as e:
+        await _log_blocklist_fail_open("check", str(e))
+        # Fail-open : on accepte le token. Le RAM fallback peut quand même
+        # contenir une révocation locale, on l'honore.
+        if token_hash in _token_blacklist:
+            if _token_blacklist[token_hash] > time.time():
+                return True
+        return False
 
 
 def generate_secure_operation_id(user_id: int, operation_type: str) -> str:

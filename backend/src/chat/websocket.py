@@ -555,8 +555,8 @@ async def _authenticate_websocket(websocket: WebSocket, token: Optional[str]) ->
         await websocket.close(code=4001, reason="Authentication required. Provide ?token=<jwt>")
         return None
 
-    # Vérifier si le token est blacklisté
-    if security_available and is_token_blacklisted(token):
+    # Vérifier si le token est blacklisté — Sprint C: now async (Redis)
+    if security_available and await is_token_blacklisted(token):
         await websocket.close(code=4001, reason="Token revoked. Please log in again.")
         return None
 
