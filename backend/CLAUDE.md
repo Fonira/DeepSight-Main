@@ -103,6 +103,39 @@ SELECT user_id, count(*) FROM audit_logs
  GROUP BY user_id HAVING count(*) > 5;
 ```
 
+## Auth V2 — Feature flag rollout (Wave 1 Step 4, 2026-05-21)
+
+Trois env vars pour piloter le basculement progressif legacy V1 → V2
+(multi-device `UserSession` + sliding/absolute TTL + single-use refresh rotation) :
+
+| Env var | Défaut | Rôle |
+|---|---|---|
+| `AUTH_V2_ENABLED` | `false` | Kill switch global. `true` → activable par bucket. |
+| `AUTH_V2_BUCKET_PERCENT` | `0` | % users in-bucket (0-100). Hash déterministe(user_id) % 100 < pct. |
+| `AUTH_V2_CUTOVER_DATE` | `""` | Date ISO du basculement (ex `2026-05-22`). Tokens avec `iat < cutover` restent V1 pendant grace. |
+| `AUTH_V2_GRACE_PERIOD_DAYS` | `30` | Fenêtre après cutover où tokens V1 pre-cutover sont encore acceptés. |
+
+**Stratégie de rollout standard** (sans redeploy entre étapes) :
+
+1. Merge le code + déploie avec `AUTH_V2_ENABLED=true` + `AUTH_V2_BUCKET_PERCENT=10` + `AUTH_V2_CUTOVER_DATE=<demain>`.
+2. J+1 monitoring OK → `AUTH_V2_BUCKET_PERCENT=50`.
+3. J+3 monitoring OK → `AUTH_V2_BUCKET_PERCENT=100`.
+4. J+30 grace expirée → tous les tokens V1 pre-cutover ont été rotated naturellement.
+
+**Bucketing déterministe** (`auth/feature_flags.py:is_user_in_auth_v2_bucket`) :
+même user_id → même réponse à chaque appel (pas de flip-flop). Distribution
+~uniforme via SHA-256(str(user_id)).
+
+**Décision finale** (`auth/feature_flags.py:should_use_v2_for_token`) :
+- Pas in-bucket → V1.
+- In-bucket + token pre-cutover + grace active → V1 (le temps que le token expire naturellement).
+- In-bucket + token post-cutover OU pas de cutover → V2.
+
+Utilisée par `auth/service.py:verify_token_with_flow` (lui-même appelé par
+`get_current_user` / `get_current_user_optional` dans `auth/dependencies.py`).
+
+Spec : `01-Projects/DeepSight/Specs/2026-05-21-auth-v2-complet-design.md` §4.5.
+
 ## Feature gating (SSOT)
 
 ```python

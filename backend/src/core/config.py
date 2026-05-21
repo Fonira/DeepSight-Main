@@ -764,6 +764,39 @@ MAGISTRAL_EPISTEMIC_TIERS: list = [
 # 🔍 Semantic Search V1 (extended : summary + flashcard + quiz + chat)
 SEMANTIC_SEARCH_V1_ENABLED: bool = os.getenv("SEMANTIC_SEARCH_V1_ENABLED", "false").lower() == "true"
 
+# =============================================================================
+# AUTH V2 — Feature flag rollout (Wave 1 Step 4, 2026-05-21)
+# =============================================================================
+# Permet de basculer progressivement les utilisateurs sur le flow Auth V2
+# (multi-device UserSession + sliding/absolute TTL + single-use refresh
+# rotation). Sans ces flags, le code reste sur le flow legacy V1
+# (User.session_token unique partagé entre devices).
+#
+# Stratégie de rollout :
+#   1. AUTH_V2_ENABLED=true + AUTH_V2_BUCKET_PERCENT=10  → 10% des users V2
+#   2. AUTH_V2_BUCKET_PERCENT=50                          → 50% des users V2
+#   3. AUTH_V2_BUCKET_PERCENT=100                         → 100% (full migration)
+#
+# AUTH_V2_CUTOVER_DATE permet de distinguer les tokens émis avant/après le
+# basculement V2. Les tokens avec `iat < cutover` restent dans le flow legacy
+# (V1) pendant 30 jours après le cutover (grace period), puis sont rejetés.
+# Les tokens avec `iat >= cutover` passent par le flow V2.
+#
+# Spec : 01-Projects/DeepSight/Specs/2026-05-21-auth-v2-complet-design.md §4.5.
+# =============================================================================
+
+AUTH_V2_ENABLED: bool = os.getenv("AUTH_V2_ENABLED", "false").lower() == "true"
+# Bucket de rollout déterministe : hash(user_id) % 100 < AUTH_V2_BUCKET_PERCENT
+# → utilisateur dans le bucket V2. Permet rollout 10 → 50 → 100% sans redeploy.
+AUTH_V2_BUCKET_PERCENT: int = int(os.getenv("AUTH_V2_BUCKET_PERCENT", "0"))
+# Date ISO du basculement V2 (ex: "2026-05-22" ou "2026-05-22T00:00:00").
+# Vide → pas de cutover défini, tous les tokens vont au flow décidé par le bucket.
+AUTH_V2_CUTOVER_DATE: str = os.getenv("AUTH_V2_CUTOVER_DATE", "")
+# Grace period (jours) après cutover pendant laquelle les tokens V1 restent
+# acceptés en parallèle des tokens V2. Au-delà, les tokens V1 sont rejetés
+# (force re-login). Défaut : 30 jours (spec §4.5).
+AUTH_V2_GRACE_PERIOD_DAYS: int = int(os.getenv("AUTH_V2_GRACE_PERIOD_DAYS", "30"))
+
 # Modération — Phase 2 migration Mistral-First
 # log_only : calcule + log les scores mais laisse passer (calibration)
 # enforce  : bloque les contenus flagged (raise HTTP 400)

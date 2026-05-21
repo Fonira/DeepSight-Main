@@ -154,6 +154,50 @@ def verify_token(token: str, token_type: str = "access") -> Optional[dict]:
         return None
 
 
+def verify_token_with_flow(token: str, token_type: str = "access") -> Tuple[Optional[dict], str]:
+    """Vérifie un JWT ET décide du flow (V1 legacy vs V2) selon le feature flag.
+
+    Wave 1 Step 4 (2026-05-21) — branche entre le flow legacy (validation
+    `session_token` côté User) et le flow V2 (`validate_session_v2` côté
+    `UserSession`). Additive : `verify_token` reste inchangé pour les call sites
+    qui n'ont pas besoin de cette logique (ex: `auth/router.py:refresh`).
+
+    Logique :
+        1. Decode + validation du `type` → si invalid, return (None, "v1").
+        2. Extraction du `sub` (user_id) et `iat` (issued at).
+        3. Délégation à `feature_flags.should_use_v2_for_token(user_id, iat)`.
+        4. Grace period (30j) : un token pre-cutover dans un user bucketé V2
+           reste en V1 le temps qu'il expire naturellement (max 60min pour un
+           access token), au lieu de forcer un re-login violent.
+
+    Returns:
+        Tuple (payload, flow) où :
+        - payload : dict du JWT, ou None si decode/type mismatch.
+        - flow : "v1" (legacy) ou "v2" (UserSession). Toujours "v1" si payload
+          est None — pas de tentative de branchement sur un token invalide.
+    """
+    from auth.feature_flags import should_use_v2_for_token
+
+    payload = verify_token(token, token_type=token_type)
+    if payload is None:
+        return None, "v1"
+
+    sub = payload.get("sub")
+    try:
+        user_id = int(sub) if sub is not None else None
+    except (ValueError, TypeError):
+        user_id = None
+
+    if user_id is None:
+        # Token malformé côté sub — on garde le flow V1, le caller raise 401 de
+        # toute façon sur l'absence de sub.
+        return payload, "v1"
+
+    iat = payload.get("iat")
+    flow = "v2" if should_use_v2_for_token(user_id, iat) else "v1"
+    return payload, flow
+
+
 def get_token_session(token: str) -> Optional[str]:
     """Extrait le session_token d'un JWT sans vérification complète"""
     try:
