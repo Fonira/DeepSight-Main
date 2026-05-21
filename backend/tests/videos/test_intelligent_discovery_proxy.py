@@ -142,9 +142,19 @@ class TestYouTubeSearcherProxy:
         assert "foo bar" in cmd[-1]
 
 
+@pytest.mark.skip(
+    reason="Obsolete after PR #525 — ytsearch path no longer uses --proxy nor "
+    "*_yt_dlp_extra_args() splat (perf fix : 25.5s/0 → 1.5s/20 results from "
+    "Hetzner IP). Source-level locks pointaient l'ancienne implémentation. "
+    "Tracking : follow-up task « Rewrite proxy test for post-#525 behavior »."
+)
 class TestSourceLevelLock:
     """Source-level smoke : ensure the proxy helper import + injection
-    don't accidentally regress."""
+    don't accidentally regress.
+
+    NOTE 2026-05-21 : entire class skipped — PR #525 retire ces patterns
+    intentionnellement. Rewrite TODO en follow-up task.
+    """
 
     def test_imports_yt_dlp_extra_args(self):
         """The fix relies on `_yt_dlp_extra_args` being callable from this module.
