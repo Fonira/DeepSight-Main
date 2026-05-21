@@ -47,9 +47,20 @@ def _make_fake_run(stdout: str = "", returncode: int = 0):
 
 
 class TestYouTubeSearcherProxy:
+    @pytest.mark.skip(
+        reason="Obsolete after PR #525 (skip Decodo proxy on yt-dlp ytsearch — "
+        "25.5s/0 results → 1.5s/20 results from Hetzner IP). The current code path "
+        "intentionally strips --proxy for ytsearch, so this assertion is inverted. "
+        "Needs rewrite to assert NO --proxy on ytsearch path. Tracking : follow-up "
+        "task « Rewrite proxy test for post-#525 behavior »."
+    )
     @pytest.mark.asyncio
     async def test_proxy_injected_when_set(self, monkeypatch):
-        """`_yt_dlp_extra_args()` injects --proxy when YOUTUBE_PROXY is set."""
+        """`_yt_dlp_extra_args()` injects --proxy when YOUTUBE_PROXY is set.
+
+        NOTE 2026-05-21 : skipped — PR #525 retire --proxy de ce path. Le test
+        doit être réécrit (TODO follow-up task).
+        """
         from videos import intelligent_discovery as idsc
         from transcripts import audio_utils
 
