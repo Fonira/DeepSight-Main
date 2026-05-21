@@ -903,7 +903,7 @@ export const videoApi = {
       limit?: number;
       language?: string;
       sort_by?: "quality" | "views" | "date" | "academic";
-      platform?: "youtube" | "tiktok";
+      platform?: "youtube" | "tiktok" | "reddit";
     },
   ): Promise<{
     videos: Array<{
@@ -917,12 +917,12 @@ export const videoApi = {
       tournesol_score: number;
       published_at: string | null;
       is_tournesol_pick: boolean;
-      platform?: "youtube" | "tiktok";
+      platform?: "youtube" | "tiktok" | "reddit";
       video_url?: string;
     }>;
     total: number;
     query: string;
-    platform?: "youtube" | "tiktok";
+    platform?: "youtube" | "tiktok" | "reddit";
     timeout?: boolean;
   }> {
     const langs = options?.language || "fr,en";

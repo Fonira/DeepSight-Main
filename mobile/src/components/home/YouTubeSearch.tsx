@@ -31,11 +31,11 @@ interface VideoResult {
   tournesol_score: number;
   published_at: string | null;
   is_tournesol_pick: boolean;
-  platform?: "youtube" | "tiktok";
+  platform?: "youtube" | "tiktok" | "reddit";
   video_url?: string;
 }
 
-type SearchPlatform = "youtube" | "tiktok";
+type SearchPlatform = "youtube" | "tiktok" | "reddit";
 
 interface YouTubeSearchProps {
   onOptionsPress: () => void;
@@ -82,7 +82,12 @@ export const YouTubeSearch: React.FC<YouTubeSearchProps> = ({
     setError(null);
     setHasSearched(true);
 
-    const platformLabel = platform === "tiktok" ? "TikTok" : "YouTube";
+    const platformLabel =
+      platform === "tiktok"
+        ? "TikTok"
+        : platform === "reddit"
+          ? "Reddit"
+          : "YouTube";
 
     try {
       const response = await videoApi.discoverSearch(trimmed, {
@@ -327,6 +332,30 @@ export const YouTubeSearch: React.FC<YouTubeSearchProps> = ({
             TikTok
           </Text>
         </Pressable>
+        <Pressable
+          onPress={() => handleSwitchPlatform("reddit")}
+          style={[
+            styles.platformOption,
+            platform === "reddit" && { backgroundColor: palette.indigo },
+          ]}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: platform === "reddit" }}
+          accessibilityLabel="Rechercher sur Reddit"
+        >
+          <Ionicons
+            name="logo-reddit"
+            size={16}
+            color={platform === "reddit" ? "#ffffff" : colors.textSecondary}
+          />
+          <Text
+            style={[
+              styles.platformLabel,
+              { color: platform === "reddit" ? "#ffffff" : colors.textSecondary },
+            ]}
+          >
+            Reddit
+          </Text>
+        </Pressable>
       </View>
 
       {/* Search bar */}
@@ -351,7 +380,9 @@ export const YouTubeSearch: React.FC<YouTubeSearchProps> = ({
           placeholder={
             platform === "tiktok"
               ? "Rechercher une vidéo TikTok..."
-              : "Rechercher une vidéo YouTube..."
+              : platform === "reddit"
+                ? "Rechercher sur Reddit..."
+                : "Rechercher une vidéo YouTube..."
           }
           placeholderTextColor={colors.textMuted}
           value={query}
