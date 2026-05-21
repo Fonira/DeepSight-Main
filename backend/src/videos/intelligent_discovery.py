@@ -1491,8 +1491,7 @@ class IntelligentDiscoveryService:
 
         # Tâches parallèles : primary lang searches + secondary lang translate+search
         primary_tasks = [
-            YouTubeSearcher.search(sq, max_results=max_results, language=primary_lang)
-            for sq in reformulated[:3]
+            YouTubeSearcher.search(sq, max_results=max_results, language=primary_lang) for sq in reformulated[:3]
         ]
         secondary_tasks = [translate_and_search(lang) for lang in other_languages]
 
