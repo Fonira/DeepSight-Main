@@ -1,25 +1,32 @@
 """
 Google Scholar Deep Crawl Client
 ================================
-Scraping HTML de la SERP Scholar via proxy Decodo Residential.
-Sans API officielle — Phase 4 conditionnelle (Pro+, opt-in deep_search).
+Scraping de la SERP Scholar via Decodo **Web Scraping API** (Premium+JS,
+output Markdown AI-optimized), suivi d'une extraction structurée par Mistral
+JSON schema strict.
 
-Rate limit : 1 query / 5 s (Redis distributed lock + local fallback)
+Pré-Phase 1.2 (legacy) : GET direct via Decodo Residential + parsing BS4.
+Depuis Phase 1.2 (cette PR) : POST /v2/scrape Decodo + `parse_scholar_markdown_via_mistral`.
+Le parser BS4 (`parse_scholar_html`) est CONSERVÉ en dead code pour rollback safety.
+
+Rate limit : 1 query / 2 s (allégé depuis 5s — Decodo gère son anti-ban côté
+infra, le rate limit interne sert juste à éviter d'éclater le quota Mistral
+en cas d'enrichissement aggregator parallèle).
 Circuit breaker : 3 failures consecutives -> open 1h
 Cache : Redis L1 (TTL 7 jours, key vcache:scholar:{md5(query_normalized)})
-Telemetry : record_proxy_usage(provider="scholar_scrape", bytes_in=len(html_bytes))
+Telemetry : record_proxy_usage(provider="scholar_scrape", bytes_in=len(markdown_bytes))
+            + decodo_scraping_usage row inséré par le wrapper Phase 0.
 
-PR1 scope :
-- Service standalone (parse + rate-limit + CB + cache + search).
-- NO router integration, NO aggregator hook, NO DB writes.
-- scholar_paper_to_academic() ABSENT in PR1 — depends on AcademicSource.SCHOLAR
-  enum entry which is added in PR2 (schemas.py modification). The conversion
-  helper will land alongside the aggregator phase-4 wiring in PR2.
+Decision keys (spec § 5.2) :
+- `markdown=true` plutôt que `output_format=raw_html` → 80-90% moins de tokens
+  Mistral (validé J0 : 170KB HTML → 17KB Markdown sur transformer SERP).
+- Mistral JSON extraction plutôt que BS4 → résilient aux changements de markup
+  Scholar (3 refactos en 2 ans : `gs_rt`, `gs_a`, `gs_r`...).
+- Rate limit 2s plutôt que 5s → on n'hit plus Scholar nous-mêmes, c'est Decodo.
 
-Hard requirements (spec sect. 4) :
-- get_proxied_client() MANDATORY (Hetzner IP blacklisted by Google).
-- record_proxy_usage() best-effort after each successful fetch.
-- 5s rate limit (NOT 1s, NOT 3s — Scholar bans <3s patterns).
+Hard requirements (spec sect. 4 + sect. 5) :
+- record_proxy_usage(provider="scholar_scrape") best-effort après chaque fetch OK.
+- 2s rate limit (allégé depuis 5s — voir § 5.6 du spec phase 1).
 - 3 failures -> open CB for 1h (NOT 30min, NOT 5min).
 - 7-day cache TTL (NOT 24h — Decodo budget mitigation).
 - NEVER cache an empty papers batch (poisoning anti-pattern).
@@ -49,7 +56,7 @@ logger = logging.getLogger(__name__)
 # ───────────────────────────────────────────────────────────────────────────────
 
 SCHOLAR_BASE_URL = "https://scholar.google.com/scholar"
-SCHOLAR_RATE_INTERVAL = 5.0
+SCHOLAR_RATE_INTERVAL = 2.0  # Phase 1.2 — allégé depuis 5s (Decodo gère anti-ban)
 SCHOLAR_RATE_LOCK_KEY = "deepsight:scholar:rate_lock"
 SCHOLAR_CB_FAIL_KEY = "deepsight:scholar:cb_fail_count"
 SCHOLAR_CB_OPEN_KEY = "deepsight:scholar:cb_open_until"
@@ -57,8 +64,15 @@ SCHOLAR_CB_THRESHOLD = 3
 SCHOLAR_CB_OPEN_DURATION = 3600  # 1 hour
 SCHOLAR_CACHE_KEY_PREFIX = "vcache:scholar:"
 SCHOLAR_CACHE_TTL = 7 * 24 * 3600  # 7 days
-SCHOLAR_HTTP_TIMEOUT = 15.0
-SCHOLAR_MIN_HTML_BYTES = 5000
+SCHOLAR_HTTP_TIMEOUT = 30.0  # Phase 1.2 — Premium+JS render 3-12s typique
+SCHOLAR_MIN_HTML_BYTES = 5000  # legacy parser guard
+# Markdown minimum size : Scholar render Markdown typique ≥ 2KB pour 0 résultat,
+# ≥ 5KB pour quelques résultats. On fixe 500B comme garde minimal contre les
+# réponses vides ou tronquées par un timeout réseau partiel.
+SCHOLAR_MIN_MARKDOWN_BYTES = 500
+# Mistral extraction guard : tronquer le markdown au-delà pour limiter le coût.
+# 30 000 chars ≈ 8 000 tokens input ≈ $0.00080 par query (mistral-small).
+SCHOLAR_MARKDOWN_MAX_CHARS = 30000
 
 # User-Agent pool (rotation random per query — spec sect. 4.2).
 _UA_POOL: List[str] = [
@@ -423,6 +437,177 @@ def parse_scholar_html(html: str) -> List[ScholarPaper]:
 
 
 # ───────────────────────────────────────────────────────────────────────────────
+# Phase 1.2 — Markdown extraction via Mistral JSON schema strict
+# ───────────────────────────────────────────────────────────────────────────────
+
+SCHOLAR_EXTRACT_SYSTEM_PROMPT = (
+    "Tu es un extracteur de résultats Google Scholar. "
+    "Entrée : Markdown brut d'une page de résultats Scholar (rendue via Decodo). "
+    'Sortie : JSON strict {"papers": [...]} suivant le schéma fourni. '
+    "Pas de commentaire, pas de texte hors JSON, pas de Markdown wrap."
+)
+
+SCHOLAR_EXTRACT_USER_TEMPLATE = """Extrait les {limit} premiers résultats académiques de cette page Google Scholar Markdown.
+
+Pour chaque résultat, retourne EXACTEMENT ces champs :
+- title (str, sans préfixe [PDF]/[HTML]/[BOOK]/[CITATION], titre nettoyé)
+- authors (array de str, prénoms+noms tels qu'affichés, sans liens)
+- year (int|null, 4 chiffres entre 1900 et 2100)
+- venue (str|null, ex. "Nature", "arXiv preprint arXiv...", "Advances in neural...", "arxiv.org")
+- abstract (str|null, le snippet visible sous le titre — pas la ligne d'auteurs)
+- url (str|null, URL absolue ou relative `/scholar?...` du titre, pas d'auteur)
+- pdf_url (str|null, URL absolue du PDF si visible avec marker `[PDF] ...`)
+- citation_count (int, valeur derrière "Cited by N" ou "Cité N fois", 0 si absent)
+
+Ignore les en-têtes de page (Cite, Advanced search, Saved to My library, etc.).
+Si la page contient une CAPTCHA ou un message "no results" Scholar, retourne {{"papers": []}}.
+
+Markdown source :
+---
+{markdown}
+---
+
+Réponds avec UN SEUL objet JSON : {{"papers": [...]}}"""
+
+
+_SCHOLAR_EXTRACT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "papers": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string"},
+                    "authors": {"type": "array", "items": {"type": "string"}},
+                    "year": {"type": ["integer", "null"]},
+                    "venue": {"type": ["string", "null"]},
+                    "abstract": {"type": ["string", "null"]},
+                    "url": {"type": ["string", "null"]},
+                    "pdf_url": {"type": ["string", "null"]},
+                    "citation_count": {"type": "integer"},
+                },
+                "required": ["title"],
+            },
+        }
+    },
+    "required": ["papers"],
+}
+
+
+async def parse_scholar_markdown_via_mistral(
+    md_text: str,
+    query: str,
+    limit: int = 20,
+) -> List[ScholarPaper]:
+    """Extrait des `ScholarPaper` depuis le markdown Scholar rendu via Decodo.
+
+    Remplace le parser BS4 fragile (`parse_scholar_html` — conservé en dead code
+    pour rollback safety). Robuste aux changements de markup Scholar, coût Mistral
+    ≈ $0.0003 par query sur small-2603 (négligeable vs. budget Phase 1).
+
+    Args:
+        md_text: Markdown rendu par Decodo Web Scraping API (`markdown=true`).
+        query: Query d'origine (informationnel, pas utilisé pour le parse).
+        limit: Nombre max de papers à retourner (clamp 1..20).
+
+    Returns:
+        Liste de `ScholarPaper` (peut être vide en cas d'erreur Mistral / 0 résultat
+        Scholar / parse JSON KO). Ne raise jamais — fail-safe pour le pipeline.
+    """
+    if not md_text or len(md_text) < SCHOLAR_MIN_MARKDOWN_BYTES:
+        return []
+
+    # Guard CAPTCHA : si le markdown ressemble à une captcha-page Scholar
+    # (rare car Decodo Premium+JS bypasse, mais possible si Cloudflare durcit).
+    lower = md_text.lower()
+    for pattern in _CAPTCHA_PATTERNS:
+        if pattern in lower:
+            logger.warning(f"[SCHOLAR] markdown captcha guard hit: {pattern}")
+            return []
+
+    safe_limit = max(1, min(int(limit), 20))
+    truncated_md = md_text[:SCHOLAR_MARKDOWN_MAX_CHARS]
+
+    try:
+        from core.llm_provider import mistral_extract_json
+
+        result = await mistral_extract_json(
+            system_prompt=SCHOLAR_EXTRACT_SYSTEM_PROMPT,
+            user_prompt=SCHOLAR_EXTRACT_USER_TEMPLATE.format(
+                markdown=truncated_md,
+                limit=safe_limit,
+            ),
+            schema=_SCHOLAR_EXTRACT_SCHEMA,
+            model="mistral-small-2603",
+            timeout=20.0,
+            max_tokens=4000,
+            temperature=0.1,
+        )
+    except Exception as e:
+        logger.warning(f"[SCHOLAR] mistral_extract_json raised: {e}")
+        return []
+
+    if not result:
+        logger.warning(f"[SCHOLAR] mistral returned None for q='{query[:40]}'")
+        return []
+
+    papers_raw = result.get("papers") if isinstance(result, dict) else None
+    if not isinstance(papers_raw, list):
+        logger.warning(f"[SCHOLAR] mistral result missing 'papers' array (keys={list(result.keys()) if isinstance(result, dict) else type(result).__name__})")
+        return []
+
+    parsed: List[ScholarPaper] = []
+    for p in papers_raw:
+        if not isinstance(p, dict):
+            continue
+        title = (p.get("title") or "").strip()
+        if not title:
+            continue
+        # Defensive type coercion (Mistral peut renvoyer une str au lieu d'un int
+        # sur citation_count / year quand le markdown contient des espaces ou symboles).
+        year_raw = p.get("year")
+        year_val: Optional[int] = None
+        if isinstance(year_raw, int):
+            year_val = year_raw
+        elif isinstance(year_raw, str):
+            try:
+                year_val = int(year_raw.strip())
+            except (ValueError, TypeError):
+                year_val = None
+
+        citation_raw = p.get("citation_count", 0)
+        try:
+            citation_val = int(citation_raw) if citation_raw is not None else 0
+        except (ValueError, TypeError):
+            citation_val = 0
+
+        authors_raw = p.get("authors") or []
+        if not isinstance(authors_raw, list):
+            authors_raw = []
+        authors_clean = [str(a).strip() for a in authors_raw if str(a).strip()]
+
+        try:
+            parsed.append(
+                ScholarPaper(
+                    title=title,
+                    authors=authors_clean,
+                    year=year_val,
+                    venue=p.get("venue"),
+                    abstract=p.get("abstract"),
+                    url=p.get("url"),
+                    pdf_url=p.get("pdf_url"),
+                    citation_count=citation_val,
+                )
+            )
+        except Exception as e:
+            logger.debug(f"[SCHOLAR] skip paper validate error: {e}")
+            continue
+
+    return parsed[:safe_limit]
+
+
+# ───────────────────────────────────────────────────────────────────────────────
 # Public API : search_scholar()
 # ───────────────────────────────────────────────────────────────────────────────
 
@@ -472,17 +657,21 @@ async def search_scholar(
 ) -> ScholarBatch:
     """Scrape Google Scholar SERP page 1 for the given query.
 
-    Flow:
+    Phase 1.2 flow (Decodo Web Scraping API + Mistral markdown extraction) :
       1. Sanitize query, early-return empty batch if blank.
-      2. Cache HIT -> short-circuit (no rate-limit, no CB check, no proxy).
+      2. Cache HIT -> short-circuit (no Decodo call, no rate-limit, no CB check).
       3. Circuit-open -> empty batch.
-      4. Decodo hard-stop (MTD > 950MB) -> empty batch.
-      5. Rate-limit (5s).
-      6. GET via get_proxied_client() (MANDATORY).
-      7. record_proxy_usage (best-effort).
-      8. Detect bad HTML (429 / 503 / CAPTCHA / too short) -> record_failure + empty.
-      9. parse_scholar_html(html) -> papers.
-      10. record_success + cache_set (skip cache if papers empty).
+      4. Rate-limit (2s — allégé depuis 5s, Decodo gère son anti-ban).
+      5. POST /v2/scrape Decodo Premium+JS + markdown=true.
+      6. Bad-response detection (None / too short / CAPTCHA in markdown).
+      7. record_proxy_usage(provider="scholar_scrape") (best-effort).
+      8. parse_scholar_markdown_via_mistral(md, query, limit) -> papers.
+      9. record_success + cache_set (skip cache if papers empty).
+
+    Note Phase 0 → 1.2 — le hard-stop Residential `should_bypass_proxy_async()`
+    a été retiré du flow Scholar : Web Scraping API a son propre budget guard
+    (`DECODO_SCRAPING_MAX_MONTHLY_REQ` enforced à l'intérieur du wrapper). Le
+    hard-stop Decodo Scraping est checké par `DecodoScrapingClient.scrape()`.
 
     Never raises — all exceptions are logged as warnings and translated
     into an empty batch. The aggregator (PR2) treats an empty batch as
@@ -513,54 +702,69 @@ async def search_scholar(
         logger.warning(f"[SCHOLAR] circuit OPEN — skip q='{query[:60]}'")
         return _empty_batch(query)
 
-    # 3. Decodo proxy hard-stop.
-    try:
-        bypass = await should_bypass_proxy_async()
-    except Exception as e:
-        logger.debug(f"[SCHOLAR] should_bypass_proxy_async raised: {e}")
-        bypass = False
-    if bypass:
-        logger.warning(f"[SCHOLAR] proxy hard-stop — skip q='{query[:60]}'")
-        return _empty_batch(query)
-
-    # 4. Rate limit (5s).
+    # 3. Rate limit (2s — Decodo gère son anti-ban infra).
     await _rate_limit()
 
-    # 5. Build request + fire via proxy.
+    # 4. Build request + fire via Decodo Web Scraping API (Premium+JS, Markdown).
     url = _build_scholar_url(query, limit)
-    headers = _build_headers()
-
-    html = ""
-    status_code: Optional[int] = None
+    md_text = ""
     try:
-        async with get_proxied_client(timeout=SCHOLAR_HTTP_TIMEOUT, headers=headers) as client:
-            resp = await client.get(url)
-            html = resp.text or ""
-            status_code = resp.status_code
+        from decodo import (
+            DecodoBudgetExceededError,
+            DecodoDisabledError,
+            DecodoScrapingClient,
+            DecodoScrapingError,
+        )
+
+        client = DecodoScrapingClient()
+        result = await client.scrape(
+            url,
+            proxy_pool="premium",
+            headless=True,
+            output_format="markdown",
+            timeout_s=SCHOLAR_HTTP_TIMEOUT,
+        )
+        md_text = result.content or ""
+    except DecodoDisabledError:
+        logger.warning(f"[SCHOLAR] decodo scraping disabled (kill-switch) — skip q='{query[:60]}'")
+        return _empty_batch(query)
+    except DecodoBudgetExceededError as e:
+        logger.warning(f"[SCHOLAR] decodo monthly budget exceeded — skip q='{query[:60]}': {e}")
+        return _empty_batch(query)
+    except DecodoScrapingError as e:
+        logger.warning(f"[SCHOLAR] decodo scrape error for q='{query[:60]}': {e}")
+        await _record_failure("decodo_scrape_error")
+        return _empty_batch(query, raw_html_size=0)
     except Exception as e:
-        logger.warning(f"[SCHOLAR] HTTP error: {e}")
-        await _record_failure("http_exception")
-        return _empty_batch(query, raw_html_size=len(html))
+        logger.warning(f"[SCHOLAR] decodo scrape unexpected error: {e}")
+        await _record_failure("decodo_unexpected")
+        return _empty_batch(query, raw_html_size=0)
+
+    md_size = len(md_text)
+
+    # 5. Bad-response detection (Markdown-aware).
+    if not md_text or md_size < SCHOLAR_MIN_MARKDOWN_BYTES:
+        await _record_failure(f"markdown_too_short_{md_size}")
+        return _empty_batch(query, raw_html_size=md_size)
+    lower = md_text.lower()
+    for pattern in _CAPTCHA_PATTERNS:
+        if pattern in lower:
+            await _record_failure(f"captcha_md:{pattern}")
+            return _empty_batch(query, raw_html_size=md_size)
 
     # 6. Telemetry (best-effort).
     try:
-        bytes_in = len(html.encode("utf-8", errors="replace")) if html else 0
+        bytes_in = len(md_text.encode("utf-8", errors="replace"))
         if bytes_in > 0:
             await record_proxy_usage(provider="scholar_scrape", bytes_in=bytes_in)
     except Exception as e:
         logger.debug(f"[SCHOLAR] telemetry failed: {e}")
 
-    # 7. Bad-response detection.
-    if status_code in (429, 503):
-        await _record_failure(f"http_{status_code}")
-        return _empty_batch(query, raw_html_size=len(html))
-    bad_reason = _is_bad_html(html)
-    if bad_reason is not None:
-        await _record_failure(bad_reason)
-        return _empty_batch(query, raw_html_size=len(html))
-
-    # 8. Parse + record success + cache.
-    papers = parse_scholar_html(html)
+    # 7. Parse via Mistral + record success + cache.
+    papers = await parse_scholar_markdown_via_mistral(md_text, query, limit)
+    if not papers:
+        await _record_failure("mistral_extract_empty")
+        return _empty_batch(query, raw_html_size=md_size)
     await _record_success()
 
     safe_limit = max(1, min(int(limit), 20))
@@ -568,10 +772,12 @@ async def search_scholar(
         query=query,
         papers=papers[:safe_limit],
         fetched_at=time.time(),
-        raw_html_size=len(html),
+        raw_html_size=md_size,
     )
     await _cache_set(query, batch)
-    logger.info(f"[SCHOLAR] OK q='{query[:60]}' ({len(papers)} papers, html={len(html)}B)")
+    logger.info(
+        f"[SCHOLAR] OK q='{query[:60]}' ({len(papers)} papers via Mistral, md={md_size}B)"
+    )
     return batch
 
 
@@ -584,7 +790,9 @@ __all__ = [
     "SCHOLAR_CB_OPEN_KEY",
     "SCHOLAR_CB_THRESHOLD",
     "SCHOLAR_HTTP_TIMEOUT",
+    "SCHOLAR_MARKDOWN_MAX_CHARS",
     "SCHOLAR_MIN_HTML_BYTES",
+    "SCHOLAR_MIN_MARKDOWN_BYTES",
     "SCHOLAR_RATE_INTERVAL",
     "SCHOLAR_RATE_LOCK_KEY",
     "ScholarBatch",
@@ -597,6 +805,7 @@ __all__ = [
     "init_scholar_redis",
     "is_circuit_open",
     "parse_scholar_html",
+    "parse_scholar_markdown_via_mistral",
     "scholar_paper_to_academic",
     "search_scholar",
 ]
