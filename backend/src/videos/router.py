@@ -4617,6 +4617,7 @@ async def create_all_study_materials(
 
 from .intelligent_discovery import (
     IntelligentDiscoveryService,
+    RedditSearcher,
     TikTokSearcher,
     generate_text_video_id,
     validate_raw_text,
@@ -4731,13 +4732,19 @@ def _build_tiktok_url(video_id: str, channel_id: str) -> str:
     return f"https://www.tiktok.com/video/{video_id}"
 
 
+def _build_reddit_url(video_id: str, subreddit: str) -> str:
+    if subreddit:
+        return f"https://www.reddit.com/r/{subreddit}/comments/{video_id}"
+    return f"https://redd.it/{video_id}"
+
+
 @router.post("/discover/search")
 async def discover_search_videos(
     query: str = Query(..., description="Requête de recherche"),
     languages: str = Query("fr,en", description="Langues séparées par virgule"),
     limit: int = Query(15, ge=1, le=50, description="Nombre max de résultats"),
     sort_by: str = Query("quality", description="Tri: quality, views, date, academic"),
-    platform: str = Query("youtube", regex="^(youtube|tiktok)$", description="youtube | tiktok"),
+    platform: str = Query("youtube", regex="^(youtube|tiktok|reddit)$", description="youtube | tiktok"),
     current_user: User = Depends(get_current_user),
 ):
     """
@@ -4785,6 +4792,41 @@ async def discover_search_videos(
                 "total": len(videos),
                 "query": query,
                 "platform": "tiktok",
+            }
+
+        if platform == "reddit":
+            candidates = await asyncio.wait_for(
+                RedditSearcher.search(query, max_results=limit),
+                timeout=15.0,
+            )
+            videos = [
+                {
+                    "video_id": c.video_id,
+                    "title": c.title,
+                    "channel": c.channel,
+                    "thumbnail_url": c.thumbnail_url,
+                    "duration": c.duration,
+                    "view_count": c.view_count,
+                    "quality_score": 0,
+                    "tournesol_score": 0,
+                    "published_at": c.published_at.isoformat() if c.published_at else None,
+                    "is_tournesol_pick": False,
+                    "platform": "reddit",
+                    "video_url": _build_reddit_url(c.video_id, c.channel_id),
+                }
+                for c in candidates
+            ]
+            if sort_by == "date":
+                videos.sort(key=lambda v: v["published_at"] or "", reverse=True)
+            else:
+                videos.sort(key=lambda v: v["view_count"], reverse=True)
+            videos = videos[:limit]
+            logger.info(f"✅ [DISCOVER/SEARCH] Returning {len(videos)} Reddit posts")
+            return {
+                "videos": videos,
+                "total": len(videos),
+                "query": query,
+                "platform": "reddit",
             }
 
         lang_list = [l.strip() for l in languages.split(",")]

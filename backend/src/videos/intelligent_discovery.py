@@ -618,6 +618,151 @@ class TikTokSearcher:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# 👽 REDDIT SEARCH VIA OAUTH
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+REDDIT_CLIENT_ID = os.getenv("REDDIT_CLIENT_ID", "")
+REDDIT_CLIENT_SECRET = os.getenv("REDDIT_CLIENT_SECRET", "")
+REDDIT_USER_AGENT = "DeepSight/1.0 (by /u/deepsight)"
+
+
+class RedditSearcher:
+    """Recherche Reddit via OAuth client_credentials (app-only).
+
+    Reddit a fermé l'accès public en 2023. Toute requête doit passer par OAuth.
+    Le grant `client_credentials` (alias "installed app") nous donne 60 req/min.
+
+    Setup : créer une app `script` sur reddit.com/prefs/apps, puis exposer
+    REDDIT_CLIENT_ID + REDDIT_CLIENT_SECRET côté backend.
+    """
+
+    OAUTH_URL = "https://www.reddit.com/api/v1/access_token"
+    SEARCH_URL = "https://oauth.reddit.com/search"
+    SEARCH_TIMEOUT = 10.0
+
+    _token: Optional[str] = None
+    _token_expires_at: float = 0.0
+
+    @classmethod
+    async def _get_token(cls) -> Optional[str]:
+        """Récupère / refresh le bearer token (cache en mémoire, TTL ~50min)."""
+        import time as _time
+
+        if cls._token and _time.time() < cls._token_expires_at:
+            return cls._token
+        if not REDDIT_CLIENT_ID or not REDDIT_CLIENT_SECRET:
+            logger.warning("Reddit: REDDIT_CLIENT_ID / REDDIT_CLIENT_SECRET not set")
+            return None
+        try:
+            async with shared_http_client() as client:
+                resp = await client.post(
+                    cls.OAUTH_URL,
+                    auth=(REDDIT_CLIENT_ID, REDDIT_CLIENT_SECRET),
+                    data={"grant_type": "client_credentials"},
+                    headers={"User-Agent": REDDIT_USER_AGENT},
+                    timeout=cls.SEARCH_TIMEOUT,
+                )
+            if resp.status_code != 200:
+                logger.error(f"Reddit token HTTP {resp.status_code}: {resp.text[:200]}")
+                return None
+            data = resp.json()
+            cls._token = data.get("access_token")
+            # TTL 3600s, on cache 3000s pour safety
+            cls._token_expires_at = _time.time() + min(int(data.get("expires_in", 3600)) - 600, 3000)
+            return cls._token
+        except Exception as e:
+            logger.error(f"Reddit token error: {e}")
+            return None
+
+    @classmethod
+    async def search(cls, query: str, max_results: int = 20) -> List[VideoCandidate]:
+        if not query or not query.strip():
+            return []
+        token = await cls._get_token()
+        if not token:
+            return []
+        try:
+            async with shared_http_client() as client:
+                resp = await client.get(
+                    cls.SEARCH_URL,
+                    params={
+                        "q": query,
+                        "type": "link",
+                        "limit": min(max_results, 25),
+                        "sort": "relevance",
+                        "restrict_sr": "false",
+                    },
+                    headers={
+                        "Authorization": f"Bearer {token}",
+                        "User-Agent": REDDIT_USER_AGENT,
+                    },
+                    timeout=cls.SEARCH_TIMEOUT,
+                )
+            if resp.status_code != 200:
+                logger.warning(f"Reddit search HTTP {resp.status_code}")
+                return []
+            payload = resp.json()
+            children = payload.get("data", {}).get("children", []) or []
+            logger.info(f"👽 Reddit found {len(children)} posts for '{query}'")
+            candidates = [c for c in (cls._parse_post(ch.get("data") or {}) for ch in children) if c is not None]
+            return candidates
+        except Exception as e:
+            logger.error(f"Reddit search error: {e}")
+            return []
+
+    @staticmethod
+    def _parse_post(raw):
+        """Parse un post Reddit en VideoCandidate. Skip si ni image ni vidéo."""
+        try:
+            post_id = raw.get("id")
+            if not post_id:
+                return None
+            # Skip self-posts (text-only)
+            if raw.get("is_self"):
+                return None
+            url = raw.get("url_overridden_by_dest") or raw.get("url") or ""
+            # Build canonical Reddit permalink for analysis
+            permalink = raw.get("permalink") or ""
+            full_url = f"https://www.reddit.com{permalink}" if permalink else url
+            thumbnail = raw.get("thumbnail") or ""
+            if not thumbnail or thumbnail in ("self", "default", "nsfw", "spoiler", ""):
+                # Try preview image
+                preview = (raw.get("preview") or {}).get("images") or []
+                if preview:
+                    src = (preview[0].get("source") or {}).get("url") or ""
+                    thumbnail = src.replace("&amp;", "&")
+            if not thumbnail:
+                return None  # No visual content → skip
+            created_utc = raw.get("created_utc", 0) or 0
+            try:
+                published_at = datetime.fromtimestamp(int(created_utc)) if created_utc else datetime.now()
+            except (ValueError, OSError, OverflowError):
+                published_at = datetime.now()
+            # Duration for Reddit videos
+            duration = 0
+            media = raw.get("secure_media") or raw.get("media") or {}
+            if media:
+                reddit_video = media.get("reddit_video") or {}
+                duration = int(reddit_video.get("duration") or 0)
+            return VideoCandidate(
+                video_id=str(post_id),
+                title=(raw.get("title") or "")[:200] or "Reddit post",
+                channel=f"r/{raw.get('subreddit') or 'reddit'}",
+                channel_id=str(raw.get("subreddit") or ""),
+                description=(raw.get("selftext") or "")[:500],
+                thumbnail_url=thumbnail,
+                duration=duration,
+                view_count=int(raw.get("score") or 0),  # Reddit n'a pas de view_count → score
+                like_count=int(raw.get("ups") or 0),
+                published_at=published_at,
+            )
+        except Exception as e:
+            logger.error(f"Error parsing Reddit post: {e}")
+            return None
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # 📊 QUALITY SCORER
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -1590,16 +1735,25 @@ class IntelligentDiscoveryService:
 
         logger.info(f"📊 Found {len(all_candidates)} unique candidates (multilingual)")
 
-        # 3. Scoring des candidats
-        scored_candidates = []
+        # 3. Scoring des candidats — parallèle avec semaphore (cap 20 concurrent)
+        # Avant : boucle séquentielle 60×~0.3s Tournesol API = ~18s (le bottleneck)
+        # Après : asyncio.gather → ~1-2s. Tournesol API tient bien 20 concurrent.
+        SCORING_SEM = asyncio.Semaphore(20)
 
-        for candidate in all_candidates.values():
-            try:
-                scored = await QualityScorer.score_candidate(candidate, query, target_duration)
-                if scored.final_score >= min_quality:
-                    scored_candidates.append(scored)
-            except Exception as e:
-                logger.error(f"Scoring error for {candidate.video_id}: {e}")
+        async def _score_with_sem(cand: VideoCandidate):
+            async with SCORING_SEM:
+                try:
+                    return await QualityScorer.score_candidate(cand, query, target_duration)
+                except Exception as e:
+                    logger.error(f"Scoring error for {cand.video_id}: {e}")
+                    return None
+
+        scoring_results = await asyncio.gather(
+            *(_score_with_sem(c) for c in all_candidates.values())
+        )
+        scored_candidates = [
+            s for s in scoring_results if s is not None and s.final_score >= min_quality
+        ]
 
         # 4. Tri par score final et diversification
         scored_candidates.sort(key=lambda x: x.final_score, reverse=True)
