@@ -17,6 +17,7 @@
 """
 
 import asyncio
+import json
 import logging
 import re
 import subprocess
@@ -26,6 +27,7 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
+from urllib.parse import urlparse
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -590,6 +592,126 @@ async def _download_tiktok_video_via_ytdlp(url: str, *, log_tag: str, timeout_s:
     except Exception as e:
         logger.warning("[%s] yt-dlp TikTok download raised: %s", log_tag, e)
     return None
+
+
+_TIKTOK_PLAYADDR_REGEX = re.compile(r'"playAddr":"(https?:(?:\\u002F|\\/|/)[^"]+)"', re.IGNORECASE)
+_TIKTOK_UNIVERSAL_DATA_MARKER = '__UNIVERSAL_DATA_FOR_REHYDRATION__" type="application/json">'
+
+
+def _unescape_tiktok_url(raw: str) -> str:
+    """Décode les escapes JSON courants dans une URL TikTok extraite du HTML.
+
+    TikTok rend ses URLs MP4 via deux schémas d'échappement :
+    - `\\u002F` → `/` (encoding JSON Unicode escape, utilisé dans HTML embedded JSON)
+    - `\\/` → `/` (encoding JSON slash escape, utilisé dans certaines variantes)
+    - `\\u0026` → `&` (ampersand, utile pour query strings)
+    """
+    return (
+        raw.replace("\\u002F", "/")
+        .replace("\\u002f", "/")
+        .replace("\\/", "/")
+        .replace("\\u0026", "&")
+        .replace("\\u0026amp;", "&")
+    )
+
+
+def _parse_tiktok_video_url_from_html(html: str) -> Optional[str]:
+    """Extrait l'URL MP4 depuis le HTML TikTok rendu via Decodo Premium+JS.
+
+    Stratégie 1 : regex sur `"playAddr":"..."` (rapide, fonctionne sur HTML brut).
+    Stratégie 2 (fallback robuste) : parse JSON-LD `__UNIVERSAL_DATA_FOR_REHYDRATION__`
+    → `__DEFAULT_SCOPE__.webapp.video-detail.itemInfo.itemStruct.video.playAddr`.
+
+    Retourne None si HTML trop court (< 5000 chars), playAddr manquante, ou JSON invalide.
+    """
+    if not html or len(html) < 5000:
+        return None
+
+    # Stratégie 1 : regex directe (rapide path)
+    m = _TIKTOK_PLAYADDR_REGEX.search(html)
+    if m:
+        return _unescape_tiktok_url(m.group(1))
+
+    # Stratégie 2 : parse JSON-LD complet (robuste path)
+    try:
+        idx = html.find(_TIKTOK_UNIVERSAL_DATA_MARKER)
+        if idx < 0:
+            return None
+        json_start = idx + len(_TIKTOK_UNIVERSAL_DATA_MARKER)
+        json_end = html.find("</script>", json_start)
+        if json_end <= json_start:
+            return None
+        data = json.loads(html[json_start:json_end])
+        item = (
+            data.get("__DEFAULT_SCOPE__", {}).get("webapp.video-detail", {}).get("itemInfo", {}).get("itemStruct", {})
+        )
+        play_addr = item.get("video", {}).get("playAddr")
+        if play_addr and isinstance(play_addr, str):
+            return play_addr
+    except (json.JSONDecodeError, KeyError, AttributeError, TypeError):
+        return None
+    return None
+
+
+async def _decodo_scrape_tiktok_page(video_id: str, username: str, *, log_tag: str) -> Optional[bytes]:
+    """Tentative 3 (Decodo Scraping API) — scrape TikTok page → parse playAddr → download MP4.
+
+    Workflow :
+    1. POST Decodo Web Scraping API sur `https://www.tiktok.com/@{username}/video/{video_id}`
+       avec Premium+JS pool pour bypass anti-bot.
+    2. Parse le HTML rendu via `_parse_tiktok_video_url_from_html`.
+    3. Download le MP4 direct via `get_proxied_client` (Residential proxy car CDN TikTok
+       geo-restrict — PAS via Decodo Scraping pour économiser le quota Premium+JS).
+
+    Retourne les bytes MP4 ou None en cas d'échec (à tout étage). Le caller décide.
+    """
+    url = f"https://www.tiktok.com/@{username}/video/{video_id}"
+    try:
+        from decodo import DecodoScrapingClient
+    except Exception as e:
+        logger.warning("[%s] decodo import failed: %s", log_tag, e)
+        return None
+
+    try:
+        client = DecodoScrapingClient()
+        result = await client.scrape(
+            url,
+            proxy_pool="premium",
+            headless=True,
+            output_format="raw_html",
+        )
+    except Exception as e:
+        logger.warning("[%s] decodo_tiktok_page scrape failed: %s", log_tag, e)
+        return None
+
+    if not result or not result.content:
+        logger.warning("[%s] decodo_tiktok_page empty content", log_tag)
+        return None
+
+    play_url = _parse_tiktok_video_url_from_html(result.content)
+    if not play_url:
+        logger.warning("[%s] decodo_tiktok_page: no playAddr in HTML", log_tag)
+        return None
+
+    # Download MP4 direct via Residential (PAS via Decodo Scraping — économise quota)
+    try:
+        async with get_proxied_client(
+            timeout=_TIKWM_DOWNLOAD_TIMEOUT_S,
+            follow_redirects=True,
+            headers={"Referer": "https://www.tiktok.com/"},
+        ) as http:
+            r = await http.get(play_url)
+            await record_proxied_response(r, provider="decodo_tiktok_mp4")
+        if r.status_code != 200:
+            logger.warning("[%s] decodo_tiktok_page mp4 CDN HTTP %d", log_tag, r.status_code)
+            return None
+        if len(r.content) < 1000:
+            logger.warning("[%s] decodo_tiktok_page mp4 too small (%d bytes)", log_tag, len(r.content))
+            return None
+        return r.content
+    except Exception as e:
+        logger.warning("[%s] decodo_tiktok_page mp4 download failed: %s", log_tag, e)
+        return None
 
 
 async def _extract_tiktok_visual_frames(
