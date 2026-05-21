@@ -60,7 +60,7 @@ async def pro_endpoint(user: User = Depends(require_plan("pro"))):
 |---|---|---|
 | Access token TTL | **60 min** | `ACCESS_TOKEN_TTL_MIN` |
 | Refresh token TTL | **30 jours** | `REFRESH_TOKEN_TTL_DAYS` |
-| Lib JWT | `python-jose[cryptography]` | (pyjwt migration différée V2 — CVE-2024-33664/33663 à surveiller) |
+| Lib JWT | `PyJWT[crypto]` (Wave 1 Step 5, 2026-05-21 — migrée depuis python-jose pour CVE-2024-33664 + CVE-2024-33663) | — |
 | Blocklist | Redis `auth:blocklist:{sha256(token)[:32]}` avec TTL=exp | `REDIS_URL` (fallback in-RAM si absent) |
 
 Avant Sprint C : 7 j / 365 j + blocklist in-RAM (perdue à chaque `docker run`).

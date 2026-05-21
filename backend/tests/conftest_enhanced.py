@@ -12,7 +12,9 @@ import json
 from typing import AsyncGenerator, Dict, Any, Optional
 from unittest.mock import MagicMock, AsyncMock, patch
 from datetime import datetime, timedelta
-from jose import jwt
+
+# Wave 1 Step 5 (2026-05-21) — Migration python-jose → PyJWT[crypto].
+import jwt
 
 # Importer depuis conftest existant
 from conftest import (

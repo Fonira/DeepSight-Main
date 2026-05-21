@@ -19,6 +19,7 @@
 """
 
 import hashlib
+import json
 import os
 import re
 import secrets
@@ -26,7 +27,21 @@ import uuid
 import httpx
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Tuple
-from jose import jwt, JWTError
+
+# Wave 1 Step 5 (2026-05-21) — Migration python-jose → PyJWT[crypto].
+# Motivation : CVE-2024-33664 (DoS via decode) + CVE-2024-33663 (algorithm
+# confusion) sur python-jose, non-patched upstream. PyJWT est la lib JWT
+# Python de référence, activement maintenue + audit régulier.
+#
+# Compat layer : `JWTError` est aliasé sur `PyJWTError` pour garder les
+# `except JWTError as e` existants. PyJWT.encode/decode ont une API
+# quasi-identique (mêmes kwargs `algorithm`/`algorithms`/`audience`/`issuer`).
+# Différence notable côté Apple Sign-in : pas de `jwk.construct(dict)` —
+# on utilise `jwt.algorithms.RSAAlgorithm.from_jwk(json.dumps(dict))` qui
+# retourne directement une RSAPublicKey passable comme `key` à `jwt.decode`.
+import jwt
+from jwt.exceptions import PyJWTError as JWTError
+from jwt.algorithms import RSAAlgorithm
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -887,20 +902,32 @@ async def verify_apple_id_token(id_token_str: str, client_platform: str = "web")
         log.warning("Apple id_token header missing 'kid'")
         return None
 
-    matching_key = next((k for k in jwks["keys"] if k.get("kid") == kid), None)
-    if not matching_key:
+    matching_jwk = next((k for k in jwks["keys"] if k.get("kid") == kid), None)
+    if not matching_jwk:
         log.warning(f"Apple id_token: no JWK matches kid={kid}")
         # Force-refresh cache au cas ou Apple a tourne ses cles
         _APPLE_JWKS_CACHE.pop("jwks", None)
         return None
 
-    # Try each allowed audience (jose.decode prend une seule audience a la fois)
+    # Wave 1 Step 5 — Migration jose → PyJWT.
+    # jose acceptait un dict JWK direct comme `key`. PyJWT veut une clé
+    # cryptographic object → on construit la RSAPublicKey explicitement
+    # via `RSAAlgorithm.from_jwk(json_str)`. Échec ici = JWK Apple corrompu
+    # ou format inattendu → on log + return None (équivalent au comportement
+    # jose qui levait JWTError plus bas dans le decode).
+    try:
+        public_key = RSAAlgorithm.from_jwk(json.dumps(matching_jwk))
+    except (ValueError, TypeError, JWTError) as e:
+        log.warning(f"Apple id_token: cannot construct RSA key from JWK: {e}")
+        return None
+
+    # Try each allowed audience (jwt.decode prend une seule audience a la fois)
     last_error: Optional[Exception] = None
     for audience in allowed_audiences:
         try:
             claims = jwt.decode(
                 id_token_str,
-                matching_key,
+                public_key,
                 algorithms=["RS256"],
                 audience=audience,
                 issuer=APPLE_ISSUER,
