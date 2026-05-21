@@ -4620,6 +4620,7 @@ from .intelligent_discovery import (
     RedditSearcher,
     TikTokSearcher,
     generate_text_video_id,
+    tiktok_engagement_score,
     validate_raw_text,
 )
 from .schemas import (
@@ -4764,6 +4765,15 @@ async def discover_search_videos(
                 TikTokSearcher.search(query, max_results=limit),
                 timeout=15.0,
             )
+            scored = [(c, tiktok_engagement_score(c)) for c in candidates]
+            if sort_by == "date":
+                scored.sort(
+                    key=lambda x: x[0].published_at or datetime.min, reverse=True
+                )
+            elif sort_by == "views":
+                scored.sort(key=lambda x: x[0].view_count, reverse=True)
+            else:
+                scored.sort(key=lambda x: x[1], reverse=True)
             videos = [
                 {
                     "video_id": c.video_id,
@@ -4772,19 +4782,18 @@ async def discover_search_videos(
                     "thumbnail_url": c.thumbnail_url,
                     "duration": c.duration,
                     "view_count": c.view_count,
-                    "quality_score": 0,
+                    "like_count": c.like_count,
+                    "comment_count": c.comment_count,
+                    "share_count": c.share_count,
+                    "quality_score": round(score * 100),
                     "tournesol_score": 0,
                     "published_at": c.published_at.isoformat() if c.published_at else None,
                     "is_tournesol_pick": False,
                     "platform": "tiktok",
                     "video_url": _build_tiktok_url(c.video_id, c.channel_id),
                 }
-                for c in candidates
+                for c, score in scored
             ]
-            if sort_by == "date":
-                videos.sort(key=lambda v: v["published_at"] or "", reverse=True)
-            else:
-                videos.sort(key=lambda v: v["view_count"], reverse=True)
             videos = videos[:limit]
             logger.info(f"✅ [DISCOVER/SEARCH] Returning {len(videos)} TikTok videos")
             return {

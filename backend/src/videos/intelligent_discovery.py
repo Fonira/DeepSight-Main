@@ -123,6 +123,8 @@ class VideoCandidate:
     view_count: int
     channel_id: str = ""  # 🔧 Optionnel avec valeur par défaut
     like_count: int = 0
+    comment_count: int = 0
+    share_count: int = 0
     published_at: datetime = field(default_factory=datetime.now)
 
     # Scores calculés
@@ -610,11 +612,51 @@ class TikTokSearcher:
                 duration=int(raw.get("duration") or 0),
                 view_count=int(raw.get("play_count") or 0),
                 like_count=int(raw.get("digg_count") or 0),
+                comment_count=int(raw.get("comment_count") or 0),
+                share_count=int(raw.get("share_count") or 0),
                 published_at=published_at,
             )
         except Exception as e:
             logger.error(f"Error parsing tikwm result: {e}")
             return None
+
+
+def tiktok_engagement_score(c: VideoCandidate, now: Optional[datetime] = None) -> float:
+    """Score [0..1] mimicking TikTok's relevance ranking.
+
+    Pondération : vues (log normalisé) + ratios likes/comments/shares + fraîcheur.
+    Les ratios pénalisent les vidéos virales en vues mais sans interaction réelle,
+    et favorisent les vidéos avec un engagement profond (comments, shares).
+    """
+    now = now or datetime.now()
+    views = max(c.view_count, 0)
+    if views == 0:
+        return 0.0
+
+    # Vues normalisées en log10 (cap à 1M vues = 1.0)
+    view_score = min(math.log10(views + 1) / 6.0, 1.0)
+
+    # Ratios d'engagement (cap à 1.0)
+    like_ratio = min((c.like_count / views) * 10, 1.0) if c.like_count else 0.0
+    comment_ratio = min((c.comment_count / views) * 100, 1.0) if c.comment_count else 0.0
+    share_ratio = min((c.share_count / views) * 50, 1.0) if c.share_count else 0.0
+
+    # Fraîcheur : 1.0 si <7j, decay linéaire jusqu'à 0 à 90j
+    age_days = max((now - c.published_at).days, 0) if c.published_at else 90
+    if age_days <= 7:
+        freshness = 1.0
+    elif age_days >= 90:
+        freshness = 0.0
+    else:
+        freshness = 1.0 - (age_days - 7) / 83.0
+
+    return (
+        view_score * 0.30
+        + like_ratio * 0.25
+        + comment_ratio * 0.20
+        + share_ratio * 0.15
+        + freshness * 0.10
+    )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
