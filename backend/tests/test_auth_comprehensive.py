@@ -19,7 +19,10 @@ Total: 45 tests
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timedelta
-from jose import jwt, JWTError
+
+# Wave 1 Step 5 (2026-05-21) — Migration python-jose → PyJWT[crypto].
+import jwt
+from jwt.exceptions import PyJWTError as JWTError
 from fastapi import HTTPException
 
 from conftest_enhanced import (
