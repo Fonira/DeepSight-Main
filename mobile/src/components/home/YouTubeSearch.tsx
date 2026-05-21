@@ -31,7 +31,11 @@ interface VideoResult {
   tournesol_score: number;
   published_at: string | null;
   is_tournesol_pick: boolean;
+  platform?: "youtube" | "tiktok";
+  video_url?: string;
 }
+
+type SearchPlatform = "youtube" | "tiktok";
 
 interface YouTubeSearchProps {
   onOptionsPress: () => void;
@@ -66,6 +70,7 @@ export const YouTubeSearch: React.FC<YouTubeSearchProps> = ({
   const [analyzingId, setAnalyzingId] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [platform, setPlatform] = useState<SearchPlatform>("youtube");
 
   const handleSearch = useCallback(async () => {
     const trimmed = query.trim();
@@ -77,14 +82,17 @@ export const YouTubeSearch: React.FC<YouTubeSearchProps> = ({
     setError(null);
     setHasSearched(true);
 
+    const platformLabel = platform === "tiktok" ? "TikTok" : "YouTube";
+
     try {
       const response = await videoApi.discoverSearch(trimmed, {
         limit: 20,
         language: options.language || "fr,en",
         sort_by: "quality",
+        platform,
       });
       if (response.timeout) {
-        setError("Recherche YouTube indisponible — réessaie dans un instant.");
+        setError(`Recherche ${platformLabel} indisponible — réessaie dans un instant.`);
         setResults([]);
       } else {
         setResults(response.videos || []);
@@ -96,7 +104,7 @@ export const YouTubeSearch: React.FC<YouTubeSearchProps> = ({
           err.message.toLowerCase().includes("timeout") ||
           err.message.toLowerCase().includes("abort")
         ) {
-          message = "Recherche trop lente — réessaie dans un instant.";
+          message = `Recherche ${platformLabel} trop lente — réessaie dans un instant.`;
         } else {
           message = err.message;
         }
@@ -106,7 +114,18 @@ export const YouTubeSearch: React.FC<YouTubeSearchProps> = ({
     } finally {
       setIsSearching(false);
     }
-  }, [query, isSearching, options.language]);
+  }, [query, isSearching, options.language, platform]);
+
+  const handleSwitchPlatform = useCallback((next: SearchPlatform) => {
+    setPlatform((current) => {
+      if (current === next) return current;
+      Haptics.selectionAsync();
+      setResults([]);
+      setHasSearched(false);
+      setError(null);
+      return next;
+    });
+  }, []);
 
   const handleAnalyze = useCallback(
     async (video: VideoResult) => {
@@ -117,7 +136,9 @@ export const YouTubeSearch: React.FC<YouTubeSearchProps> = ({
       setError(null);
 
       try {
-        const videoUrl = `https://www.youtube.com/watch?v=${video.video_id}`;
+        const videoUrl =
+          video.video_url ||
+          `https://www.youtube.com/watch?v=${video.video_id}`;
         const response = await videoApi.analyze({
           url: videoUrl,
           mode: options.mode,
@@ -250,6 +271,64 @@ export const YouTubeSearch: React.FC<YouTubeSearchProps> = ({
 
   return (
     <View style={styles.wrapper}>
+      {/* Platform toggle */}
+      <View
+        style={[
+          styles.platformToggle,
+          { backgroundColor: colors.glassBg, borderColor: colors.glassBorder },
+        ]}
+        accessibilityRole="tablist"
+      >
+        <Pressable
+          onPress={() => handleSwitchPlatform("youtube")}
+          style={[
+            styles.platformOption,
+            platform === "youtube" && { backgroundColor: palette.indigo },
+          ]}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: platform === "youtube" }}
+          accessibilityLabel="Rechercher sur YouTube"
+        >
+          <Ionicons
+            name="logo-youtube"
+            size={16}
+            color={platform === "youtube" ? "#ffffff" : colors.textSecondary}
+          />
+          <Text
+            style={[
+              styles.platformLabel,
+              { color: platform === "youtube" ? "#ffffff" : colors.textSecondary },
+            ]}
+          >
+            YouTube
+          </Text>
+        </Pressable>
+        <Pressable
+          onPress={() => handleSwitchPlatform("tiktok")}
+          style={[
+            styles.platformOption,
+            platform === "tiktok" && { backgroundColor: palette.indigo },
+          ]}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: platform === "tiktok" }}
+          accessibilityLabel="Rechercher sur TikTok"
+        >
+          <Ionicons
+            name="musical-notes"
+            size={16}
+            color={platform === "tiktok" ? "#ffffff" : colors.textSecondary}
+          />
+          <Text
+            style={[
+              styles.platformLabel,
+              { color: platform === "tiktok" ? "#ffffff" : colors.textSecondary },
+            ]}
+          >
+            TikTok
+          </Text>
+        </Pressable>
+      </View>
+
       {/* Search bar */}
       <View
         style={[
@@ -269,7 +348,11 @@ export const YouTubeSearch: React.FC<YouTubeSearchProps> = ({
         <TextInput
           ref={inputRef}
           style={[styles.searchInput, { color: colors.textPrimary }]}
-          placeholder="Rechercher une vidéo YouTube / TikTok..."
+          placeholder={
+            platform === "tiktok"
+              ? "Rechercher une vidéo TikTok..."
+              : "Rechercher une vidéo YouTube..."
+          }
           placeholderTextColor={colors.textMuted}
           value={query}
           onChangeText={(text) => {
@@ -394,6 +477,27 @@ export const YouTubeSearch: React.FC<YouTubeSearchProps> = ({
 const styles = StyleSheet.create({
   wrapper: {
     marginBottom: sp.md,
+  },
+  platformToggle: {
+    flexDirection: "row",
+    alignSelf: "flex-start",
+    padding: 4,
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+    marginBottom: sp.sm,
+    gap: 4,
+  },
+  platformOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: sp.md,
+    paddingVertical: sp.xs,
+    borderRadius: borderRadius.full,
+  },
+  platformLabel: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: fontSize.sm,
   },
   searchContainer: {
     flexDirection: "row",
