@@ -226,6 +226,69 @@ class DeleteAccountRequest(BaseModel):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# 🔐 AUTH V2 — Sessions multi-device + Re-auth scopé (Wave 1 Step 3, 2026-05-21)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Audiences supportées pour le re-auth scopé. Une audience par action sensible :
+# - billing  → POST /api/billing/* (write paths : checkout, change-plan, cancel…)
+# - delete   → DELETE /api/auth/account
+# - change-email → POST /api/auth/change-email (futur)
+# - change-password → POST /api/auth/change-password
+ReauthAudience = Literal["billing", "delete", "change-email", "change-password"]
+
+
+class ReauthRequest(BaseModel):
+    """Schéma pour demander un reauth_token scopé.
+
+    Le client envoie son mot de passe + l'audience cible (la prochaine action
+    sensible qu'il veut faire). Le serveur vérifie le mot de passe puis émet
+    un JWT court (5 min, scope=reauth, aud=audience) qui débloque l'endpoint
+    correspondant via `Depends(require_recent_reauth(audience))`.
+
+    Spec : 2026-05-21-auth-v2-complet-design.md §4.6.
+    """
+
+    password: str = Field(..., min_length=1, description="Mot de passe actuel de l'utilisateur")
+    audience: ReauthAudience = Field(..., description="Endpoint cible scopé (billing, delete, change-email, change-password)")
+
+
+class ReauthResponse(BaseModel):
+    """Réponse à POST /api/auth/reauth.
+
+    Le client doit re-fournir le `reauth_token` dans le header
+    `X-Reauth-Token: <jwt>` lors de l'appel à l'endpoint sensible. TTL court
+    (5 min) — pas de refresh sur ce token (re-saisir le mot de passe si
+    expiré).
+    """
+
+    reauth_token: str = Field(..., description="JWT court (5 min) avec scope=reauth + aud=audience")
+    expires_in: int = Field(..., description="TTL restant en secondes (typiquement 300)")
+
+
+class UserSessionResponse(BaseModel):
+    """Représentation publique d'une UserSession pour la page « Appareils actifs ».
+
+    Toutes les valeurs sensibles (refresh_token_hash, ip_hash brut, etc.) sont
+    omises ou anonymisées avant exposition. Le frontend affiche `device_label`
+    + `last_seen_at` + `current` pour permettre à l'utilisateur de révoquer un
+    appareil suspect.
+
+    Spec : 2026-05-21-auth-v2-complet-design.md §4.4.
+    """
+
+    id: str = Field(..., description="UUID String(36) de la session — utilisé pour DELETE /sessions/{id}")
+    device_label: Optional[str] = Field(None, description="Label parsé du user-agent (ex: 'Chrome on macOS')")
+    ip_hash: Optional[str] = Field(None, description="SHA-256(ip + salt) tronqué 16 chars — pas l'IP brute")
+    user_agent: Optional[str] = Field(None, description="User-Agent brut (debug uniquement, peut être très long)")
+    last_seen_at: datetime = Field(..., description="Dernière activité observée sur cette session")
+    created_at: datetime = Field(..., description="Date d'émission initiale (alias de issued_at)")
+    current: bool = Field(False, description="True si c'est la session associée au JWT courant")
+
+    class Config:
+        from_attributes = True
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # 📤 RÉPONSES (Output)
 # ═══════════════════════════════════════════════════════════════════════════════
 
