@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import RedirectResponse
-from jose import jwt
+import jwt  # PyJWT (Wave 1 Step 5 migration from python-jose, CVE-2024-33664/33663)
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 

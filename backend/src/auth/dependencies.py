@@ -16,7 +16,8 @@ from typing import Callable, Optional
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer, HTTPBearer, HTTPAuthorizationCredentials
-from jose import ExpiredSignatureError, JWTError, jwt
+import jwt  # PyJWT (Wave 1 Step 5 migration from python-jose, CVE-2024-33664/33663)
+from jwt.exceptions import ExpiredSignatureError, PyJWTError as JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import core.config as _core_config
