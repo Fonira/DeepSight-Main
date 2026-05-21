@@ -70,6 +70,39 @@ Pour vérifier : `await is_token_blacklisted(token)` — fail-open + audit log
 
 Cf. audit complet : `01-Projects/DeepSight/Sessions/2026-05-21-audit-auth-sprint-c.md`.
 
+### Audit logs auth.* — observability sécurité (Wave 1 Step 6, 2026-05-21)
+
+Les fonctions Auth V2 dans `auth/service.py` + endpoint `/api/auth/reauth`
+écrivent dans `audit_logs` pour traçabilité RGPD (Article 30) + détection
+brute-force/replay. Toutes les écritures suivent le **pattern fail-silent**
+du helper `services.audit_log.log_audit` — une exception audit ne casse JAMAIS
+le flow auth (worst case = entry manquante, surfaced via Sentry).
+
+| Action | Émetteur | Détails JSON | Sévérité |
+|---|---|---|---|
+| `auth.session_created` | `create_session_v2` | `{session_id, device_label, stay_signed_in}` | INFO |
+| `auth.refresh_rotated` | `rotate_refresh_session` (succès) | `{session_id, old_session_id}` | INFO |
+| `auth.refresh_replay_detected` | `rotate_refresh_session` (hash mismatch) | `{session_id, old_jti}` | ⚠️ **SECURITY** |
+| `auth.refresh_expired` | `rotate_refresh_session` (revoked/sliding/absolute) | `{session_id, reason}` | INFO |
+| `auth.session_revoked` | `revoke_session_v2` | `{session_id, revoked_by}` | INFO |
+| `auth.reauth_success` | `/api/auth/reauth` (200) | `{audience, expires_in}` | INFO |
+| `auth.reauth_failed_wrong_password` | `/api/auth/reauth` (401) | `{reason, audience}` | ⚠️ **SECURITY** |
+| `session.revoked` | router `/sessions/{id}` / `/sessions` | `{session_id?, scope}` | INFO |
+
+Le helper `log_audit` ne commit pas — c'est le caller (router endpoint) qui
+contrôle la transaction. À l'intérieur des fonctions service `create_session_v2`
+/ `rotate_refresh_session` / `revoke_session_v2`, on délègue le commit au caller
+upstream pour garder l'écriture atomique avec la mutation DB principale.
+
+Querying observability — pour détecter du brute-force :
+
+```sql
+SELECT user_id, count(*) FROM audit_logs
+ WHERE action = 'auth.reauth_failed_wrong_password'
+   AND created_at > now() - interval '5 minutes'
+ GROUP BY user_id HAVING count(*) > 5;
+```
+
 ## Feature gating (SSOT)
 
 ```python

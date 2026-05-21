@@ -975,11 +975,14 @@ async def reauth(
     # Verify password (réutilise verify_password de db.database — supporte
     # bcrypt et legacy SHA256 cf migration auto au login).
     if not current_user.password_hash or not verify_password(data.password, current_user.password_hash):
-        # Audit log "reauth_failed_wrong_password" pour détection de brute-force
-        # (Article 30 RGPD — traçabilité des tentatives de re-authentification).
+        # Audit log SECURITY pour détection de brute-force.
+        # Wave 1 Step 6 (2026-05-21) — action name `auth.reauth_failed_wrong_password`
+        # explicite pour query/alerting facile côté observability (Sentry rule sur
+        # repeated entries pour le même user_id en <5 min).
+        # Article 30 RGPD — traçabilité des tentatives de re-authentification.
         await log_audit(
             session,
-            action="auth.reauth_failed",
+            action="auth.reauth_failed_wrong_password",
             user_id=current_user.id,
             request=request,
             details={"reason": "wrong_password", "audience": data.audience},

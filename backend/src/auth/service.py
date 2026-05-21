@@ -1352,6 +1352,26 @@ async def create_session_v2(
         absolute_expires_at=absolute_expires_at.isoformat(),
     )
 
+    # Wave 1 Step 6 — Audit log RGPD pour observability sécurité (best-effort).
+    # Pattern fail-silent : si log_audit raise, on n'interrompt PAS la création
+    # de session. La perte d'un audit entry est non-fatale (cf services/audit_log.py).
+    try:
+        from services.audit_log import log_audit
+
+        await log_audit(
+            session,
+            action="auth.session_created",
+            user_id=user_id,
+            details={
+                "session_id": session_id,
+                "device_label": device_label,
+                "stay_signed_in": stay_signed_in,
+            },
+            request=request,
+        )
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"audit_log failed: action=auth.session_created error={e}")
+
     return user_session
 
 
@@ -1458,6 +1478,19 @@ async def rotate_refresh_session(
         # (Cas où l'attaquant a le JWT mais pas le hash actualisé suggère que
         # le legitimate user a refresh entre-temps. On bloque par sécurité.)
         old_session.revoked_at = _utcnow()
+        # ⚠️ SECURITY EVENT — replay detection (best-effort audit log)
+        try:
+            from services.audit_log import log_audit
+
+            await log_audit(
+                session,
+                action="auth.refresh_replay_detected",
+                user_id=old_session.user_id,
+                details={"session_id": jti, "old_jti": jti},
+                request=request,
+            )
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"audit_log failed: action=auth.refresh_replay_detected error={e}")
         return None, False, "replay_detected"
 
     # Step 4 : vérifier non-révoquée
@@ -1468,6 +1501,18 @@ async def rotate_refresh_session(
             user_id=old_session.user_id,
             revoked_at=old_session.revoked_at.isoformat(),
         )
+        try:
+            from services.audit_log import log_audit
+
+            await log_audit(
+                session,
+                action="auth.refresh_expired",
+                user_id=old_session.user_id,
+                details={"session_id": jti, "reason": "session_revoked"},
+                request=request,
+            )
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"audit_log failed: action=auth.refresh_expired error={e}")
         return None, False, "session_revoked"
 
     now = _utcnow()
@@ -1479,6 +1524,18 @@ async def rotate_refresh_session(
             session_id=jti,
             user_id=old_session.user_id,
         )
+        try:
+            from services.audit_log import log_audit
+
+            await log_audit(
+                session,
+                action="auth.refresh_expired",
+                user_id=old_session.user_id,
+                details={"session_id": jti, "reason": "sliding_expired"},
+                request=request,
+            )
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"audit_log failed: action=auth.refresh_expired error={e}")
         return None, False, "sliding_expired"
 
     # Step 6 : absolute cap (90j depuis issued_at)
@@ -1488,6 +1545,18 @@ async def rotate_refresh_session(
             session_id=jti,
             user_id=old_session.user_id,
         )
+        try:
+            from services.audit_log import log_audit
+
+            await log_audit(
+                session,
+                action="auth.refresh_expired",
+                user_id=old_session.user_id,
+                details={"session_id": jti, "reason": "absolute_expired"},
+                request=request,
+            )
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"audit_log failed: action=auth.refresh_expired error={e}")
         return None, False, "absolute_expired"
 
     # Step 7 : marquer ancienne session révoquée + sliding défensif
@@ -1533,6 +1602,26 @@ async def rotate_refresh_session(
         user_id=user_id,
         stay_signed_in=stay_signed_in,
     )
+
+    # Wave 1 Step 6 — Audit log RGPD pour rotation réussie (best-effort).
+    # Note : create_session_v2 (step 9 ci-dessus) émet déjà "auth.session_created"
+    # pour la NOUVELLE session — ici on trace explicitement la rotation pour
+    # corréler les deux events (old → new) côté forensics.
+    try:
+        from services.audit_log import log_audit
+
+        await log_audit(
+            session,
+            action="auth.refresh_rotated",
+            user_id=user_id,
+            details={
+                "session_id": new_session.id,
+                "old_session_id": jti,
+            },
+            request=request,
+        )
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"audit_log failed: action=auth.refresh_rotated error={e}")
 
     return new_session, True, "ok"
 
@@ -1590,6 +1679,24 @@ async def revoke_session_v2(
         session_id=session_id,
         user_id=user_id,
     )
+
+    # Wave 1 Step 6 — Audit log RGPD pour révocation (best-effort).
+    # `revoked_by="user"` par défaut ici (= l'owner révoque sa propre session
+    # via /sessions/{id} ou /sessions ou logout). Si dans le futur on ajoute
+    # un flow admin (révocation forcée) ou expired (cron), le caller pourra
+    # appeler log_audit lui-même avec revoked_by="admin"|"expired" en plus.
+    try:
+        from services.audit_log import log_audit
+
+        await log_audit(
+            session,
+            action="auth.session_revoked",
+            user_id=user_id,
+            details={"session_id": session_id, "revoked_by": "user"},
+        )
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"audit_log failed: action=auth.session_revoked error={e}")
+
     return True
 
 
