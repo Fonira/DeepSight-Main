@@ -150,12 +150,18 @@ class DecodoScrapingClient:
                 None, telemetry opens its own ad-hoc session.
         """
         if api_key is None:
-            try:
-                from core.config import settings
+            # Env first (allows test overrides + runtime changes); config constant
+            # fallback (cached at import time — project pattern, no `settings` object).
+            import os
 
-                api_key = getattr(settings, "DECODO_SCRAPING_API_KEY", "") or ""
-            except Exception:
-                api_key = ""
+            api_key = os.environ.get("DECODO_SCRAPING_API_KEY", "") or ""
+            if not api_key:
+                try:
+                    from core.config import DECODO_SCRAPING_API_KEY as _key
+
+                    api_key = _key or ""
+                except ImportError:
+                    pass
         # Normalize: accept "Basic <b64>" or raw "<b64>".
         if api_key and not api_key.lower().startswith("basic "):
             api_key = f"Basic {api_key}"
@@ -474,18 +480,18 @@ class DecodoScrapingClient:
 
 
 def _is_disabled_env() -> bool:
-    """Read DECODO_SCRAPING_DISABLED — settings first, raw env fallback."""
-    try:
-        from core.config import settings
-
-        val = getattr(settings, "DECODO_SCRAPING_DISABLED", None)
-        if val is not None:
-            return _truthy(val)
-    except Exception:
-        pass
+    """Read DECODO_SCRAPING_DISABLED — env first (runtime override), config fallback."""
     import os
 
-    return _truthy(os.environ.get("DECODO_SCRAPING_DISABLED", ""))
+    raw = os.environ.get("DECODO_SCRAPING_DISABLED", "").strip()
+    if raw:
+        return _truthy(raw)
+    try:
+        from core.config import DECODO_SCRAPING_DISABLED as _val
+
+        return _truthy(_val) if _val is not None else False
+    except ImportError:
+        return False
 
 
 def _max_monthly_req() -> int:
@@ -494,20 +500,25 @@ def _max_monthly_req() -> int:
     Returns 0 if not set (= no monthly cap enforced).
     Default in `core/config.py` is 31360 (80% of Premium+JS 39 200/mo).
     """
-    try:
-        from core.config import settings
-
-        val = getattr(settings, "DECODO_SCRAPING_MAX_MONTHLY_REQ", None)
-        if val is not None:
-            try:
-                return int(val)
-            except (TypeError, ValueError):
-                pass
-    except Exception:
-        pass
     import os
 
     raw = os.environ.get("DECODO_SCRAPING_MAX_MONTHLY_REQ", "").strip()
+    if raw:
+        try:
+            return int(raw)
+        except ValueError:
+            pass
+    try:
+        from core.config import DECODO_SCRAPING_MAX_MONTHLY_REQ as _val
+
+        if _val is not None:
+            try:
+                return int(_val)
+            except (TypeError, ValueError):
+                pass
+    except ImportError:
+        pass
+    raw = ""  # ensure fallthrough returns 0
     try:
         return int(raw) if raw else 0
     except ValueError:
