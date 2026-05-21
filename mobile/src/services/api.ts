@@ -919,6 +919,9 @@ export const videoApi = {
       is_tournesol_pick: boolean;
       platform?: "youtube" | "tiktok" | "reddit";
       video_url?: string;
+      like_count?: number;
+      comment_count?: number;
+      share_count?: number;
     }>;
     total: number;
     query: string;
