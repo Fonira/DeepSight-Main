@@ -612,3 +612,80 @@ async def llm_complete_batch(
     )
 
     return output
+
+
+# =============================================================================
+# PUBLIC: mistral_extract_json — structured JSON extraction via Mistral
+# =============================================================================
+
+
+async def mistral_extract_json(
+    *,
+    system_prompt: str,
+    user_prompt: str,
+    schema: Optional[Dict[str, Any]] = None,
+    model: str = "mistral-small-2603",
+    timeout: float = 20.0,
+    max_tokens: int = 4000,
+    temperature: float = 0.1,
+) -> Optional[Dict[str, Any]]:
+    """Extract structured JSON from a free-text input via Mistral.
+
+    Thin wrapper around `llm_complete(json_mode=True)` that returns a parsed
+    Python dict (or None on any failure — parse error / API error / timeout).
+    Used by Scholar markdown extraction (Feature 1.2) and any future call site
+    that needs strict JSON output from an LLM.
+
+    The `schema` parameter is purely informational for now — Mistral's
+    `response_format=json_object` mode does not yet support strict JSON schema
+    enforcement upstream. We embed the schema description in the prompt to
+    nudge the model. The parsed result IS validated downstream by the caller
+    (e.g. Pydantic in `parse_scholar_markdown_via_mistral`).
+
+    Args:
+        system_prompt: Role / persona / output contract for the model.
+        user_prompt: Task description + input to extract from.
+        schema: Optional JSON Schema dict embedded in the prompt as guidance.
+        model: Mistral model (small=fast/cheap, medium=balanced, large=robust).
+        timeout: Per-attempt HTTP timeout in seconds.
+        max_tokens: Output cap (raise for long lists).
+        temperature: Sampling temp (0.0-0.2 recommended for extraction tasks).
+
+    Returns:
+        A parsed dict on success, None on any failure (logged at warning).
+    """
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt},
+    ]
+    try:
+        result = await llm_complete(
+            messages=messages,
+            model=model,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            timeout=timeout,
+            json_mode=True,
+        )
+    except Exception as e:
+        print(f"⚠️ [LLM-JSON] llm_complete raised: {e}", flush=True)
+        return None
+    if result is None or not result.content:
+        return None
+    raw = result.content.strip()
+    # Strip stray code fences in case the model wraps the JSON.
+    if raw.startswith("```"):
+        # Drop the leading fence + optional language tag, and any trailing fence.
+        raw = raw.split("\n", 1)[1] if "\n" in raw else raw.lstrip("`")
+        if raw.rstrip().endswith("```"):
+            raw = raw.rstrip()
+            raw = raw[: raw.rfind("```")]
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError as e:
+        print(f"⚠️ [LLM-JSON] JSON parse failed (model={result.model_used}): {e}", flush=True)
+        return None
+    if not isinstance(parsed, dict):
+        print(f"⚠️ [LLM-JSON] Expected object, got {type(parsed).__name__}", flush=True)
+        return None
+    return parsed
