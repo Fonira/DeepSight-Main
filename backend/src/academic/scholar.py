@@ -554,7 +554,9 @@ async def parse_scholar_markdown_via_mistral(
 
     papers_raw = result.get("papers") if isinstance(result, dict) else None
     if not isinstance(papers_raw, list):
-        logger.warning(f"[SCHOLAR] mistral result missing 'papers' array (keys={list(result.keys()) if isinstance(result, dict) else type(result).__name__})")
+        logger.warning(
+            f"[SCHOLAR] mistral result missing 'papers' array (keys={list(result.keys()) if isinstance(result, dict) else type(result).__name__})"
+        )
         return []
 
     parsed: List[ScholarPaper] = []
@@ -775,9 +777,7 @@ async def search_scholar(
         raw_html_size=md_size,
     )
     await _cache_set(query, batch)
-    logger.info(
-        f"[SCHOLAR] OK q='{query[:60]}' ({len(papers)} papers via Mistral, md={md_size}B)"
-    )
+    logger.info(f"[SCHOLAR] OK q='{query[:60]}' ({len(papers)} papers via Mistral, md={md_size}B)")
     return batch
 
 
