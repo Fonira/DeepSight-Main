@@ -45,6 +45,9 @@ from .frame_extractor import (
     compute_frame_budget,
 )
 
+# Decodo Scraping fallback — Feature 1.3 Phase 1 (2026-05-21). Lazy import the
+# client inside the helper so unrelated callers don't pull httpx/pydantic in.
+
 logger = logging.getLogger(__name__)
 
 
@@ -254,6 +257,224 @@ async def _download_sheet(client: httpx.AsyncClient, url: str, log_tag: str) -> 
         if attempt < HTTPX_RETRIES_PER_SHEET:
             await asyncio.sleep(0.5 * (attempt + 1))
     return None
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🛰️ DECODO SCRAPING FALLBACK — Feature 1.3 Phase 1 (2026-05-21)
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# yt-dlp depuis Hetzner reçoit régulièrement un bot challenge YouTube. Avant
+# Phase 1 le pipeline restait coincé sur `_ytdlp_info_sync` → None et tous les
+# fallbacks downstream (duration_hint inclus, PR #470) ne tombaient pas car
+# `extract_storyboard_frames` n'avait pas d'`info` à parser.
+#
+# Cette section ajoute un 6e fallback : si yt-dlp KO, scraper la watch page via
+# Decodo Premium+JS (Cloudflare/anti-bot bypass), extraire
+# `ytInitialPlayerResponse` JSON, et reconstruire un dict info compatible
+# yt-dlp (duration + title + storyboards reconstruits depuis
+# `playerStoryboardSpecRenderer.spec`).
+#
+# Le test cURL pré-flight a été validé au smoke J0 (2026-05-21) — HTTP 200,
+# 2.2 MB rendered HTML, ytInitialPlayerResponse présent, lengthSeconds OK.
+# Fixture capturée dans `backend/tests/fixtures/youtube/watch_decodo_player_response.json`.
+
+# Regex YouTube-compatible. `ytInitialPlayerResponse` est assigné via
+# `var ytInitialPlayerResponse = {...};` dans le bundle inline. yt-dlp upstream
+# utilise une regex non-greedy équivalente (cf. `extractor/youtube.py`).
+_YT_PLAYER_RESPONSE_REGEX = re.compile(r"ytInitialPlayerResponse\s*=\s*({.+?});", re.DOTALL)
+
+# Storyboard CDN base : YouTube serve les sheets via `i.ytimg.com/sb/<vid>/storyboard3_L$L/$N.jpg`
+# où `$L` = level (résolution storyboard) et `$N` = index du sheet.
+_YT_STORYBOARD_BASE = "https://i.ytimg.com"
+
+# Hard cap on Decodo scrape duration. 45s gives the wrapper room for one retry
+# at 15s + one at 30s without blowing the user-facing analyse timeout.
+_DECODO_YT_TIMEOUT_S = 45.0
+
+
+def _parse_youtube_storyboards(player_response: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Convert ``playerStoryboardSpecRenderer.spec`` → yt-dlp-compatible formats list.
+
+    MVP duration-only acceptable: yt-dlp dedicates ~300 LOC to the full
+    storyboard spec parser. We implement the canonical "level | duration_ms |
+    rows | cols | count" pipe-delimited base format with a best-effort URL
+    template. This is sufficient to feed `select_storyboard_format` and the
+    downstream sheet download loop. If parsing yields nothing usable, the
+    function returns ``[]`` and ``extract_storyboard_frames`` will exit at the
+    "No storyboard format available" guard — but `duration` and `title` will
+    still have been recovered, so the 5e fallback (duration_hint PR #470) can
+    still be exercised by upstream callers in v6/v2.1.
+
+    Spec format observed on dQw4w9WgXcQ::
+
+        https://i.ytimg.com/sb/dQw4w9WgXcQ/storyboard3_L$L/$N.jpg?sqp=...|
+        48#27#100#10#10#0#default#rs$AOn4CL...|
+        80#45#108#10#10#2000#M$M#rs$AOn4CL...|
+        160#90#108#5#5#2000#M$M#rs$AOn4CL...|
+        320#180#56#5#5#2000#M$M#rs$AOn4CL...
+
+    First token is the URL template (with ``$L`` and ``$N`` placeholders),
+    each subsequent token describes one level. Returns a list with one
+    yt-dlp-style format dict per level (format_id="sb0"|"sb1"|...).
+    """
+    if not isinstance(player_response, dict):
+        return []
+    storyboards = player_response.get("storyboards") or {}
+    if not isinstance(storyboards, dict):
+        return []
+    renderer = storyboards.get("playerStoryboardSpecRenderer") or {}
+    spec_str = renderer.get("spec")
+    if not isinstance(spec_str, str) or "|" not in spec_str:
+        return []
+
+    parts = spec_str.split("|")
+    url_template = parts[0]
+    if "$L" not in url_template or "$N" not in url_template:
+        return []
+
+    formats: List[Dict[str, Any]] = []
+    for level_idx, level_str in enumerate(parts[1:]):
+        fields = level_str.split("#")
+        if len(fields) < 5:
+            continue
+        try:
+            width = int(fields[0])
+            height = int(fields[1])
+            total_count = int(fields[2])  # total frames across all sheets
+            cols = int(fields[3])
+            rows = int(fields[4])
+        except ValueError:
+            continue
+        if width <= 0 or height <= 0 or total_count <= 0 or cols <= 0 or rows <= 0:
+            continue
+
+        per_sheet = max(1, cols * rows)
+        sheet_count = max(1, -(-total_count // per_sheet))  # ceil div
+
+        # Sheet URL: substitute $L with level index, $N with sheet number.
+        # YouTube serves these from i.ytimg.com (CDN sffe) which doesn't
+        # bot-guard from Hetzner (validated 2026-05-05).
+        url_tpl = url_template.replace("$L", str(level_idx))
+        fragments = [
+            {
+                "url": url_tpl.replace("$N", str(n)),
+                # We don't know per-fragment duration here; the downstream
+                # code accepts duration=0 and uses cumulative_t = 0 then
+                # walks frames evenly. The duration_s passed separately to
+                # extract_storyboard_frames is what truly drives clipping.
+                "duration": 0.0,
+            }
+            for n in range(sheet_count)
+        ]
+        formats.append(
+            {
+                "format_id": f"sb{level_idx}",
+                "ext": "mhtml",
+                "width": width,
+                "height": height,
+                "columns": cols,
+                "rows": rows,
+                "fragments": fragments,
+            }
+        )
+
+    return formats
+
+
+async def _decodo_scrape_youtube_info(video_id: str, log_tag: str) -> Optional[Dict[str, Any]]:
+    """6e fallback : scrape YouTube watch page via Decodo Premium+JS.
+
+    Active uniquement après échec de ``_ytdlp_info_sync`` (bot challenge
+    Hetzner). Parse ``ytInitialPlayerResponse`` qui contient ``videoDetails``
+    (duration, title) et ``storyboards.playerStoryboardSpecRenderer.spec``.
+
+    Reconstruit un dict compatible avec le format yt-dlp downstream :
+      - id, title, duration (s)
+      - formats: list of storyboard dicts (sb0, sb1, ...)
+      - _source: "decodo_scrape" pour traçabilité
+
+    Returns None si Decodo retourne KO, HTML trop court, regex no-match ou
+    JSON parse fail. Tous les cas font un warning log et fall-through ; la
+    fonction NE LÈVE JAMAIS — caller fait son propre `if not info`.
+
+    Spec § 6.3, Phase 1.3 Decodo Web Scraping rollout.
+    """
+    url = f"https://www.youtube.com/watch?v={video_id}"
+    try:
+        # Lazy import: keep decodo client out of the hot path when unused.
+        from decodo import DecodoScrapingClient
+
+        client = DecodoScrapingClient()
+        result = await client.scrape(
+            url,
+            proxy_pool="premium",
+            headless=True,
+            output_format="raw_html",
+            timeout_s=_DECODO_YT_TIMEOUT_S,
+        )
+    except Exception as e:
+        # DecodoDisabledError / DecodoBudgetExceededError / DecodoConfigError /
+        # DecodoRequestError / DecodoTimeoutError / DecodoResponseError all
+        # inherit from DecodoScrapingError. Anything else is unexpected but
+        # must not break the analyse pipeline.
+        logger.warning(
+            "[%s] decodo_youtube_watch: client.scrape raised %s: %s",
+            log_tag,
+            type(e).__name__,
+            str(e)[:200],
+        )
+        return None
+
+    html = result.content or ""
+    if len(html) < 50_000:
+        logger.warning(
+            "[%s] decodo_youtube_watch: html too short (%d bytes)",
+            log_tag,
+            len(html),
+        )
+        return None
+
+    m = _YT_PLAYER_RESPONSE_REGEX.search(html)
+    if not m:
+        logger.warning(
+            "[%s] decodo_youtube_watch: ytInitialPlayerResponse not found in %d byte HTML",
+            log_tag,
+            len(html),
+        )
+        return None
+
+    try:
+        player = json.loads(m.group(1))
+    except json.JSONDecodeError as e:
+        logger.warning(
+            "[%s] decodo_youtube_watch: JSON parse error at offset %d: %s",
+            log_tag,
+            getattr(e, "pos", -1),
+            str(e)[:200],
+        )
+        return None
+
+    video_details = player.get("videoDetails") or {}
+    try:
+        duration = int(video_details.get("lengthSeconds", 0) or 0)
+    except (TypeError, ValueError):
+        duration = 0
+    title = video_details.get("title") or ""
+
+    formats = _parse_youtube_storyboards(player)
+    logger.info(
+        "[%s] decodo_youtube_watch: recovered info (duration=%ds, storyboards=%d)",
+        log_tag,
+        duration,
+        len(formats),
+    )
+    return {
+        "id": video_id,
+        "title": title,
+        "duration": duration,
+        "formats": formats,
+        "_source": "decodo_scrape",
+    }
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
