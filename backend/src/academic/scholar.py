@@ -46,8 +46,7 @@ from typing import List, Optional
 from bs4 import BeautifulSoup
 from pydantic import BaseModel, Field
 
-from core.http_client import get_proxied_client
-from middleware.proxy_telemetry import record_proxy_usage, should_bypass_proxy_async
+from middleware.proxy_telemetry import record_proxy_usage
 
 logger = logging.getLogger(__name__)
 
