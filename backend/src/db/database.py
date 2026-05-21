@@ -192,9 +192,85 @@ class User(Base):
     study_sessions = relationship("StudySession", back_populates="user", cascade="all, delete-orphan")
     study_stats = relationship("UserStudyStats", back_populates="user", uselist=False, cascade="all, delete-orphan")
     user_badges = relationship("UserBadge", back_populates="user", cascade="all, delete-orphan")
+    # 🔐 Auth V2 — sessions multi-device avec rotation refresh single-use.
+    # Cascade delete-orphan : suppression d'un user → ses sessions disparaissent.
+    sessions = relationship("UserSession", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<User {self.username}>"
+
+
+class UserSession(Base):
+    """🔐 Auth V2 — Sessions refresh multi-device (Wave 1 Step 1).
+
+    Une ligne = un refresh actif sur un device. Permet :
+    - Multi-device natif (page « Appareils actifs » dans Settings).
+    - Rotation single-use du refresh (chaque /api/auth/refresh émet un nouveau
+      `refresh_token_hash`, blocklist l'ancien JTI Redis, met à jour
+      `last_seen_at` + `refresh_token_hash` ici).
+    - TTLs sliding (30j) + absolute cap (90j) découplés du `stay_signed_in`
+      toggle client.
+    - Audit : `revoked_at` soft-delete pour traçabilité (jamais de hard DELETE).
+
+    Spec : 01-Projects/DeepSight/Specs/2026-05-21-auth-v2-complet-design.md §4
+    Migration : alembic 033_user_sessions.py.
+    """
+
+    __tablename__ = "user_sessions"
+
+    # UUID textuel cross-DB (cf VoiceSession). Pas de PostgreSQL UUID natif
+    # qui casserait SQLite local en dev.
+    id = Column(
+        String(36),
+        primary_key=True,
+        default=lambda: str(__import__("uuid").uuid4()),
+    )
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    # SHA-256 hex digest du refresh token (64 chars). Unique → un refresh
+    # ne peut vivre que dans une session à la fois (rotation single-use).
+    refresh_token_hash = Column(String(64), nullable=False, unique=True)
+
+    # Device label parsé du user-agent server-side (« Chrome on macOS »).
+    # Pas d'UI custom-label utilisateur en V2 (différé V3, cf spec §6.3).
+    device_label = Column(String(255), nullable=True)
+
+    # SHA-256(ip + IP_HASH_SALT env) anonymisée. Pas de geo lookup en V2
+    # (différé V3, cf spec §6.4). Compliance RGPD simplifiée.
+    ip_hash = Column(String(64), nullable=True)
+    user_agent = Column(Text, nullable=True)
+
+    # Toggle « Stay signed in » piloté par le client au login (cf spec §4.2).
+    # True (défaut) → sliding 30j. False → 24h hard sans sliding.
+    stay_signed_in = Column(Boolean, nullable=False, default=True, server_default=text("true"))
+
+    issued_at = Column(DateTime, nullable=False, server_default=func.now())
+    # Mis à jour à chaque /api/auth/refresh + endpoints sensibles (audit trail).
+    last_seen_at = Column(DateTime, nullable=False, server_default=func.now())
+
+    # Expiration sliding (renouvelée à chaque refresh) capée par absolute_expires_at.
+    sliding_expires_at = Column(DateTime, nullable=False)
+    # Cap dur 90j depuis issued_at (cf spec §4.1) — pas re-renouvelable.
+    absolute_expires_at = Column(DateTime, nullable=False)
+
+    # Soft-delete : NULL = active, timestamp = révoquée.
+    revoked_at = Column(DateTime, nullable=True)
+
+    # Relations
+    user = relationship("User", back_populates="sessions")
+
+    __table_args__ = (
+        Index("ix_user_sessions_user_id_revoked_at", "user_id", "revoked_at"),
+        Index("ix_user_sessions_sliding_expires_at", "sliding_expires_at"),
+    )
+
+    def __repr__(self):
+        return f"<UserSession {self.id} user={self.user_id} device={self.device_label!r}>"
 
 
 class Summary(Base):

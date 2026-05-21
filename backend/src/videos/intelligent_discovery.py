@@ -430,16 +430,18 @@ class YouTubeSearcher:
             # Construire la commande yt-dlp
             search_query = f"ytsearch{max_results}:{query}"
 
-            # 🔌 Sprint Wave 2 (Audit B1) — injecter --proxy + cookies via le helper
-            # centralisé. Le VPS Hetzner est bot-challenged par YouTube : sans
-            # --proxy, `ytsearchN:` retourne 0 résultat (signal d'IP blacklistée).
-            # `_yt_dlp_extra_args()` respecte aussi le hard-stop budget proxy
-            # (PROXY_DISABLED=true OU MTD>950MB).
+            # 🔌 2026-05-21 : skip le proxy résidentiel Decodo pour `ytsearchN:`.
+            # Empiriquement (test depuis container repo-backend-1) :
+            #   avec --proxy gate.decodo.com  →  25.5s, 0 résultats
+            #   sans --proxy depuis IP Hetzner →   1.5s, 20 résultats
+            # Le bot-challenge ne touche que les DOWNLOADS de vidéos (où le
+            # proxy reste indispensable dans audio_utils), pas la metadata
+            # de recherche `--flat-playlist`.
             from transcripts.audio_utils import _yt_dlp_extra_args
 
             cmd = [
                 "yt-dlp",
-                *_yt_dlp_extra_args(),
+                *_yt_dlp_extra_args(include_proxy=False),
                 "--dump-json",
                 "--flat-playlist",
                 "--no-warnings",
@@ -454,10 +456,10 @@ class YouTubeSearcher:
 
             def run_ytdlp():
                 try:
-                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=8)
+                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=12)
                     return result.stdout, result.stderr
                 except subprocess.TimeoutExpired:
-                    logger.warning("yt-dlp timeout after 8s")
+                    logger.warning("yt-dlp timeout after 12s")
                     return "", "timeout"
                 except Exception as e:
                     logger.error(f"yt-dlp subprocess error: {e}")
@@ -1491,8 +1493,7 @@ class IntelligentDiscoveryService:
 
         # Tâches parallèles : primary lang searches + secondary lang translate+search
         primary_tasks = [
-            YouTubeSearcher.search(sq, max_results=max_results, language=primary_lang)
-            for sq in reformulated[:3]
+            YouTubeSearcher.search(sq, max_results=max_results, language=primary_lang) for sq in reformulated[:3]
         ]
         secondary_tasks = [translate_and_search(lang) for lang in other_languages]
 
