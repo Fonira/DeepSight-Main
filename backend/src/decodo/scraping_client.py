@@ -203,24 +203,18 @@ class DecodoScrapingClient:
         """
         # ── 1. Hard kill-switch ─────────────────────────────────────────────
         if _is_disabled_env():
-            raise DecodoDisabledError(
-                "DECODO_SCRAPING_DISABLED=true — kill switch active"
-            )
+            raise DecodoDisabledError("DECODO_SCRAPING_DISABLED=true — kill switch active")
 
         # ── 2. Monthly budget guard ────────────────────────────────────────
         max_monthly = _max_monthly_req()
         if max_monthly > 0:
             current = await get_monthly_request_count(self._db_session)
             if current >= max_monthly:
-                raise DecodoBudgetExceededError(
-                    current_count=current, max_count=max_monthly
-                )
+                raise DecodoBudgetExceededError(current_count=current, max_count=max_monthly)
 
         # ── 3. Config check ────────────────────────────────────────────────
         if not self._api_key:
-            raise DecodoConfigError(
-                "DECODO_SCRAPING_API_KEY missing from settings/env"
-            )
+            raise DecodoConfigError("DECODO_SCRAPING_API_KEY missing from settings/env")
 
         # ── 4. Build payload + headers ─────────────────────────────────────
         payload = self._build_payload(
@@ -246,17 +240,14 @@ class DecodoScrapingClient:
         for attempt in range(1, MAX_ATTEMPTS + 1):
             try:
                 async with httpx.AsyncClient(timeout=timeout_s) as client:
-                    resp = await client.post(
-                        self._endpoint, json=payload, headers=headers
-                    )
+                    resp = await client.post(self._endpoint, json=payload, headers=headers)
                 decodo_status = resp.status_code
 
                 if 500 <= resp.status_code < 600:
                     # Retryable 5xx
                     last_exc = DecodoRequestError(resp.status_code, resp.text or "")
                     logger.warning(
-                        f"[DECODO_SCRAPE] attempt {attempt}/{MAX_ATTEMPTS} "
-                        f"5xx {resp.status_code} for {url[:80]}"
+                        f"[DECODO_SCRAPE] attempt {attempt}/{MAX_ATTEMPTS} 5xx {resp.status_code} for {url[:80]}"
                     )
                     await self._maybe_backoff(attempt)
                     continue
@@ -320,18 +311,12 @@ class DecodoScrapingClient:
 
             except httpx.TimeoutException as e:
                 last_exc = DecodoTimeoutError(f"timeout after {timeout_s}s: {e}")
-                logger.warning(
-                    f"[DECODO_SCRAPE] attempt {attempt}/{MAX_ATTEMPTS} "
-                    f"timeout for {url[:80]}"
-                )
+                logger.warning(f"[DECODO_SCRAPE] attempt {attempt}/{MAX_ATTEMPTS} timeout for {url[:80]}")
                 await self._maybe_backoff(attempt)
                 continue
             except (httpx.ConnectError, httpx.ReadError, httpx.RemoteProtocolError) as e:
                 last_exc = DecodoRequestError(0, f"connection error: {e}")
-                logger.warning(
-                    f"[DECODO_SCRAPE] attempt {attempt}/{MAX_ATTEMPTS} "
-                    f"connection error: {e}"
-                )
+                logger.warning(f"[DECODO_SCRAPE] attempt {attempt}/{MAX_ATTEMPTS} connection error: {e}")
                 await self._maybe_backoff(attempt)
                 continue
             except (DecodoRequestError, DecodoResponseError):
@@ -416,28 +401,19 @@ class DecodoScrapingClient:
         """
         results = body.get("results")
         if not isinstance(results, list) or len(results) == 0:
-            raise DecodoResponseError(
-                f"response missing 'results' array (keys={list(body.keys())[:5]})"
-            )
+            raise DecodoResponseError(f"response missing 'results' array (keys={list(body.keys())[:5]})")
         first = results[0]
         if not isinstance(first, dict):
-            raise DecodoResponseError(
-                f"results[0] is not a dict (got {type(first).__name__})"
-            )
+            raise DecodoResponseError(f"results[0] is not a dict (got {type(first).__name__})")
 
         status = first.get("status_code")
         content = first.get("content")
         if status is None or content is None:
-            raise DecodoResponseError(
-                f"results[0] missing status_code/content (keys={list(first.keys())})"
-            )
+            raise DecodoResponseError(f"results[0] missing status_code/content (keys={list(first.keys())})")
 
         raw_headers = first.get("headers") or {}
         # Lowercase header keys for predictability across HTTP/2 vs HTTP/1.
-        headers = {
-            str(k).lower(): str(v)
-            for k, v in (raw_headers.items() if isinstance(raw_headers, dict) else [])
-        }
+        headers = {str(k).lower(): str(v) for k, v in (raw_headers.items() if isinstance(raw_headers, dict) else [])}
 
         return ScrapeResult(
             status_code=int(status),

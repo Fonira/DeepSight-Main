@@ -43,9 +43,7 @@ class DecodoBudgetExceededError(DecodoScrapingError):
     def __init__(self, current_count: int, max_count: int) -> None:
         self.current_count = current_count
         self.max_count = max_count
-        super().__init__(
-            f"Decodo Scraping monthly budget exceeded: {current_count} >= {max_count}"
-        )
+        super().__init__(f"Decodo Scraping monthly budget exceeded: {current_count} >= {max_count}")
 
 
 class DecodoConfigError(DecodoScrapingError):
@@ -58,9 +56,7 @@ class DecodoRequestError(DecodoScrapingError):
     def __init__(self, status_code: int, body: str = "") -> None:
         self.status_code = status_code
         self.body = body
-        super().__init__(
-            f"Decodo Scraping API HTTP {status_code}: {body[:200]}"
-        )
+        super().__init__(f"Decodo Scraping API HTTP {status_code}: {body[:200]}")
 
 
 class DecodoTimeoutError(DecodoScrapingError):

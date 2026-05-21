@@ -68,10 +68,7 @@ def cost_estimate_usd(*, proxy_pool: str, headless: bool) -> float:
     key = (proxy_pool, bool(headless))
     cost = _COST_PER_REQ_USD.get(key)
     if cost is None:
-        logger.warning(
-            f"[DECODO_TELEMETRY] unknown cost combo: pool={proxy_pool} "
-            f"headless={headless} — fallback 0"
-        )
+        logger.warning(f"[DECODO_TELEMETRY] unknown cost combo: pool={proxy_pool} headless={headless} — fallback 0")
         return 0.0
     return cost
 
@@ -115,10 +112,7 @@ async def _fetch_monthly_count(session: AsyncSession) -> int:
     first_of_month = today.replace(day=1)
 
     result = await session.execute(
-        text(
-            "SELECT COUNT(*) FROM decodo_scraping_usage "
-            "WHERE created_at >= :first_of_month"
-        ),
+        text("SELECT COUNT(*) FROM decodo_scraping_usage WHERE created_at >= :first_of_month"),
         {"first_of_month": datetime(first_of_month.year, first_of_month.month, 1)},
     )
     return int(result.scalar() or 0)
@@ -151,9 +145,7 @@ async def get_monthly_request_count(
             async with async_session_maker() as ad_hoc:
                 total = await _fetch_monthly_count(ad_hoc)
         except Exception as e:
-            logger.debug(
-                f"[DECODO_TELEMETRY] get_monthly_request_count failed (ad-hoc): {e}"
-            )
+            logger.debug(f"[DECODO_TELEMETRY] get_monthly_request_count failed (ad-hoc): {e}")
             return 0
     else:
         try:
