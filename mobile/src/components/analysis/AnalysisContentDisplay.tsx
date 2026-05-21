@@ -57,6 +57,9 @@ interface AnalysisContentDisplayProps {
    *  Permet d'attacher des sections live (e.g. CommunityTakeSection) qui
    *  scrollent avec le rиsumи sans nesting de scrollables. */
   footer?: React.ReactNode;
+  /** Désactive le ScrollView interne (utilisé quand le parent gère déjà le
+   *  scroll, par ex. BottomSheetScrollView dans HubAnalysisSheet). */
+  disableScroll?: boolean;
 }
 
 // ── Epistemic Markers ──────────────────────────────────────────────────────
@@ -209,6 +212,7 @@ export const AnalysisContentDisplay: React.FC<AnalysisContentDisplayProps> = ({
   emptyStateMessage,
   bottomPadding = 120,
   footer,
+  disableScroll = false,
 }) => {
   const { colors, isDark } = useTheme();
   const displayText = isStreaming ? streamingText : content || "";
@@ -657,29 +661,59 @@ export const AnalysisContentDisplay: React.FC<AnalysisContentDisplayProps> = ({
         </Pressable>
       </Animated.View>
 
-      <ScrollView
-        style={localStyles.scroll}
-        contentContainerStyle={[
-          localStyles.scrollContent,
-          { paddingBottom: bottomPadding },
-        ]}
-        showsVerticalScrollIndicator={false}
-      >
-        <Animated.View
-          entering={FadeInDown.delay(100).duration(500).springify().damping(18)}
+      {disableScroll ? (
+        <View
+          style={[
+            localStyles.scrollContent,
+            { paddingBottom: bottomPadding },
+          ]}
         >
-          <Markdown style={markdownStyles} rules={rules}>
-            {processedContent}
-          </Markdown>
+          <Animated.View
+            entering={FadeInDown.delay(100)
+              .duration(500)
+              .springify()
+              .damping(18)}
+          >
+            <Markdown style={markdownStyles} rules={rules}>
+              {processedContent}
+            </Markdown>
 
-          {isStreaming && (
-            <View style={localStyles.cursorRow}>
-              <BlinkingCursor />
-            </View>
-          )}
-        </Animated.View>
-        {footer}
-      </ScrollView>
+            {isStreaming && (
+              <View style={localStyles.cursorRow}>
+                <BlinkingCursor />
+              </View>
+            )}
+          </Animated.View>
+          {footer}
+        </View>
+      ) : (
+        <ScrollView
+          style={localStyles.scroll}
+          contentContainerStyle={[
+            localStyles.scrollContent,
+            { paddingBottom: bottomPadding },
+          ]}
+          showsVerticalScrollIndicator={false}
+        >
+          <Animated.View
+            entering={FadeInDown.delay(100)
+              .duration(500)
+              .springify()
+              .damping(18)}
+          >
+            <Markdown style={markdownStyles} rules={rules}>
+              {processedContent}
+            </Markdown>
+
+            {isStreaming && (
+              <View style={localStyles.cursorRow}>
+                <BlinkingCursor />
+              </View>
+            )}
+          </Animated.View>
+          {footer}
+        </ScrollView>
+      )}
     </Animated.View>
   );
 };

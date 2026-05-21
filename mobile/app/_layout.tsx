@@ -18,9 +18,14 @@ import { OfflineProvider } from "../src/contexts/OfflineContext";
 import { BackgroundAnalysisProvider } from "../src/contexts/BackgroundAnalysisContext";
 import { ElevenLabsProvider } from "@elevenlabs/react-native";
 import { setAudioModeAsync } from "expo-audio";
+import { ShareIntentProvider } from "expo-share-intent";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createQueryClient } from "../src/utils/queryClient";
 import { darkColors } from "../src/theme/colors";
-import { useShareIntent } from "../src/hooks/useShareIntent";
+import {
+  useShareIntent,
+  PENDING_SHARE_URL_KEY,
+} from "../src/hooks/useShareIntent";
 import { DismissKeyboardView } from "../src/components/ui/DismissKeyboardView";
 
 // Prevent splash screen from auto-hiding
@@ -142,31 +147,38 @@ export default function RootLayout() {
 
   return (
     <ErrorBoundary>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <SafeAreaProvider>
-          <QueryClientProvider client={queryClient}>
-            <ThemeProvider>
-              <LanguageProvider>
-                <ErrorProvider>
-                  <AuthProvider>
-                    <OfflineProvider>
-                      <PlanProvider>
-                        <BackgroundAnalysisProvider>
-                          <ElevenLabsProvider>
-                            <TTSProvider>
-                              <RootNavigator />
-                            </TTSProvider>
-                          </ElevenLabsProvider>
-                        </BackgroundAnalysisProvider>
-                      </PlanProvider>
-                    </OfflineProvider>
-                  </AuthProvider>
-                </ErrorProvider>
-              </LanguageProvider>
-            </ThemeProvider>
-          </QueryClientProvider>
-        </SafeAreaProvider>
-      </GestureHandlerRootView>
+      <ShareIntentProvider
+        options={{
+          debug: __DEV__,
+          resetOnBackground: true,
+        }}
+      >
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <SafeAreaProvider>
+            <QueryClientProvider client={queryClient}>
+              <ThemeProvider>
+                <LanguageProvider>
+                  <ErrorProvider>
+                    <AuthProvider>
+                      <OfflineProvider>
+                        <PlanProvider>
+                          <BackgroundAnalysisProvider>
+                            <ElevenLabsProvider>
+                              <TTSProvider>
+                                <RootNavigator />
+                              </TTSProvider>
+                            </ElevenLabsProvider>
+                          </BackgroundAnalysisProvider>
+                        </PlanProvider>
+                      </OfflineProvider>
+                    </AuthProvider>
+                  </ErrorProvider>
+                </LanguageProvider>
+              </ThemeProvider>
+            </QueryClientProvider>
+          </SafeAreaProvider>
+        </GestureHandlerRootView>
+      </ShareIntentProvider>
     </ErrorBoundary>
   );
 }
@@ -187,7 +199,23 @@ function RootNavigator() {
     if (!isAuthenticated && !inAuthGroup) {
       router.replace("/(auth)");
     } else if (isAuthenticated && inAuthGroup) {
-      router.replace("/(tabs)");
+      // Resume a pending shared URL captured before login, if any.
+      (async () => {
+        try {
+          const pending = await AsyncStorage.getItem(PENDING_SHARE_URL_KEY);
+          if (pending) {
+            await AsyncStorage.removeItem(PENDING_SHARE_URL_KEY);
+            router.replace({
+              pathname: "/share-target",
+              params: { url: pending },
+            } as never);
+            return;
+          }
+        } catch {
+          // Fall through to default redirect.
+        }
+        router.replace("/(tabs)");
+      })();
     }
   }, [isAuthenticated, isLoading, segments]);
 
@@ -212,6 +240,10 @@ function RootNavigator() {
           <Stack.Screen name="(auth)" />
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="splash" />
+          <Stack.Screen
+            name="share-target"
+            options={{ presentation: "modal", animation: "slide_from_bottom" }}
+          />
         </Stack>
       </DismissKeyboardView>
     </View>
