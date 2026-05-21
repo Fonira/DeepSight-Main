@@ -263,6 +263,7 @@ FORMAT DE RÉPONSE (JSON uniquement):
                         "max_tokens": 200,
                         "response_format": {"type": "json_object"},
                     },
+                    timeout=8.0,
                 )
 
                 if response.status_code == 200:
@@ -278,7 +279,7 @@ FORMAT DE RÉPONSE (JSON uniquement):
                     queries = cls._fallback_reformulation(query, language)
 
         except Exception as e:
-            logger.error(f"Mistral reformulation error: {e}")
+            logger.warning(f"Mistral reformulation error (using fallback): {e}")
             queries = cls._fallback_reformulation(query, language)
 
         return queries[:5]  # Max 5 requêtes totales
@@ -383,6 +384,7 @@ FORMAT DE RÉPONSE (JSON uniquement):
                         "temperature": 0.3,
                         "max_tokens": 50,
                     },
+                    timeout=5.0,
                 )
 
                 if response.status_code == 200:
@@ -452,10 +454,10 @@ class YouTubeSearcher:
 
             def run_ytdlp():
                 try:
-                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=8)
                     return result.stdout, result.stderr
                 except subprocess.TimeoutExpired:
-                    logger.error("yt-dlp timeout after 30s")
+                    logger.warning("yt-dlp timeout after 8s")
                     return "", "timeout"
                 except Exception as e:
                     logger.error(f"yt-dlp subprocess error: {e}")
@@ -1460,35 +1462,48 @@ class IntelligentDiscoveryService:
 
         logger.info(f"🔍 [DISCOVER] Starting search: '{query}' (langs={languages})")
 
-        # 1. Reformulation via Mistral AI (multilingue)
-        reformulated = await MistralReprompt.reformulate(query, primary_lang)
+        # 1. Reformulation via Mistral AI (multilingue) — timeout-protected
+        try:
+            reformulated = await asyncio.wait_for(
+                MistralReprompt.reformulate(query, primary_lang),
+                timeout=10.0,
+            )
+        except asyncio.TimeoutError:
+            logger.warning("⏱️ Mistral reformulate timeout — using fallback")
+            reformulated = MistralReprompt._fallback_reformulation(query, primary_lang)
         logger.info(f"🧠 Reformulated queries: {reformulated}")
 
-        # 2. Recherche YouTube multilingue pour trouver les meilleures infos
+        # 2. 🚀 Préparer les traductions et les recherches en PARALLÈLE
+        # Avant: 3 yt-dlp + 2 (translate + yt-dlp) en séquentiel → 5×8s = 40s worst case
+        # Après: tout en gather() → ~8s worst case
+        other_languages = [l for l in ["en", "fr", "de", "es"] if l not in languages[:1]][:2]
+
+        async def translate_and_search(lang: str) -> List[Dict]:
+            """Translate query + run yt-dlp search for a secondary language."""
+            try:
+                translated = await asyncio.wait_for(
+                    MistralReprompt.translate_query(query, primary_lang, lang),
+                    timeout=6.0,
+                )
+            except asyncio.TimeoutError:
+                translated = query
+            return await YouTubeSearcher.search(translated, max_results=max_results // 2, language=lang)
+
+        # Tâches parallèles : primary lang searches + secondary lang translate+search
+        primary_tasks = [
+            YouTubeSearcher.search(sq, max_results=max_results, language=primary_lang)
+            for sq in reformulated[:3]
+        ]
+        secondary_tasks = [translate_and_search(lang) for lang in other_languages]
+
+        all_search_results = await asyncio.gather(*primary_tasks, *secondary_tasks, return_exceptions=True)
+
+        # 3. Aggregate candidates from all parallel searches
         all_candidates: Dict[str, VideoCandidate] = {}
-
-        # Recherche dans la langue principale
-        for search_query in reformulated[:3]:
-            results = await YouTubeSearcher.search(search_query, max_results=max_results, language=primary_lang)
-
-            for raw in results:
-                candidate = YouTubeSearcher.parse_video_result(raw)
-                if candidate and candidate.video_id not in all_candidates:
-                    all_candidates[candidate.video_id] = candidate
-
-        # 🌍 Recherche dans d'autres langues pour compléter avec du contenu de qualité
-        other_languages = [l for l in ["en", "fr", "de", "es"] if l not in languages[:1]]
-
-        for other_lang in other_languages[:2]:  # Max 2 langues supplémentaires
-            # Traduire la requête pour cette langue
-            translated_query = await MistralReprompt.translate_query(query, primary_lang, other_lang)
-
-            results = await YouTubeSearcher.search(
-                translated_query,
-                max_results=max_results // 2,  # Moins de résultats pour les autres langues
-                language=other_lang,
-            )
-
+        for results in all_search_results:
+            if isinstance(results, Exception):
+                logger.warning(f"Search task error (skipped): {results}")
+                continue
             for raw in results:
                 candidate = YouTubeSearcher.parse_video_result(raw)
                 if candidate and candidate.video_id not in all_candidates:
