@@ -717,15 +717,20 @@ async def _decodo_scrape_tiktok_page(video_id: str, username: str, *, log_tag: s
 async def _extract_tiktok_visual_frames(
     url: str, video_id: str, *, mode: str = "default", log_tag: str
 ) -> Optional[FrameExtractionResult]:
-    """Pipeline TikTok : yt-dlp+Decodo (priorité) → tikwm fallback → /tmp .mp4 → extract_frames_from_local.
+    """Pipeline TikTok : yt-dlp+Decodo (priorité) → tikwm fallback → Decodo Scraping API (3e) → /tmp .mp4 → extract_frames_from_local.
 
-    Stratégie 2026-05-11 (sprint TikTok via proxy Decodo) :
+    Stratégie 2026-05-11 (sprint TikTok via proxy Decodo) + 2026-05-21 (3e fallback Decodo Scraping) :
     - L'API tikwm.com s'est cassée externellement ("Url parsing failed"). On
       bascule en priorité sur yt-dlp direct via le proxy résidentiel Decodo
       ($YOUTUBE_PROXY) + cookies TikTok ($TIKTOK_COOKIES_PATH) pour bypass
       l'IP-ban Hetzner et le bot challenge TikTok.
     - tikwm reste en fallback secondaire pour les cas où yt-dlp échoue
       (vidéo privée, proxy saturé, cookies expirés).
+    - Le 3e fallback Decodo Web Scraping API (Premium+JS) scrape la page TikTok
+      rendue, extrait `playAddr` via parser HTML, et télécharge le MP4 via le
+      Residential proxy (pas via Decodo Scraping — économise quota Premium+JS).
+      Inséré entre tikwm KO et le `return None` final, sans court-circuit des
+      paths précédents (cf. spec Phase 1.1 § 4.6 bail-early audit).
 
     `mode` est propagé à extract_frames_from_local pour la grille frames.
     """
@@ -750,8 +755,24 @@ async def _extract_tiktok_visual_frames(
         except Exception as e:
             logger.warning("[%s] tikwm fallback raised: %s", log_tag, e)
 
+    # ── Tentative 3 : Decodo Web Scraping API (Premium+JS) → parse playAddr → download MP4 ──
     if not video_data:
-        logger.warning("[%s] TikTok download failed (yt-dlp + tikwm) for %s", log_tag, video_id)
+        try:
+            # Extraire username depuis l'URL TikTok (format `/@{username}/video/{id}`).
+            m = re.search(r"/@([^/]+)/", urlparse(url).path)
+            username = m.group(1) if m else "unknown"
+            video_data = await _decodo_scrape_tiktok_page(video_id, username, log_tag=log_tag)
+            if video_data:
+                download_source = "decodo_scrape"
+        except Exception as e:
+            logger.warning("[%s] decodo_scrape fallback raised: %s", log_tag, e)
+
+    if not video_data:
+        logger.warning(
+            "[%s] TikTok download failed (yt-dlp + tikwm + decodo_scrape) for %s",
+            log_tag,
+            video_id,
+        )
         return None
 
     logger.info(
