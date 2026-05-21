@@ -1274,3 +1274,113 @@ async def test_full_google_oauth_flow(mock_db_session):
     payload = jwt.decode(access_token, test_secret, algorithms=["HS256"])
     assert payload["sub"] == "1"
     assert payload["session"] == "oauth_sess"
+
+
+# ======================================================================
+# SPRINT C — TOKEN BLOCKLIST (Redis-backed) TESTS
+# ======================================================================
+# Mission: vérifier que la blocklist Sprint C
+#  (1) ajoute → check returns True
+#  (2) expire via TTL → check returns False
+#  (3) fail-open quand Redis indispo (ConnectionError) + log audit
+#
+# fakeredis est déjà dans requirements.txt (utilisé par tutor.service).
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_blocklist_add_then_check_returns_true():
+    """Sprint C — Un token ajouté à la blocklist est détecté comme blacklisté."""
+    import fakeredis.aioredis as fakeredis_async
+    from core import security
+
+    fake_redis = fakeredis_async.FakeRedis(decode_responses=True)
+
+    # Monkey-patch _get_redis_client pour qu'il renvoie le fake
+    with patch("core.security._get_redis_client", return_value=fake_redis):
+        token = "ey.fake.jwt.token.for.testing"
+        added = await security.blacklist_token(token, expiry_seconds=3600)
+        assert added is True
+
+        is_blocked = await security.is_token_blacklisted(token)
+        assert is_blocked is True
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_blocklist_check_after_ttl_expiry_returns_false():
+    """Sprint C — Après expiration TTL, le token n'est plus dans la blocklist.
+
+    On utilise ex=1 sur fakeredis et on attend > 1s pour observer l'expiration
+    naturelle (fakeredis honore les TTLs en temps réel par défaut).
+    """
+    import asyncio as _asyncio
+    import fakeredis.aioredis as fakeredis_async
+    from core import security
+
+    fake_redis = fakeredis_async.FakeRedis(decode_responses=True)
+
+    with patch("core.security._get_redis_client", return_value=fake_redis):
+        token = "ey.expiring.token"
+        await security.blacklist_token(token, expiry_seconds=1)
+
+        # Juste avant l'expiration : encore blacklisté
+        assert await security.is_token_blacklisted(token) is True
+
+        # Attendre que le TTL expire (1s + marge)
+        await _asyncio.sleep(1.2)
+
+        # Après expiration : Redis nettoie la clé, plus blacklisté
+        assert await security.is_token_blacklisted(token) is False
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_blocklist_redis_down_fails_open_and_logs():
+    """Sprint C — Si Redis lève ConnectionError, is_token_blacklisted retourne
+    False (fail-open) et `_log_blocklist_fail_open` est appelé.
+
+    Rationale : avant Sprint C la blocklist était in-RAM et perdue à chaque
+    reboot, donc fail-open est strictement pas pire que le baseline.
+    """
+    from core import security
+
+    # Mock Redis qui crash sur exists()
+    crashing_redis = MagicMock()
+    crashing_redis.exists = AsyncMock(side_effect=ConnectionError("redis down"))
+
+    audit_calls = []
+
+    async def fake_log(op, err):
+        audit_calls.append((op, err))
+
+    with patch("core.security._get_redis_client", return_value=crashing_redis), \
+         patch("core.security._log_blocklist_fail_open", side_effect=fake_log):
+        result = await security.is_token_blacklisted("any.token.here")
+
+    # Fail-open : on accepte le token (False = pas blacklisté)
+    assert result is False
+    # Audit log appelé exactement une fois avec operation="check"
+    assert len(audit_calls) == 1
+    assert audit_calls[0][0] == "check"
+    assert "redis down" in audit_calls[0][1]
+
+
+@pytest.mark.unit
+def test_jwt_ttls_from_env_var_defaults(monkeypatch):
+    """Sprint C — JWT_CONFIG lit ACCESS_TOKEN_TTL_MIN / REFRESH_TOKEN_TTL_DAYS
+    des variables d'environnement, avec defaults 60 / 30.
+
+    Cf. backend/src/core/config.py:535-538 + audit Sprint C.
+    """
+    # Default sans env override = 60 min / 30 jours
+    from core.config import JWT_CONFIG
+    # Les valeurs au moment de l'import du module ; on vérifie qu'elles sont
+    # cohérentes avec les defaults Sprint C (60 / 30) — c'est le contrat
+    # exposé aux clients web/mobile/extension.
+    assert JWT_CONFIG["ACCESS_TOKEN_EXPIRE_MINUTES"] == 60, (
+        f"Sprint C contract violated: access TTL = {JWT_CONFIG['ACCESS_TOKEN_EXPIRE_MINUTES']} (expected 60)"
+    )
+    assert JWT_CONFIG["REFRESH_TOKEN_EXPIRE_DAYS"] == 30, (
+        f"Sprint C contract violated: refresh TTL = {JWT_CONFIG['REFRESH_TOKEN_EXPIRE_DAYS']} (expected 30)"
+    )
