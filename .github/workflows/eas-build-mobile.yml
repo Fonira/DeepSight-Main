@@ -1,0 +1,105 @@
+name: EAS Build & Submit (Mobile)
+
+# Déclenchement manuel depuis l'onglet Actions de GitHub.
+# Prérequis : secret EXPO_TOKEN (https://expo.dev/settings/access-tokens)
+# Les credentials Apple/Google sont gérés côté serveur EAS (déjà configurés).
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: "Plateforme cible"
+        required: true
+        type: choice
+        options:
+          - ios
+          - android
+          - all
+        default: ios
+      profile:
+        description: "Profil EAS (cf. mobile/eas.json)"
+        required: true
+        type: choice
+        options:
+          - production
+          - preview
+          - development
+        default: production
+      auto_submit:
+        description: "Auto-submit TestFlight / Play Store après build"
+        required: true
+        type: boolean
+        default: true
+      message:
+        description: "Message de build (optionnel, affiché dans EAS)"
+        required: false
+        type: string
+        default: ""
+
+concurrency:
+  group: eas-build-${{ inputs.platform }}-${{ inputs.profile }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    working-directory: mobile
+
+jobs:
+  build:
+    name: EAS ${{ inputs.platform }} / ${{ inputs.profile }}${{ inputs.auto_submit && ' + submit' || '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Sanity check — share-target & ShareIntentProvider
+        run: |
+          test -f app/share-target.tsx || { echo "❌ mobile/app/share-target.tsx manquant"; exit 1; }
+          grep -q "ShareIntentProvider" app/_layout.tsx || { echo "❌ ShareIntentProvider non importé dans _layout.tsx"; exit 1; }
+          echo "✅ share-target.tsx présent et ShareIntentProvider importé"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Setup EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify EAS auth
+        run: eas whoami
+
+      - name: EAS Build${{ inputs.auto_submit && ' + Submit' || '' }}
+        env:
+          BUILD_MESSAGE: ${{ inputs.message }}
+        run: |
+          ARGS="--platform ${{ inputs.platform }} --profile ${{ inputs.profile }} --non-interactive --no-wait"
+          if [ "${{ inputs.auto_submit }}" = "true" ]; then
+            ARGS="$ARGS --auto-submit"
+          fi
+          if [ -n "$BUILD_MESSAGE" ]; then
+            ARGS="$ARGS --message \"$BUILD_MESSAGE\""
+          fi
+          echo "▶ eas build $ARGS"
+          eval "eas build $ARGS"
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "### EAS Build déclenché 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Plateforme : \`${{ inputs.platform }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Profil : \`${{ inputs.profile }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Auto-submit : \`${{ inputs.auto_submit }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Le build tourne sur les serveurs EAS (~20-25 min iOS, ~15 min Android)." >> $GITHUB_STEP_SUMMARY
+          echo "Suivre l'avancement : https://expo.dev/accounts/maximeadmin/projects/deepsight/builds" >> $GITHUB_STEP_SUMMARY
