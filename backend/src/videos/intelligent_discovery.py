@@ -594,9 +594,7 @@ class TikTokSearcher:
             author = raw.get("author") or {}
             create_time = raw.get("create_time", 0) or 0
             try:
-                published_at = (
-                    datetime.fromtimestamp(int(create_time)) if create_time else datetime.now()
-                )
+                published_at = datetime.fromtimestamp(int(create_time)) if create_time else datetime.now()
             except (ValueError, OSError, OverflowError):
                 published_at = datetime.now()
             title_text = (raw.get("title") or "").strip()
