@@ -4767,9 +4767,7 @@ async def discover_search_videos(
             )
             scored = [(c, tiktok_engagement_score(c)) for c in candidates]
             if sort_by == "date":
-                scored.sort(
-                    key=lambda x: x[0].published_at or datetime.min, reverse=True
-                )
+                scored.sort(key=lambda x: x[0].published_at or datetime.min, reverse=True)
             elif sort_by == "views":
                 scored.sort(key=lambda x: x[0].view_count, reverse=True)
             else:

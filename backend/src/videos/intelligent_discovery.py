@@ -596,9 +596,7 @@ class TikTokSearcher:
             author = raw.get("author") or {}
             create_time = raw.get("create_time", 0) or 0
             try:
-                published_at = (
-                    datetime.fromtimestamp(int(create_time)) if create_time else datetime.now()
-                )
+                published_at = datetime.fromtimestamp(int(create_time)) if create_time else datetime.now()
             except (ValueError, OSError, OverflowError):
                 published_at = datetime.now()
             title_text = (raw.get("title") or "").strip()
@@ -650,13 +648,7 @@ def tiktok_engagement_score(c: VideoCandidate, now: Optional[datetime] = None) -
     else:
         freshness = 1.0 - (age_days - 7) / 83.0
 
-    return (
-        view_score * 0.30
-        + like_ratio * 0.25
-        + comment_ratio * 0.20
-        + share_ratio * 0.15
-        + freshness * 0.10
-    )
+    return view_score * 0.30 + like_ratio * 0.25 + comment_ratio * 0.20 + share_ratio * 0.15 + freshness * 0.10
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -763,10 +755,6 @@ class RedditSearcher:
             # Skip self-posts (text-only)
             if raw.get("is_self"):
                 return None
-            url = raw.get("url_overridden_by_dest") or raw.get("url") or ""
-            # Build canonical Reddit permalink for analysis
-            permalink = raw.get("permalink") or ""
-            full_url = f"https://www.reddit.com{permalink}" if permalink else url
             thumbnail = raw.get("thumbnail") or ""
             if not thumbnail or thumbnail in ("self", "default", "nsfw", "spoiler", ""):
                 # Try preview image
@@ -1790,12 +1778,8 @@ class IntelligentDiscoveryService:
                     logger.error(f"Scoring error for {cand.video_id}: {e}")
                     return None
 
-        scoring_results = await asyncio.gather(
-            *(_score_with_sem(c) for c in all_candidates.values())
-        )
-        scored_candidates = [
-            s for s in scoring_results if s is not None and s.final_score >= min_quality
-        ]
+        scoring_results = await asyncio.gather(*(_score_with_sem(c) for c in all_candidates.values()))
+        scored_candidates = [s for s in scoring_results if s is not None and s.final_score >= min_quality]
 
         # 4. Tri par score final et diversification
         scored_candidates.sort(key=lambda x: x.final_score, reverse=True)
