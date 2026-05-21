@@ -12,14 +12,32 @@
 
 import os
 import logging
+from typing import Callable, Optional
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer, HTTPBearer, HTTPAuthorizationCredentials
+from jose import ExpiredSignatureError, JWTError, jwt
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Optional
 
+import core.config as _core_config
 from db.database import get_session, User
 from .service import verify_token, get_user_by_id, validate_session_token
+
+
+def _jwt_config() -> dict:
+    """Lookup JWT_CONFIG at call time, not import time.
+
+    Workaround pour le test suite qui reload `core.config` via
+    `importlib.reload` (cf `tests/billing/test_pricing_v2.py`). Un import
+    `from core.config import JWT_CONFIG` au top du module fige une
+    référence vers l'ancien dict, qui ne correspond plus au dict actif
+    après reload — d'où des `JWSSignatureError` quand un token signé avec
+    le nouveau dict est décodé avec l'ancienne référence. La résolution
+    dynamique via `_core_config.JWT_CONFIG` à chaque call garantit la
+    cohérence.
+    """
+    return _core_config.JWT_CONFIG
+
 
 logger = logging.getLogger(__name__)
 
@@ -368,3 +386,151 @@ def require_feature(feature: str):
         return current_user
 
     return check_feature
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🔐 AUTH V2 — Token payload + Re-auth scopé (Wave 1 Step 3, 2026-05-21)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+async def get_current_token_payload(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(http_bearer),
+    token: Optional[str] = Depends(oauth2_scheme),
+) -> dict:
+    """Decode le JWT courant et retourne le payload brut (sans re-valider la session).
+
+    La validation complète (blocklist, session, user) est déjà faite par
+    `get_current_user` — cette dépendance ne sert qu'à exposer le payload pour
+    les endpoints qui ont besoin du `jti` (= session_id V2) pour marquer la
+    session courante.
+
+    Doit toujours être déclarée APRÈS `get_current_user` dans l'endpoint (FastAPI
+    résout les Depends dans l'ordre de la signature, mais comme on ne re-valide
+    pas ici, l'ordre importe peu en pratique).
+
+    Returns:
+        Le payload décodé du JWT (dict avec sub, exp, iat, type, jti, ...).
+
+    Raises:
+        HTTPException 401 si aucun token n'est fourni ou si le decode échoue
+        (ne devrait pas arriver si get_current_user a précédemment validé).
+    """
+    # Priorité au Bearer token dans les headers (même règle que get_current_user)
+    actual_token: Optional[str] = None
+    if credentials:
+        actual_token = credentials.credentials
+    elif token:
+        actual_token = token
+
+    if not actual_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "not_authenticated", "message": "Authentication required."},
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    try:
+        return jwt.decode(
+            actual_token,
+            _jwt_config()["SECRET_KEY"],
+            algorithms=[_jwt_config()["ALGORITHM"]],
+        )
+    except JWTError:
+        # Ne devrait pas arriver si get_current_user a déjà validé, mais defensive.
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "token_invalid", "message": "Invalid or expired token."},
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+
+def require_recent_reauth(audience: str) -> Callable:
+    """Factory de dépendance qui valide la présence d'un `X-Reauth-Token` valide.
+
+    Utilisée pour scoper les endpoints sensibles (billing, account deletion,
+    change-email, change-password). Le client doit d'abord appeler
+    POST /api/auth/reauth pour obtenir un reauth_token (JWT 5 min, scope=reauth,
+    aud=<audience>) puis le re-fournir dans le header `X-Reauth-Token`.
+
+    Spec : `2026-05-21-auth-v2-complet-design.md` §4.6.
+
+    Args:
+        audience: scope cible (ex: "billing", "delete", "change-email",
+            "change-password"). Doit matcher `ReauthAudience` Literal côté
+            schemas.
+
+    Usage:
+        @router.delete("/account")
+        async def delete_account(
+            _: None = Depends(require_recent_reauth("delete")),
+            current_user: User = Depends(get_current_user),
+            ...
+        ):
+            ...
+
+    Returns:
+        Une dépendance FastAPI qui retourne None si OK, raise HTTPException 401
+        sinon (avec un code détaillé : REAUTH_REQUIRED / REAUTH_EXPIRED /
+        REAUTH_INVALID / REAUTH_WRONG_SCOPE / REAUTH_WRONG_AUDIENCE /
+        REAUTH_USER_MISMATCH).
+    """
+
+    async def dep(
+        request: Request,
+        current_user: User = Depends(get_current_user),
+    ) -> None:
+        reauth_token = request.headers.get("X-Reauth-Token")
+        if not reauth_token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"code": "REAUTH_REQUIRED", "message": "Re-authentication required for this action."},
+            )
+
+        try:
+            payload = jwt.decode(
+                reauth_token,
+                _jwt_config()["SECRET_KEY"],
+                algorithms=[_jwt_config()["ALGORITHM"]],
+                audience=audience,
+            )
+        except ExpiredSignatureError:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "code": "REAUTH_EXPIRED",
+                    "message": "Re-authentication expired. Please re-enter your password.",
+                },
+            )
+        except JWTError as e:
+            # jose lève JWTClaimsError (sous-classe de JWTError) si l'audience
+            # ne match pas — on remap en REAUTH_WRONG_AUDIENCE pour signaler
+            # clairement la cause côté frontend.
+            msg = str(e).lower()
+            if "audience" in msg:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail={"code": "REAUTH_WRONG_AUDIENCE", "message": "Re-auth token scoped for another action."},
+                )
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"code": "REAUTH_INVALID", "message": "Re-authentication token invalid."},
+            )
+
+        if payload.get("scope") != "reauth":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"code": "REAUTH_WRONG_SCOPE", "message": "Token is not a re-auth token."},
+            )
+
+        if str(payload.get("sub")) != str(current_user.id):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "code": "REAUTH_USER_MISMATCH",
+                    "message": "Re-auth token does not belong to the current user.",
+                },
+            )
+
+        return None
+
+    return dep

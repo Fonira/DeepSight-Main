@@ -249,7 +249,9 @@ class ReauthRequest(BaseModel):
     """
 
     password: str = Field(..., min_length=1, description="Mot de passe actuel de l'utilisateur")
-    audience: ReauthAudience = Field(..., description="Endpoint cible scopé (billing, delete, change-email, change-password)")
+    audience: ReauthAudience = Field(
+        ..., description="Endpoint cible scopé (billing, delete, change-email, change-password)"
+    )
 
 
 class ReauthResponse(BaseModel):
