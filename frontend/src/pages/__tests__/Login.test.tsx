@@ -412,6 +412,115 @@ describe("Login Page - Navigation", () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// 💾 STAY SIGNED IN TOGGLE (Auth V2 Step 3)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe("Login Page - Stay signed in toggle", () => {
+  it("should render checkbox visible and checked by default", () => {
+    renderWithProviders(<Login />);
+    // FR: "Rester connecté"
+    const checkbox = screen.getByRole("checkbox", { name: /Rester connecté/i });
+    expect(checkbox).toBeInTheDocument();
+    expect(checkbox).toBeChecked();
+  });
+
+  it("should clear auth_session_expiry on successful login when checked", async () => {
+    // Pré-remplir une vieille deadline pour vérifier qu'elle est purgée
+    localStorage.setItem("auth_session_expiry", String(Date.now() - 1000));
+
+    const user = userEvent.setup();
+    const mockLogin = vi.fn().mockResolvedValue(undefined);
+    mockUseAuth.mockReturnValue({ ...defaultAuthState, login: mockLogin });
+
+    renderWithProviders(<Login />);
+
+    await user.type(
+      screen.getByPlaceholderText("you@example.com"),
+      "test@example.com",
+    );
+    await user.type(screen.getByPlaceholderText("••••••••"), "password123");
+    await user.click(screen.getByRole("button", { name: /Se connecter/ }));
+
+    await waitFor(() => {
+      expect(mockLogin).toHaveBeenCalled();
+    });
+    // Checkbox laissée cochée (défaut) → la clé doit avoir disparu
+    expect(localStorage.getItem("auth_session_expiry")).toBeNull();
+  });
+
+  it("should set auth_session_expiry ~24h ahead on successful login when unchecked", async () => {
+    const user = userEvent.setup();
+    const mockLogin = vi.fn().mockResolvedValue(undefined);
+    mockUseAuth.mockReturnValue({ ...defaultAuthState, login: mockLogin });
+
+    renderWithProviders(<Login />);
+
+    // Décocher avant submit
+    const checkbox = screen.getByRole("checkbox", { name: /Rester connecté/i });
+    await user.click(checkbox);
+    expect(checkbox).not.toBeChecked();
+
+    await user.type(
+      screen.getByPlaceholderText("you@example.com"),
+      "test@example.com",
+    );
+    await user.type(screen.getByPlaceholderText("••••••••"), "password123");
+
+    const beforeMs = Date.now();
+    await user.click(screen.getByRole("button", { name: /Se connecter/ }));
+
+    await waitFor(() => {
+      expect(mockLogin).toHaveBeenCalled();
+    });
+
+    const raw = localStorage.getItem("auth_session_expiry");
+    expect(raw).not.toBeNull();
+    const deadline = Number(raw);
+    const TWENTY_FOUR_H_MS = 24 * 60 * 60 * 1000;
+    // Tolère 10 s d'écart pour CI lente
+    expect(deadline).toBeGreaterThanOrEqual(beforeMs + TWENTY_FOUR_H_MS - 10_000);
+    expect(deadline).toBeLessThanOrEqual(Date.now() + TWENTY_FOUR_H_MS + 10_000);
+  });
+
+  it("should not show checkbox in register mode", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<Login />);
+
+    // Toggle into register mode via "Créer un compte" button
+    const registerToggle = screen.getAllByText(/Créer un compte/)[0];
+    await user.click(registerToggle);
+
+    expect(
+      screen.queryByRole("checkbox", { name: /Rester connecté/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should apply Stay signed in choice before Google OAuth redirect", async () => {
+    const user = userEvent.setup();
+    const mockLoginWithGoogle = vi.fn().mockResolvedValue(undefined);
+    mockUseAuth.mockReturnValue({
+      ...defaultAuthState,
+      loginWithGoogle: mockLoginWithGoogle,
+    });
+
+    renderWithProviders(<Login />);
+
+    // Décocher
+    await user.click(screen.getByRole("checkbox", { name: /Rester connecté/i }));
+
+    // Click Google login
+    await user.click(
+      screen.getByRole("button", { name: /Continuer avec Google/i }),
+    );
+
+    expect(mockLoginWithGoogle).toHaveBeenCalled();
+    // La deadline 24h doit être posée AVANT le redirect (le mock résout
+    // immédiatement, on peut donc lire la clé juste après).
+    expect(localStorage.getItem("auth_session_expiry")).not.toBeNull();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // 🎯 EDGE CASES
 // ═══════════════════════════════════════════════════════════════════════════════
 
