@@ -1144,6 +1144,62 @@ export const authApi = {
   },
 
   /**
+   * Auth V2 — Liste les sessions actives de l'utilisateur courant
+   * (Wave 1 backend PR #533).
+   *
+   * GET /api/auth/sessions
+   * → list[UserSession{id, device_label, ip_hash, user_agent,
+   *    last_seen_at, created_at, current}]
+   *
+   * `current=true` est posé sur la session associée au JWT courant.
+   * Affiché sur `/settings/devices` (Step 2).
+   */
+  async listSessions(): Promise<
+    Array<{
+      id: string;
+      device_label?: string | null;
+      ip_hash?: string | null;
+      user_agent?: string | null;
+      last_seen_at: string;
+      created_at: string;
+      current: boolean;
+    }>
+  > {
+    return request("/api/auth/sessions");
+  },
+
+  /**
+   * Auth V2 — Révoque UNE session ciblée par son id.
+   *
+   * DELETE /api/auth/sessions/{id}
+   * → { success: boolean, message: string }
+   *
+   * Backend Wave 1 ne protège PAS cet endpoint par require_recent_reauth.
+   */
+  async revokeSession(
+    id: string,
+  ): Promise<{ success: boolean; message: string }> {
+    return request(`/api/auth/sessions/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    });
+  },
+
+  /**
+   * Auth V2 — Révoque TOUTES les autres sessions (garde la session courante).
+   *
+   * DELETE /api/auth/sessions
+   * → { success: boolean, message: "✅ N sessions révoquées" }
+   *
+   * Backend Wave 1 ne protège PAS cet endpoint par require_recent_reauth.
+   */
+  async revokeAllOtherSessions(): Promise<{
+    success: boolean;
+    message: string;
+  }> {
+    return request("/api/auth/sessions", { method: "DELETE" });
+  },
+
+  /**
    * RGPD Article 20 — Right to data portability.
    * Downloads a ZIP archive with the user's personal data.
    * Triggers a browser file download (no return value).
