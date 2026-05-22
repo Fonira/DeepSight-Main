@@ -2,12 +2,12 @@
 ╔════════════════════════════════════════════════════════════════════════════════════╗
 ║  🧪 TESTS — Scholar end-to-end search (PR1 / spec §5.1, §4.6, §4.5, §8)            ║
 ╠════════════════════════════════════════════════════════════════════════════════════╣
-║  Couvre :                                                                          ║
-║  • Happy path : proxy → parse → return papers, cache_set OK                       ║
-║  • Circuit ouvert → return empty batch sans hitter HTTP                            ║
-║  • Decodo hard-stop (should_bypass_proxy_async=True) → empty batch                ║
-║  • CAPTCHA HTML → record_failure incremente le compteur CB                         ║
-║  • Successful result cached for future calls                                      ║
+║  ⚠️  OBSOLETE après Phase 1.2 Decodo Scraping migration (PR #535) :                ║
+║      - get_proxied_client + httpx flow → remplacé par DecodoScrapingClient         ║
+║      - HTML SERP parsing → remplacé par Markdown extraction via Mistral            ║
+║      - should_bypass_proxy_async hard-stop → géré côté DecodoScrapingClient.scrape ║
+║      Coverage des scénarios valables migrée vers test_scholar_decodo_markdown.py.  ║
+║      File skipped pour ne pas bloquer CI. TODO: supprimer après audit coverage.    ║
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
@@ -19,6 +19,11 @@ from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
+pytestmark = pytest.mark.skip(
+    reason="Obsolete after Phase 1.2 Decodo migration (PR #535) — "
+    "coverage moved to test_scholar_decodo_markdown.py"
+)
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _SRC = os.path.abspath(os.path.join(_HERE, "..", "src"))
