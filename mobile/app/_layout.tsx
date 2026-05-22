@@ -26,6 +26,7 @@ import {
   useShareIntent,
   PENDING_SHARE_URL_KEY,
 } from "../src/hooks/useShareIntent";
+import { useAuthResumeHandler } from "../src/hooks/useAuthResumeHandler";
 import { DismissKeyboardView } from "../src/components/ui/DismissKeyboardView";
 
 // Prevent splash screen from auto-hiding
@@ -184,12 +185,17 @@ export default function RootLayout() {
 }
 
 function RootNavigator() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, forceLogout } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
   // Handle incoming shared URLs from TikTok, YouTube, etc.
   useShareIntent();
+
+  // Wave 1 Mobile V2 Step 1 — sur AppState resume (background|inactive → active),
+  // ping /api/auth/me pour valider la session JWT. Si 401, forceLogout() clear
+  // les tokens et RootNavigator redirige automatiquement vers /(auth).
+  useAuthResumeHandler({ isAuthenticated, forceLogout });
 
   useEffect(() => {
     if (isLoading) return;
