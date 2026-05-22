@@ -29,6 +29,7 @@ import { VoiceCallButton } from "../components/VoiceCallButton";
 import { SuggestionPills } from "../components/SuggestionPills";
 import { CommunityTakeCompact } from "../components/CommunityTakeCompact";
 import { ExternalSourcesCompact } from "../components/ExternalSourcesCompact";
+import { RevokeAllDevicesButton } from "../components/RevokeAllDevicesButton";
 import { DeepSightSpinner } from "../shared/DeepSightSpinner";
 import { useTranslation } from "../../i18n/useTranslation";
 
@@ -876,6 +877,15 @@ export const MainView: React.FC<MainViewProps> = ({
               ))}
             </ul>
           </>
+        )}
+
+        {/* ── Sécurité — Sprint Auth V2 Step 1 (Wave 1 Ext) ──────────
+            Bouton "Déconnecter tous les autres appareils" consomme
+            DELETE /api/auth/sessions (PR #533 backend). Visible uniquement
+            pour les utilisateurs authentifiés (pas en mode guest) et
+            seulement en idle state pour ne pas polluer le flow d'analyse. */}
+        {!isGuest && analysis.phase === "idle" && (
+          <RevokeAllDevicesButton />
         )}
 
         {/* ── Sources & analyse — platform strip ─────────────────── */}
