@@ -70,6 +70,72 @@ Pour vérifier : `await is_token_blacklisted(token)` — fail-open + audit log
 
 Cf. audit complet : `01-Projects/DeepSight/Sessions/2026-05-21-audit-auth-sprint-c.md`.
 
+### Audit logs auth.* — observability sécurité (Wave 1 Step 6, 2026-05-21)
+
+Les fonctions Auth V2 dans `auth/service.py` + endpoint `/api/auth/reauth`
+écrivent dans `audit_logs` pour traçabilité RGPD (Article 30) + détection
+brute-force/replay. Toutes les écritures suivent le **pattern fail-silent**
+du helper `services.audit_log.log_audit` — une exception audit ne casse JAMAIS
+le flow auth (worst case = entry manquante, surfaced via Sentry).
+
+| Action | Émetteur | Détails JSON | Sévérité |
+|---|---|---|---|
+| `auth.session_created` | `create_session_v2` | `{session_id, device_label, stay_signed_in}` | INFO |
+| `auth.refresh_rotated` | `rotate_refresh_session` (succès) | `{session_id, old_session_id}` | INFO |
+| `auth.refresh_replay_detected` | `rotate_refresh_session` (hash mismatch) | `{session_id, old_jti}` | ⚠️ **SECURITY** |
+| `auth.refresh_expired` | `rotate_refresh_session` (revoked/sliding/absolute) | `{session_id, reason}` | INFO |
+| `auth.session_revoked` | `revoke_session_v2` | `{session_id, revoked_by}` | INFO |
+| `auth.reauth_success` | `/api/auth/reauth` (200) | `{audience, expires_in}` | INFO |
+| `auth.reauth_failed_wrong_password` | `/api/auth/reauth` (401) | `{reason, audience}` | ⚠️ **SECURITY** |
+| `session.revoked` | router `/sessions/{id}` / `/sessions` | `{session_id?, scope}` | INFO |
+
+Le helper `log_audit` ne commit pas — c'est le caller (router endpoint) qui
+contrôle la transaction. À l'intérieur des fonctions service `create_session_v2`
+/ `rotate_refresh_session` / `revoke_session_v2`, on délègue le commit au caller
+upstream pour garder l'écriture atomique avec la mutation DB principale.
+
+Querying observability — pour détecter du brute-force :
+
+```sql
+SELECT user_id, count(*) FROM audit_logs
+ WHERE action = 'auth.reauth_failed_wrong_password'
+   AND created_at > now() - interval '5 minutes'
+ GROUP BY user_id HAVING count(*) > 5;
+```
+
+## Auth V2 — Feature flag rollout (Wave 1 Step 4, 2026-05-21)
+
+Trois env vars pour piloter le basculement progressif legacy V1 → V2
+(multi-device `UserSession` + sliding/absolute TTL + single-use refresh rotation) :
+
+| Env var | Défaut | Rôle |
+|---|---|---|
+| `AUTH_V2_ENABLED` | `false` | Kill switch global. `true` → activable par bucket. |
+| `AUTH_V2_BUCKET_PERCENT` | `0` | % users in-bucket (0-100). Hash déterministe(user_id) % 100 < pct. |
+| `AUTH_V2_CUTOVER_DATE` | `""` | Date ISO du basculement (ex `2026-05-22`). Tokens avec `iat < cutover` restent V1 pendant grace. |
+| `AUTH_V2_GRACE_PERIOD_DAYS` | `30` | Fenêtre après cutover où tokens V1 pre-cutover sont encore acceptés. |
+
+**Stratégie de rollout standard** (sans redeploy entre étapes) :
+
+1. Merge le code + déploie avec `AUTH_V2_ENABLED=true` + `AUTH_V2_BUCKET_PERCENT=10` + `AUTH_V2_CUTOVER_DATE=<demain>`.
+2. J+1 monitoring OK → `AUTH_V2_BUCKET_PERCENT=50`.
+3. J+3 monitoring OK → `AUTH_V2_BUCKET_PERCENT=100`.
+4. J+30 grace expirée → tous les tokens V1 pre-cutover ont été rotated naturellement.
+
+**Bucketing déterministe** (`auth/feature_flags.py:is_user_in_auth_v2_bucket`) :
+même user_id → même réponse à chaque appel (pas de flip-flop). Distribution
+~uniforme via SHA-256(str(user_id)).
+
+**Décision finale** (`auth/feature_flags.py:should_use_v2_for_token`) :
+- Pas in-bucket → V1.
+- In-bucket + token pre-cutover + grace active → V1 (le temps que le token expire naturellement).
+- In-bucket + token post-cutover OU pas de cutover → V2.
+
+Utilisée par `auth/service.py:verify_token_with_flow` (lui-même appelé par
+`get_current_user` / `get_current_user_optional` dans `auth/dependencies.py`).
+
+Spec : `01-Projects/DeepSight/Specs/2026-05-21-auth-v2-complet-design.md` §4.5.
+
 ## Feature gating (SSOT)
 
 ```python

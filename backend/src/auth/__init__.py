@@ -3,11 +3,16 @@ from .service import (
     create_access_token,
     create_refresh_token,
     verify_token,
+    verify_token_with_flow,
     get_user_by_id,
     get_user_by_email,
     create_user,
     authenticate_user,
     get_user_quota,
+)
+from .feature_flags import (
+    is_user_in_auth_v2_bucket,
+    should_use_v2_for_token,
 )
 from .dependencies import (
     get_current_user,

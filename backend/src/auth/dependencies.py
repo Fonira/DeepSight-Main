@@ -22,7 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import core.config as _core_config
 from db.database import get_session, User
-from .service import verify_token, get_user_by_id, validate_session_token
+from .service import verify_token_with_flow, get_user_by_id, validate_session_token, validate_session_v2
 
 
 def _jwt_config() -> dict:
@@ -96,8 +96,8 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # Vérifier le token
-    payload = verify_token(actual_token, token_type="access")
+    # Vérifier le token + décider du flow (V1 legacy vs V2 — Wave 1 Step 4)
+    payload, auth_flow = verify_token_with_flow(actual_token, token_type="access")
 
     if not payload:
         raise HTTPException(
@@ -122,7 +122,6 @@ async def get_current_user(
             detail={"code": "token_invalid", "message": "Invalid token payload: sub must be an integer."},
             headers={"WWW-Authenticate": "Bearer"},
         )
-    session_token = payload.get("session")  # 🆕 Récupérer le session_token du JWT
 
     user = await get_user_by_id(session, user_id)
 
@@ -133,9 +132,24 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # 🆕 Valider le session_token (session unique par utilisateur)
-    if session_token:
-        is_valid_session = await validate_session_token(session, user_id, session_token)
+    # 🆕 Wave 1 Step 4 — Validation session selon le flow décidé par feature_flags.
+    # V1 legacy : validate_session_token (User.session_token unique partagé).
+    # V2 :        validate_session_v2 (UserSession lookup via jti).
+    if auth_flow == "v2":
+        jti = payload.get("jti")
+        if not jti:
+            # Token V2 décidé par le feature flag mais pas de jti dans le payload
+            # → token V1 émis avant l'enrollment dans le bucket. On rejette pour
+            # forcer un re-login propre (et émettre un token V2 cette fois).
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "code": "session_upgrade_required",
+                    "message": "Your session needs to be upgraded. Please log in again.",
+                },
+                headers={"WWW-Authenticate": "Bearer", "X-Session-Invalid": "true"},
+            )
+        is_valid_session = await validate_session_v2(session, jti)
         if not is_valid_session:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -145,6 +159,20 @@ async def get_current_user(
                 },
                 headers={"WWW-Authenticate": "Bearer", "X-Session-Invalid": "true"},
             )
+    else:
+        # Flow legacy V1 : validation session_token classique.
+        session_token = payload.get("session")
+        if session_token:
+            is_valid_session = await validate_session_token(session, user_id, session_token)
+            if not is_valid_session:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail={
+                        "code": "session_expired",
+                        "message": "Your session has expired. You may have logged in from another device.",
+                    },
+                    headers={"WWW-Authenticate": "Bearer", "X-Session-Invalid": "true"},
+                )
 
     # 🔒 Rate limiting (optionnel à ce niveau, plus strict dans les endpoints sensibles)
     # Admin exempt du rate limiting auth-level (protection DDoS reste au niveau Caddy)
@@ -187,7 +215,8 @@ async def get_current_user_optional(
     if SECURITY_AVAILABLE and await is_token_blacklisted(actual_token):
         return None
 
-    payload = verify_token(actual_token, token_type="access")
+    # Wave 1 Step 4 — branche V1 / V2 via feature flag.
+    payload, auth_flow = verify_token_with_flow(actual_token, token_type="access")
 
     if not payload:
         return None
@@ -199,18 +228,27 @@ async def get_current_user_optional(
         user_id = int(sub)
     except (ValueError, TypeError):
         return None
-    session_token = payload.get("session")
 
     user = await get_user_by_id(session, user_id)
 
     if not user:
         return None
 
-    # 🆕 Valider le session_token même pour optionnel
-    if session_token:
-        is_valid_session = await validate_session_token(session, user_id, session_token)
+    if auth_flow == "v2":
+        jti = payload.get("jti")
+        if not jti:
+            # Pas de jti sur un user bucketé V2 → token V1 obsolète → reject silencieux.
+            return None
+        is_valid_session = await validate_session_v2(session, jti)
         if not is_valid_session:
             return None
+    else:
+        # Flow legacy V1.
+        session_token = payload.get("session")
+        if session_token:
+            is_valid_session = await validate_session_token(session, user_id, session_token)
+            if not is_valid_session:
+                return None
 
     return user
 

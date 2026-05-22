@@ -1015,9 +1015,12 @@ async def test_get_current_user_valid_token(mock_db_session, jwt_secret):
     credentials = MagicMock()
     credentials.credentials = token
 
-    with patch("auth.dependencies.verify_token", return_value={
-        "sub": str(user.id), "type": "access", "session": None
-    }), patch("auth.dependencies.SECURITY_AVAILABLE", False):
+    # Wave 1 Step 4 — dependencies.py utilise désormais verify_token_with_flow,
+    # qui retourne (payload, "v1" | "v2"). Patcher cette fonction (et pas
+    # verify_token directement) pour bypasser le decode JWT dans ce test mocké.
+    with patch("auth.dependencies.verify_token_with_flow", return_value=(
+        {"sub": str(user.id), "type": "access", "session": None}, "v1"
+    )), patch("auth.dependencies.SECURITY_AVAILABLE", False):
         result = await get_current_user(
             credentials=credentials, token=None, session=mock_db_session
         )
