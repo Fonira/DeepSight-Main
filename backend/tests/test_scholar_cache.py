@@ -65,12 +65,13 @@ async def test_cache_hit_skips_http_request(redis_client_fixture):
     pre_cached = _sample_batch(query, n_papers=5)
     await scholar._cache_set(query, pre_cached)
 
-    # Patch the proxy client factory so we can assert it's never called.
-    mock_get_client = MagicMock()
-    with patch("academic.scholar.get_proxied_client", mock_get_client):
+    # Patch the Decodo scraping client class so we can assert it's never instantiated.
+    # Phase 1.2 (PR #535) migrated from get_proxied_client → DecodoScrapingClient.
+    mock_client_cls = MagicMock()
+    with patch("decodo.DecodoScrapingClient", mock_client_cls):
         result = await scholar.search_scholar(query, use_cache=True)
 
-    assert mock_get_client.call_count == 0, "HTTP client should not be invoked on cache HIT"
+    assert mock_client_cls.call_count == 0, "HTTP client should not be instantiated on cache HIT"
     assert len(result.papers) == 5
     assert result.papers[0].title == "Paper 0"
 
