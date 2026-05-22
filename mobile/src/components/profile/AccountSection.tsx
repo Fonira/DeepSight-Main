@@ -202,6 +202,9 @@ export const AccountSection: React.FC = () => {
         {renderRow("Changer le mot de passe", () => openSheet("password"), {
           icon: "lock-closed-outline",
         })}
+        {renderRow("Mes appareils", () => router.push("/devices"), {
+          icon: "phone-portrait-outline",
+        })}
         {renderRow(
           "Conditions d'utilisation",
           () => Linking.openURL("https://www.deepsightsynthesis.com/legal"),

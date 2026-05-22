@@ -25,3 +25,42 @@ export interface ReauthResponse {
   reauth_token: string;
   expires_in: number;
 }
+
+/**
+ * Représentation d'une session active multi-appareils — Wave 1 V2 (Step 3).
+ *
+ * Mirror du schema backend `UserSession` (PR #533) et frontend
+ * `frontend/src/types/auth.ts`. Consommé par la page « Mes appareils »
+ * (GET /api/auth/sessions, DELETE /api/auth/sessions/{id},
+ *  DELETE /api/auth/sessions) pour permettre la révocation individuelle
+ * ou globale (sauf session courante).
+ *
+ * - `id`              : identifiant opaque de la session (UUID côté backend).
+ * - `device_label`    : libellé lisible (ex. "Chrome on macOS", "iPhone").
+ *                       Optionnel — peut être null/absent si non détecté.
+ * - `ip_hash`         : hash SHA-256 tronqué de l'IP (jamais l'IP en clair).
+ *                       Optionnel.
+ * - `user_agent`      : User-Agent brut de la requête login.
+ *                       Optionnel, principalement debug.
+ * - `last_seen_at`    : ISO 8601 — dernière requête vue avec ce refresh token.
+ * - `created_at`      : ISO 8601 — création de la session (login initial).
+ * - `current`         : true si c'est la session de l'appel en cours
+ *                       (le bouton "Révoquer" est masqué pour cette session).
+ */
+export interface UserSession {
+  id: string;
+  device_label?: string | null;
+  ip_hash?: string | null;
+  user_agent?: string | null;
+  last_seen_at: string;
+  created_at: string;
+  current: boolean;
+}
+
+/**
+ * Réponse générique des endpoints DELETE /api/auth/sessions{/{id}}.
+ */
+export interface MessageResponse {
+  success: boolean;
+  message: string;
+}

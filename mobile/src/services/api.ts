@@ -22,7 +22,12 @@ import type {
   CorpusChatMessage,
   CorpusChatResponse,
 } from "../types";
-import type { ReauthAudience, ReauthResponse } from "../types/auth";
+import type {
+  ReauthAudience,
+  ReauthResponse,
+  UserSession,
+  MessageResponse,
+} from "../types/auth";
 
 // Request configuration
 interface RequestConfig {
@@ -442,6 +447,40 @@ export const authApi = {
       method: "POST",
       body: { password, audience },
     });
+  },
+
+  /**
+   * Liste les sessions actives du user — Auth V2 Wave 1 Step 3 (multi-device).
+   *
+   * Backend : GET /api/auth/sessions → list[UserSession].
+   * La session courante est marquée via `current: true` (par défaut non
+   * révocable côté UI pour éviter le suicide de session).
+   */
+  async listSessions(): Promise<UserSession[]> {
+    return request<UserSession[]>("/api/auth/sessions");
+  },
+
+  /**
+   * Révoque une session précise (un appareil) — Auth V2 Wave 1 Step 3.
+   *
+   * Backend : DELETE /api/auth/sessions/{id}. Le refresh token associé est
+   * blocklisté Redis, l'appareil doit se reconnecter à son prochain refresh.
+   */
+  async revokeSession(sessionId: string): Promise<MessageResponse> {
+    return request<MessageResponse>(
+      `/api/auth/sessions/${encodeURIComponent(sessionId)}`,
+      { method: "DELETE" },
+    );
+  },
+
+  /**
+   * Révoque toutes les sessions sauf la session courante — Wave 1 V2 Step 3.
+   *
+   * Backend : DELETE /api/auth/sessions. Utilisé pour "Déconnecter tous les
+   * autres appareils" — la session de l'appel reste active.
+   */
+  async revokeAllOtherSessions(): Promise<MessageResponse> {
+    return request<MessageResponse>("/api/auth/sessions", { method: "DELETE" });
   },
 };
 
