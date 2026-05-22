@@ -295,6 +295,8 @@ export type MessageAction =
   | "QUICK_CHAT"
   | "CANCEL_ANALYSIS"
   | "OPEN_VOICE_PANEL"
+  // Sprint Auth V2 — révocation des sessions
+  | "REVOKE_ALL_OTHER_SESSIONS"
   | "VOICE_CREATE_SESSION"
   | "VOICE_APPEND_TRANSCRIPT"
   | "VOICE_GET_PREFERENCES"

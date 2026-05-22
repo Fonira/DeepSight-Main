@@ -312,6 +312,26 @@ async function logout(): Promise<void> {
   await clearStoredAuth();
 }
 
+/**
+ * Révoque toutes les sessions actives de l'utilisateur SAUF celle associée
+ * au JWT courant (la session courante reste valide).
+ *
+ * Backend : DELETE /api/auth/sessions (Sprint C Wave 1 Step 3, PR #533).
+ * Retour : MessageResponse{success: true, message: "✅ N sessions révoquées"}.
+ *
+ * En cas de 401 / SESSION_EXPIRED → apiRequest clear l'auth et throw, le
+ * caller doit gérer la déconnexion. Pour toute autre erreur (réseau, 5xx) →
+ * throw l'erreur normalement, le composant UI affiche un toast.
+ */
+async function revokeAllOtherSessions(): Promise<{
+  success: boolean;
+  message: string;
+}> {
+  return apiRequest<{ success: boolean; message: string }>("/auth/sessions", {
+    method: "DELETE",
+  });
+}
+
 async function getCurrentUser(): Promise<User> {
   const user = await apiRequest<User>("/auth/me");
   await setStoredUser(user);
@@ -1303,6 +1323,15 @@ async function handleExtensionMessage(
     case "LOGOUT": {
       await logout();
       return { success: true };
+    }
+
+    case "REVOKE_ALL_OTHER_SESSIONS": {
+      try {
+        const result = await revokeAllOtherSessions();
+        return { success: true, result };
+      } catch (e) {
+        return { success: false, error: (e as Error).message };
+      }
     }
 
     case "OPEN_VOICE_PANEL": {
