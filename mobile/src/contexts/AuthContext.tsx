@@ -71,6 +71,13 @@ interface AuthContextType {
   ) => Promise<{ requiresVerification: boolean }>;
   verifyEmail: (email: string, code: string) => Promise<void>;
   logout: () => Promise<void>;
+  /**
+   * Local cleanup uniquement (clear tokens + user state). N'appelle PAS
+   * `/api/auth/logout` côté serveur — utilisé quand le serveur a déjà
+   * invalidé la session (401 sur /me au resume, refresh expiré, etc.).
+   * La redirection vers /(auth) se fait automatiquement via RootNavigator.
+   */
+  forceLogout: () => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
   refreshUser: (force?: boolean) => Promise<void>;
   clearError: () => void;
@@ -458,6 +465,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     }
   }, []);
 
+  // Force logout local-only — utilisé par useAuthResumeHandler quand /me
+  // renvoie 401 au resume. Skip l'appel `/api/auth/logout` (le serveur a
+  // déjà invalidé) et nettoie tokens + state. La redirection vers /(auth)
+  // est gérée par RootNavigator via le `useEffect` segments-based.
+  const forceLogout = useCallback(async () => {
+    pushTokenRef.current = null;
+    try {
+      setUser(null);
+      await tokenStorage.clearTokens();
+      await userStorage.clearUser();
+      analytics.track("logout");
+      analytics.reset();
+    } catch (cleanupError) {
+      if (__DEV__) {
+        console.warn("[Auth] Force logout cleanup error:", cleanupError);
+      }
+      setUser(null);
+    }
+  }, []);
+
   const forgotPassword = useCallback(async (email: string) => {
     setIsLoading(true);
     setError(null);
@@ -526,6 +553,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         register,
         verifyEmail,
         logout,
+        forceLogout,
         forgotPassword,
         refreshUser,
         clearError,
