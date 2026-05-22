@@ -105,7 +105,7 @@ describe("PasswordReauthModal - Submit success", () => {
     const onSuccess = vi.fn();
     const onCancel = vi.fn();
     requestReauthMock.mockResolvedValueOnce({
-      reauth_token: "ru_abcdef123",
+      reauth_token: "mock-token",
       expires_in: 300,
     });
 
@@ -129,7 +129,7 @@ describe("PasswordReauthModal - Submit success", () => {
     await user.click(submitBtn);
 
     await waitFor(() => {
-      expect(onSuccess).toHaveBeenCalledWith("ru_abcdef123");
+      expect(onSuccess).toHaveBeenCalledWith("mock-token");
     });
 
     // API called with correct args
