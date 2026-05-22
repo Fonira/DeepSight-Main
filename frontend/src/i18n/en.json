@@ -137,7 +137,9 @@
     "featureAnalysis": "AI Analysis",
     "featureFactCheck": "Fact-checking",
     "featureStudyTools": "Study Tools",
-    "featureChat": "Contextual Chat"
+    "featureChat": "Contextual Chat",
+    "staySignedIn": "Stay signed in",
+    "staySignedInHint": "Uncheck to sign out after 24h of inactivity"
   },
   "dashboard": {
     "title": "Video Analysis",

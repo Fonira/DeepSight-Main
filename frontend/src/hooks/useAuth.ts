@@ -19,6 +19,7 @@ import {
   getAccessToken,
   getRefreshToken,
   setTokens,
+  isSessionExpired,
   ApiError,
   User,
 } from "../services/api";
@@ -149,6 +150,13 @@ export function useAuth(): UseAuthReturn {
   const initialUser = useMemo(() => {
     const token = getAccessToken();
     if (!token) return null;
+    // Auth V2 Step 3 — hard cap 24h côté client si l'user a décoché
+    // "Rester connecté" au login. Override le sliding refresh JWT.
+    if (isSessionExpired()) {
+      clearTokens();
+      setCachedUser(null);
+      return null;
+    }
     // Ne pas utiliser un token expiré
     if (isTokenExpired(token)) {
       // Essayer le refresh token
@@ -599,6 +607,16 @@ export function useAuth(): UseAuthReturn {
   useEffect(() => {
     if (state.isAuthenticated && !sessionCheckIntervalRef.current) {
       sessionCheckIntervalRef.current = setInterval(async () => {
+        // Auth V2 Step 3 — hard cap 24h dépassé (toggle "Rester connecté"
+        // décoché au login) → force logout client-side même si tokens
+        // sont encore valides côté serveur.
+        if (isSessionExpired()) {
+          clearTokens();
+          setCachedUser(null);
+          window.dispatchEvent(new CustomEvent("auth:logout"));
+          return;
+        }
+
         const token = getAccessToken();
         if (!token) return;
 
@@ -705,6 +723,12 @@ export function useAuth(): UseAuthReturn {
     // 🆕 Écouter la visibilité de la page (refresh au retour)
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible" && state.isAuthenticated) {
+        // Auth V2 Step 3 — re-check hard cap 24h au retour de tab background.
+        if (isSessionExpired()) {
+          handleLogout();
+          window.dispatchEvent(new CustomEvent("auth:logout"));
+          return;
+        }
         const token = getAccessToken();
         if (token && isTokenExpiringSoon(token)) {
           refreshTokens();

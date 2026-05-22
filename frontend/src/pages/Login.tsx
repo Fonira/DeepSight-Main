@@ -16,8 +16,17 @@ import { useAnalytics } from "../hooks/useAnalytics";
 import { useTranslation } from "../hooks/useTranslation";
 import { SEO } from "../components/SEO";
 import DoodleBackground from "../components/DoodleBackground";
+import { applyStaySignedIn } from "../services/api";
 
-import { Mail, Lock, AlertCircle, Eye, EyeOff, ArrowLeft } from "lucide-react";
+import {
+  Mail,
+  Lock,
+  AlertCircle,
+  Eye,
+  EyeOff,
+  ArrowLeft,
+  Info,
+} from "lucide-react";
 import { DeepSightSpinnerMicro } from "../components/ui/DeepSightSpinner";
 
 // === Google Icon ===
@@ -94,6 +103,11 @@ export const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  // Auth V2 Step 3 — Toggle "Rester connecté" au login. Coché par défaut
+  // (30j refresh sliding côté backend). Si décoché → hard cap 24h côté
+  // client appliqué via applyStaySignedIn(false) → localStorage
+  // `auth_session_expiry`. Le hook useAuth force logout dès la deadline.
+  const [staySignedIn, setStaySignedIn] = useState(true);
 
   // Support ?tab=register from landing page CTA
   useEffect(() => {
@@ -183,6 +197,11 @@ export const Login: React.FC = () => {
         );
       } else {
         await login(email, password);
+        // Auth V2 Step 3 — Applique le toggle "Rester connecté" APRÈS le
+        // succès du login (sinon clearTokens du flow d'erreur effacerait
+        // la clé qu'on vient de poser). staySignedIn=true → clear la clé,
+        // staySignedIn=false → set deadline 24h dans localStorage.
+        applyStaySignedIn(staySignedIn);
         // `trackLogin` ne peut pas accéder au user qui vient d'être chargé
         // dans le state useAuth — useEffect ci-dessus gère la redirection ;
         // l'identify se fait au prochain mount via trackLogin si appelé,
@@ -241,6 +260,10 @@ export const Login: React.FC = () => {
   const handleGoogleLogin = async () => {
     setError(null);
     setLoading(true);
+    // Auth V2 Step 3 — OAuth redirige hors-page : on persiste le choix
+    // "Rester connecté" AVANT le redirect. AuthCallback ne réinitialise
+    // pas cette clé, donc la deadline 24h (si décochée) survit au flow.
+    applyStaySignedIn(staySignedIn);
     try {
       await loginWithGoogle();
     } catch (err: unknown) {
@@ -253,6 +276,8 @@ export const Login: React.FC = () => {
   const handleAppleLogin = async () => {
     setError(null);
     setLoading(true);
+    // Auth V2 Step 3 — idem Google : poser le hard cap avant redirect.
+    applyStaySignedIn(staySignedIn);
     try {
       await loginWithApple();
     } catch (err: unknown) {
@@ -657,6 +682,30 @@ export const Login: React.FC = () => {
                       </button>
                     </div>
                   </div>
+
+                  {/* Auth V2 Step 3 — "Rester connecté" toggle (login only) */}
+                  {!isRegister && (
+                    <label className="flex items-center gap-2 cursor-pointer select-none group pt-0.5">
+                      <input
+                        type="checkbox"
+                        checked={staySignedIn}
+                        onChange={(e) => setStaySignedIn(e.target.checked)}
+                        disabled={loading}
+                        className="w-4 h-4 rounded border-border-default bg-bg-secondary text-accent-primary focus:ring-2 focus:ring-accent-primary focus:ring-offset-0 cursor-pointer accent-indigo-500"
+                        aria-label={t.auth.staySignedIn}
+                      />
+                      <span className="text-xs text-text-secondary group-hover:text-text-primary transition-colors">
+                        {t.auth.staySignedIn}
+                      </span>
+                      <span
+                        className="text-text-muted hover:text-text-secondary transition-colors"
+                        title={t.auth.staySignedInHint}
+                        aria-label={t.auth.staySignedInHint}
+                      >
+                        <Info className="w-3.5 h-3.5" />
+                      </span>
+                    </label>
+                  )}
 
                   {/* Confirm Password (register) */}
                   <AnimatePresence>

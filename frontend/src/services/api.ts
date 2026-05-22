@@ -43,6 +43,61 @@ const TOKEN_KEYS = {
   REFRESH: "refresh_token",
 } as const;
 
+// ─── Auth V2 — "Stay signed in" toggle (Wave 1 Web V2 Step 3) ────────────────
+// Quand l'user décoche "Rester connecté" au login, on stocke un hard cap
+// 24h dans cette clé. Au mount d'AuthContext / sur chaque request, si
+// `Date.now() >= AUTH_SESSION_EXPIRY` → force logout client-side même si le
+// refresh token JWT est encore valide. Quand coché (défaut), la clé est
+// supprimée → comportement standard (refresh sliding ~30j côté backend).
+export const AUTH_SESSION_EXPIRY_KEY = "auth_session_expiry";
+const STAY_SIGNED_IN_HARD_CAP_MS = 24 * 60 * 60 * 1000; // 24h
+
+/**
+ * Auth V2 Step 3 — Lit le timestamp d'expiration côté client (ms epoch).
+ * Retourne `null` si la clé est absente (user a coché "Rester connecté").
+ */
+export function getSessionExpiry(): number | null {
+  try {
+    const raw = localStorage.getItem(AUTH_SESSION_EXPIRY_KEY);
+    if (!raw) return null;
+    const parsed = Number.parseInt(raw, 10);
+    return Number.isFinite(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Auth V2 Step 3 — Vrai si l'user a décoché "Rester connecté" ET la deadline
+ * 24h est dépassée. Faux dans tous les autres cas (clé absente OU encore
+ * dans la fenêtre 24h).
+ */
+export function isSessionExpired(now: number = Date.now()): boolean {
+  const deadline = getSessionExpiry();
+  if (deadline === null) return false;
+  return now >= deadline;
+}
+
+/**
+ * Auth V2 Step 3 — Applique le choix "Rester connecté" au moment du login.
+ * `staySignedIn=true` (défaut) → supprime la clé (sliding refresh ~30j).
+ * `staySignedIn=false` → set deadline now + 24h (hard cap client).
+ */
+export function applyStaySignedIn(staySignedIn: boolean): void {
+  try {
+    if (staySignedIn) {
+      localStorage.removeItem(AUTH_SESSION_EXPIRY_KEY);
+    } else {
+      localStorage.setItem(
+        AUTH_SESSION_EXPIRY_KEY,
+        String(Date.now() + STAY_SIGNED_IN_HARD_CAP_MS),
+      );
+    }
+  } catch {
+    /* Safari private mode */
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📊 TYPES
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -646,6 +701,9 @@ export function clearTokens(): void {
     localStorage.removeItem(TOKEN_KEYS.ACCESS);
     localStorage.removeItem(TOKEN_KEYS.REFRESH);
     localStorage.removeItem("cached_user");
+    // Auth V2 Step 3 — purge le hard cap "Rester connecté" pour repartir
+    // propre au prochain login (sinon une deadline périmée se réactiverait).
+    localStorage.removeItem(AUTH_SESSION_EXPIRY_KEY);
   } catch {
     /* Safari private mode */
   }
