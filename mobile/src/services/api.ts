@@ -22,6 +22,7 @@ import type {
   CorpusChatMessage,
   CorpusChatResponse,
 } from "../types";
+import type { ReauthAudience, ReauthResponse } from "../types/auth";
 
 // Request configuration
 interface RequestConfig {
@@ -420,6 +421,26 @@ export const authApi = {
     return request("/api/auth/account", {
       method: "DELETE",
       body: password ? { password } : {},
+    });
+  },
+
+  /**
+   * Re-authentification scopée — Auth V2 Wave 1 Step 2.
+   *
+   * Demande un `reauth_token` (JWT scopé, TTL 5 min côté backend) à passer
+   * en header `X-Reauth-Token` lors d'un appel sur un endpoint sensible
+   * (billing, delete, change-email, change-password).
+   *
+   * @throws ApiError (status=401) si le mot de passe est incorrect.
+   * @throws ApiError (status=429) si trop de tentatives.
+   */
+  async requestReauth(
+    password: string,
+    audience: ReauthAudience,
+  ): Promise<ReauthResponse> {
+    return request<ReauthResponse>("/api/auth/reauth", {
+      method: "POST",
+      body: { password, audience },
     });
   },
 };
