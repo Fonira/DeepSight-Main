@@ -160,13 +160,75 @@ async function apiRequest<T>(
 
 // ── Auth API ──
 
+// In-memory guard : déduplique les refresh dans la MÊME instance de SW
+// (efficace tant que le SW ne meurt pas entre deux appels concurrents).
 let inflightRefresh: Promise<RefreshResult> | null = null;
+
+// Storage guard : survit au kill du SW MV3. Si Chrome tue le SW à mi-refresh
+// et qu'un nouveau message arrive (ré-instancie le SW), le storage.session
+// signale qu'un refresh est déjà en cours côté backend → on attend la fin
+// au lieu de lancer un second POST /auth/refresh redondant qui pourrait
+// invalider le refresh_token rotaté par le premier (race condition).
+//
+// `chrome.storage.session` est cleared au redémarrage de Chrome (sécurité)
+// mais persiste à travers les morts/respawn du SW. La clé porte un timestamp
+// pour expirer automatiquement les locks orphelins (SW mort sans cleanup).
+const REFRESH_LOCK_KEY = "auth_refresh_in_flight";
+const REFRESH_LOCK_TTL_MS = 15_000; // refresh API timeout 5-10s + marge
+
+interface SessionStorageApi {
+  get?: (key: string) => Promise<Record<string, unknown>>;
+  set?: (data: Record<string, unknown>) => Promise<void>;
+  remove?: (key: string) => Promise<void>;
+}
+
+function getSessionStorage(): SessionStorageApi | undefined {
+  return (
+    chrome as unknown as {
+      storage?: { session?: SessionStorageApi };
+    }
+  ).storage?.session;
+}
+
+async function acquireRefreshLock(): Promise<boolean> {
+  const store = getSessionStorage();
+  if (!store?.get || !store?.set) return true; // pas de session storage → degrade gracefully
+  const existing = await store.get(REFRESH_LOCK_KEY);
+  const lock = existing[REFRESH_LOCK_KEY] as { startedAt?: number } | undefined;
+  if (lock?.startedAt && Date.now() - lock.startedAt < REFRESH_LOCK_TTL_MS) {
+    return false;
+  }
+  await store.set({ [REFRESH_LOCK_KEY]: { startedAt: Date.now() } });
+  return true;
+}
+
+async function releaseRefreshLock(): Promise<void> {
+  const store = getSessionStorage();
+  if (!store?.remove) return;
+  try {
+    await store.remove(REFRESH_LOCK_KEY);
+  } catch {
+    /* ignore — TTL expirera de toute façon */
+  }
+}
 
 async function tryRefreshToken(): Promise<RefreshResult> {
   if (inflightRefresh) return inflightRefresh;
   inflightRefresh = (async () => {
     try {
-      return await doRefreshToken();
+      const acquired = await acquireRefreshLock();
+      if (!acquired) {
+        // Un autre SW (ou ancien instance pre-kill) est déjà sur le coup.
+        // Plutôt que de partir en parallèle, on signale "transient" : le
+        // caller (apiRequest 401 path) gardera les tokens et l'user pourra
+        // retry — d'ici-là, l'autre refresh aura terminé.
+        return "transient";
+      }
+      try {
+        return await doRefreshToken();
+      } finally {
+        await releaseRefreshLock();
+      }
     } finally {
       inflightRefresh = null;
     }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import type { User, PlanInfo, MessageResponse } from "../types";
 import Browser from "../utils/browser-polyfill";
+import { swMessage } from "../utils/swMessage";
 import { LoginView } from "./views/LoginView";
 import { MainView } from "./views/MainView";
 import { ConversationView } from "./views/ConversationView";
@@ -197,10 +198,10 @@ export const App: React.FC = () => {
 
   async function checkAuth(): Promise<void> {
     try {
-      const response = await Browser.runtime.sendMessage<
-        unknown,
-        MessageResponse
-      >({
+      // Step 2 SW resilience: swMessage timeout+retry réveille le SW si Chrome
+      // l'a killed (memory pressure / 30s idle). Sans ça, checkAuth pouvait
+      // hanger indéfiniment et bloquer le mount du sidepanel.
+      const response = await swMessage<unknown, MessageResponse>({
         action: "CHECK_AUTH",
       });
       if (response.authenticated && response.user) {
@@ -218,17 +219,14 @@ export const App: React.FC = () => {
 
   async function loadPlanInfo(): Promise<void> {
     try {
-      const response = await Browser.runtime.sendMessage<
-        unknown,
-        MessageResponse
-      >({
+      const response = await swMessage<unknown, MessageResponse>({
         action: "GET_PLAN",
       });
       if (response.success && response.plan) {
         setPlanInfo(response.plan);
       }
     } catch {
-      // Plan info load failed — continue without it
+      // Plan info load failed — continue without it (incl. SW_TIMEOUT).
     }
   }
 
