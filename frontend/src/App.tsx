@@ -340,6 +340,7 @@ const PlaylistDetailPage = lazyWithRetry(
 const SearchPage = lazyWithRetry(() => import("./pages/SearchPage"));
 const UpgradePage = lazyWithRetry(() => import("./pages/UpgradePage"));
 const Settings = lazyWithRetry(() => import("./pages/Settings"));
+const DevicesPage = lazyWithRetry(() => import("./pages/DevicesPage"));
 const MyAccount = lazyWithRetry(() => import("./pages/MyAccount"));
 const AdminPage = lazyWithRetry(() => import("./pages/AdminPage"));
 const UsageDashboard = lazyWithRetry(() => import("./pages/UsageDashboard"));
@@ -976,6 +977,22 @@ const AppRoutes = () => {
                                 fallback={<PageSkeleton variant="form" />}
                               >
                                 <Settings />
+                              </Suspense>
+                            </RouteErrorBoundary>
+                          }
+                        />
+
+                        <Route
+                          path="/settings/devices"
+                          element={
+                            <RouteErrorBoundary
+                              variant="full"
+                              componentName="DevicesPage"
+                            >
+                              <Suspense
+                                fallback={<PageSkeleton variant="form" />}
+                              >
+                                <DevicesPage />
                               </Suspense>
                             </RouteErrorBoundary>
                           }

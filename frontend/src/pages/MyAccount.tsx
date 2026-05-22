@@ -52,6 +52,7 @@ import {
   GraduationCap,
   Brain,
   BookOpen,
+  Monitor,
 } from "lucide-react";
 import { DeepSightSpinnerMicro } from "../components/ui";
 import { Link, useNavigate } from "react-router-dom";
@@ -1338,6 +1339,27 @@ export const MyAccount: React.FC = () => {
                     <Lock className="w-4 h-4" />
                   </div>
                 </div>
+
+                <Link
+                  to="/settings/devices"
+                  className="w-full flex items-center justify-between p-4 rounded-lg bg-bg-tertiary border border-border-subtle hover:bg-bg-hover transition-colors text-left"
+                >
+                  <div className="flex items-center gap-3">
+                    <Monitor className="w-5 h-5 text-text-tertiary" />
+                    <div>
+                      <p className="font-medium text-text-primary">
+                        {tr("Mes appareils", "My devices")}
+                      </p>
+                      <p className="text-sm text-text-tertiary">
+                        {tr(
+                          "Voir et révoquer les sessions actives",
+                          "View and revoke active sessions",
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-text-tertiary" />
+                </Link>
 
                 <button
                   onClick={handleLogout}

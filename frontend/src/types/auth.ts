@@ -25,3 +25,26 @@ export interface ReauthResponse {
   reauth_token: string;
   expires_in: number;
 }
+
+/**
+ * Représentation publique d'une session utilisateur exposée via
+ * `GET /api/auth/sessions`. Doit matcher `UserSessionResponse` dans
+ * `backend/src/auth/schemas.py`.
+ *
+ * - `id`            : UUID String(36) — utilisé pour `DELETE /sessions/{id}`.
+ * - `device_label`  : label parsé du user-agent (ex: "Chrome on macOS").
+ * - `ip_hash`       : SHA-256(ip + salt) tronqué — pas l'IP brute.
+ * - `user_agent`    : User-Agent brut (debug uniquement).
+ * - `last_seen_at`  : ISO timestamp de la dernière activité observée.
+ * - `created_at`    : ISO timestamp d'émission initiale.
+ * - `current`       : true si c'est la session associée au JWT courant.
+ */
+export interface UserSession {
+  id: string;
+  device_label?: string | null;
+  ip_hash?: string | null;
+  user_agent?: string | null;
+  last_seen_at: string;
+  created_at: string;
+  current: boolean;
+}
