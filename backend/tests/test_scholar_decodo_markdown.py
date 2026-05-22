@@ -247,10 +247,6 @@ async def test_search_scholar_happy_decodo_plus_mistral(redis_client_fixture, mo
     md = _read_fixture("decodo_markdown_transformer.md")
     factory, scrape_mock = _make_decodo_client(markdown=md)
     monkeypatch.setattr("decodo.DecodoScrapingClient", factory)
-    monkeypatch.setattr(
-        "academic.scholar.should_bypass_proxy_async",
-        AsyncMock(return_value=False),
-    )
 
     fake_papers = {
         "papers": [
@@ -283,10 +279,6 @@ async def test_search_scholar_decodo_empty_records_failure(redis_client_fixture,
 
     factory, scrape_mock = _make_decodo_client(markdown="")
     monkeypatch.setattr("decodo.DecodoScrapingClient", factory)
-    monkeypatch.setattr(
-        "academic.scholar.should_bypass_proxy_async",
-        AsyncMock(return_value=False),
-    )
 
     batch = await scholar.search_scholar("anything", limit=20)
 
@@ -313,10 +305,6 @@ async def test_search_scholar_cache_hit_skips_decodo(redis_client_fixture, monke
     md = _read_fixture("decodo_markdown_transformer.md")
     factory, scrape_mock = _make_decodo_client(markdown=md)
     monkeypatch.setattr("decodo.DecodoScrapingClient", factory)
-    monkeypatch.setattr(
-        "academic.scholar.should_bypass_proxy_async",
-        AsyncMock(return_value=False),
-    )
 
     fake_papers = {
         "papers": [
