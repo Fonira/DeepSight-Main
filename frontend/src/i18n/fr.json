@@ -137,7 +137,9 @@
     "featureAnalysis": "Analyse IA",
     "featureFactCheck": "Vérification des faits",
     "featureStudyTools": "Outils d'étude",
-    "featureChat": "Chat contextuel"
+    "featureChat": "Chat contextuel",
+    "staySignedIn": "Rester connecté",
+    "staySignedInHint": "Décocher pour vous déconnecter après 24h d'inactivité"
   },
   "dashboard": {
     "title": "Analyse vidéo",

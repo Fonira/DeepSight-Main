@@ -29,6 +29,10 @@ import {
   API_URL,
   authApi,
   videoApi,
+  applyStaySignedIn,
+  isSessionExpired,
+  getSessionExpiry,
+  AUTH_SESSION_EXPIRY_KEY,
 } from "../api";
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -57,6 +61,55 @@ describe("Token Storage", () => {
     localStorage.setItem("cached_user", JSON.stringify({ user: { id: 1 } }));
     clearTokens();
     expect(localStorage.getItem("cached_user")).toBeNull();
+  });
+
+  it("should clear auth_session_expiry on clearTokens", () => {
+    localStorage.setItem(AUTH_SESSION_EXPIRY_KEY, String(Date.now() + 1000));
+    clearTokens();
+    expect(localStorage.getItem(AUTH_SESSION_EXPIRY_KEY)).toBeNull();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// Stay signed in helpers (Auth V2 Step 3)
+// ═══════════════════════════════════════════════════════════════════════
+
+describe("Stay signed in helpers", () => {
+  it("applyStaySignedIn(true) clears the expiry key", () => {
+    localStorage.setItem(AUTH_SESSION_EXPIRY_KEY, "12345");
+    applyStaySignedIn(true);
+    expect(localStorage.getItem(AUTH_SESSION_EXPIRY_KEY)).toBeNull();
+  });
+
+  it("applyStaySignedIn(false) sets a deadline ~24h ahead", () => {
+    vi.useRealTimers();
+    const before = Date.now();
+    applyStaySignedIn(false);
+    const raw = localStorage.getItem(AUTH_SESSION_EXPIRY_KEY);
+    expect(raw).not.toBeNull();
+    const deadline = Number(raw);
+    const TWENTY_FOUR_H_MS = 24 * 60 * 60 * 1000;
+    expect(deadline).toBeGreaterThanOrEqual(before + TWENTY_FOUR_H_MS - 1000);
+    expect(deadline).toBeLessThanOrEqual(Date.now() + TWENTY_FOUR_H_MS + 1000);
+  });
+
+  it("isSessionExpired returns false when key is absent", () => {
+    expect(isSessionExpired()).toBe(false);
+  });
+
+  it("isSessionExpired returns true when deadline is in the past", () => {
+    localStorage.setItem(AUTH_SESSION_EXPIRY_KEY, String(Date.now() - 1000));
+    expect(isSessionExpired()).toBe(true);
+  });
+
+  it("isSessionExpired returns false when deadline is in the future", () => {
+    localStorage.setItem(AUTH_SESSION_EXPIRY_KEY, String(Date.now() + 60_000));
+    expect(isSessionExpired()).toBe(false);
+  });
+
+  it("getSessionExpiry returns null for malformed value", () => {
+    localStorage.setItem(AUTH_SESSION_EXPIRY_KEY, "not-a-number");
+    expect(getSessionExpiry()).toBeNull();
   });
 });
 
