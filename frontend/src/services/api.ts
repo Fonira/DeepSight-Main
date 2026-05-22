@@ -1090,6 +1090,30 @@ export const authApi = {
     });
   },
 
+  /**
+   * Auth V2 — Re-authentification scopée (Wave 1 Step 3 backend PR #533).
+   *
+   * POST /api/auth/reauth { password, audience }
+   * → { reauth_token, expires_in } (TTL ~5 min côté backend).
+   *
+   * Le `reauth_token` doit ensuite être passé en header `X-Reauth-Token`
+   * sur l'endpoint sensible cible (billing / delete / change-email /
+   * change-password). 401 si le mot de passe est invalide.
+   */
+  async requestReauth(
+    password: string,
+    audience:
+      | "billing"
+      | "delete"
+      | "change-email"
+      | "change-password",
+  ): Promise<{ reauth_token: string; expires_in: number }> {
+    return request("/api/auth/reauth", {
+      method: "POST",
+      body: { password, audience },
+    });
+  },
+
   async updatePreferences(prefs: {
     default_lang?: string;
     default_mode?: string;
