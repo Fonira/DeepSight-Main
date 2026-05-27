@@ -1,14 +1,20 @@
 # ═══════════════════════════════════════════════════════════════════════════════
 # DeepSight Production Stack — Hetzner VPS
 #
-# Usage depuis /opt/deepsight/repo :
-#   docker compose -f deploy/hetzner/docker-compose.yml up -d
+# ⚠️ DORMANT — non utilisé en production (au 2026-04-28).
 #
-# Rebuild backend après changement de code :
-#   docker compose -f deploy/hetzner/docker-compose.yml up -d --build backend
+# La prod tourne en `docker run` direct depuis le webhook
+# `junglefarmz-deploy.service` (cf. AUTODEPLOY.md). Aucun container actuel
+# ne porte les labels `com.docker.compose.*`.
 #
-# ⚠️ Les noms de containers (container_name) et le réseau correspondent
-#    exactement à la config de production existante pour éviter toute casse.
+# Ce fichier est conservé pour :
+#   - servir de référence (services/healthchecks/volumes canoniques)
+#   - servir de fallback si on migre vers `docker compose up -d` plus tard
+#   - démarrer une stack de staging locale
+#
+# NE PAS lancer `docker compose up` sur la prod tant que les containers
+# existants (repo-backend-1, repo-postgres-1, repo-redis-1, repo-caddy-1)
+# n'ont pas été décommissionnés proprement.
 # ═══════════════════════════════════════════════════════════════════════════════
 
 networks:
