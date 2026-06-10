@@ -12,7 +12,7 @@
 
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
-import { tutorApi } from "../services/api";
+import { tutorApi, ApiError } from "../services/api";
 import type { TutorLang, TutorPhase, TutorTurn } from "../types/tutor";
 import type { TutorConceptItem } from "../types/conceptImage";
 
@@ -203,7 +203,14 @@ export const useTutorStore = create<TutorState>()(
     },
 
     submitTextTurn: async (input) => {
-      const sessionId = get().sessionId;
+      const {
+        sessionId,
+        conceptTerm,
+        conceptDef,
+        summaryId,
+        sourceVideoTitle,
+        lang,
+      } = get();
       if (!sessionId) return;
       set((s) => {
         s.messages.push({
@@ -226,6 +233,44 @@ export const useTutorStore = create<TutorState>()(
           s.loading = false;
         });
       } catch (err) {
+        // Redis TTL=1h ; après idle > 1h le backend renvoie 404 « Session non
+        // trouvée ou expirée ». Plutôt qu'afficher une erreur, on relance une
+        // session avec le même concept (préservé dans le store) et on rejoue
+        // le turn de l'utilisateur. L'historique Magistral est perdu mais le
+        // concept reste, donc le Tuteur continue la même piste.
+        const isExpired =
+          err instanceof ApiError && err.status === 404 && Boolean(conceptTerm);
+        if (isExpired && conceptTerm) {
+          try {
+            const fresh = await tutorApi.sessionStart({
+              concept_term: conceptTerm,
+              concept_def: conceptDef ?? "",
+              summary_id: summaryId ?? undefined,
+              source_video_title: sourceVideoTitle ?? undefined,
+              mode: "text",
+              lang,
+            });
+            const turnResp = await tutorApi.sessionTurn(fresh.session_id, {
+              user_input: input,
+            });
+            set((s) => {
+              s.sessionId = fresh.session_id;
+              s.messages.push({
+                role: "assistant",
+                content: turnResp.ai_response,
+                timestamp_ms: Date.now(),
+              });
+              s.loading = false;
+            });
+            return;
+          } catch (restartErr) {
+            set((s) => {
+              s.error = (restartErr as Error).message;
+              s.loading = false;
+            });
+            return;
+          }
+        }
         set((s) => {
           s.error = (err as Error).message;
           s.loading = false;
