@@ -1,9 +1,16 @@
 name: Daily Database Backup
 
+# ⚠️ DÉSACTIVÉ (2026-06-10) — déclencheur planifié retiré.
+# Le backup quotidien réel est assuré par l'APScheduler du backend
+# (backend/src/main.py → run_backup(upload=True) vers R2/S3, via .env.production).
+# Ce workflow échouait tous les jours faute de secrets GitHub configurés
+# (DATABASE_URL / AWS_* vides). Conservé en exécution MANUELLE uniquement :
+# pour le réactiver en cron, restaurer le bloc `schedule` ci-dessous ET
+# renseigner les secrets repo (DATABASE_URL, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY).
 on:
-  schedule:
-    # Every day at 03:00 UTC
-    - cron: "0 3 * * *"
+  # schedule:
+  #   # Every day at 03:00 UTC
+  #   - cron: "0 3 * * *"
   workflow_dispatch:
     inputs:
       upload:
