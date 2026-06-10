@@ -68,6 +68,9 @@ extension/node_modules/
 monitoring/node_modules/
 monitoring/test-results/
 monitoring/playwright-report/
+extension/dist-e2e/
+extension/e2e-report/
+extension/playwright-report/
 
 deepsight-video/
 mobile/nul
