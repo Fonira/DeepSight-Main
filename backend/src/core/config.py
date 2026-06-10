@@ -364,6 +364,58 @@ ADMIN_CONFIG = {
 }
 
 # =============================================================================
+# PRIVATE MODE — verrouillage admin-only
+# =============================================================================
+# Quand actif, seul l'admin (User.is_admin ou email == ADMIN_EMAIL) peut
+# s'authentifier et utiliser l'API. Les endpoints publics inoffensifs
+# (/health, /api/billing/plans, webhook Stripe...) restent accessibles.
+#
+# Mis en place le 2026-06-10 : garder DeepSight accessible au seul fondateur
+# pendant une période d'indisponibilité, sans couper l'infra.
+#
+# Résolution de l'état (dans l'ordre) :
+#   1. Variable d'env PRIVATE_MODE définie → elle gagne (true/1/yes/on => actif).
+#   2. Sinon → verrouillé en PRODUCTION uniquement (PRIVATE_MODE_LOCKDOWN),
+#      ouvert en dev/test pour ne pas casser la suite de tests.
+#
+# Pour ROUVRIR au public, deux options :
+#   - passer PRIVATE_MODE_LOCKDOWN à False ci-dessous puis redéployer, OU
+#   - définir PRIVATE_MODE=false dans .env.production sur le VPS.
+PRIVATE_MODE_LOCKDOWN = True
+
+# Filet de sécurité : emails TOUJOURS autorisés en mode privé, même si
+# ADMIN_EMAIL n'est pas réglé côté VPS. Garantit que le fondateur ne peut jamais
+# se verrouiller dehors (il n'a pas d'accès SSH pour corriger un lockout).
+# Override/extension possible via env PRIVATE_MODE_ALLOWED_EMAILS (CSV).
+PRIVATE_MODE_ALLOWED_EMAILS = {"maximeleparc3@gmail.com"}
+
+
+def is_private_mode() -> bool:
+    """Retourne True si l'accès à DeepSight est restreint à l'admin uniquement."""
+    raw = os.getenv("PRIVATE_MODE")
+    if raw is not None:
+        return raw.strip().lower() in ("1", "true", "yes", "on")
+    return PRIVATE_MODE_LOCKDOWN and _settings.is_production
+
+
+def private_mode_allowed_emails() -> set:
+    """Emails autorisés à accéder pendant le mode privé.
+
+    Union de : allowlist hardcodée (fondateur) + env PRIVATE_MODE_ALLOWED_EMAILS
+    (CSV) + ADMIN_EMAIL courant. Tout en minuscules.
+    """
+    emails = {e.lower() for e in PRIVATE_MODE_ALLOWED_EMAILS}
+    raw = os.getenv("PRIVATE_MODE_ALLOWED_EMAILS", "")
+    for e in raw.split(","):
+        e = e.strip().lower()
+        if e:
+            emails.add(e)
+    admin_email = (ADMIN_CONFIG.get("ADMIN_EMAIL") or "").lower()
+    if admin_email:
+        emails.add(admin_email)
+    return emails
+
+# =============================================================================
 # API KEYS
 # =============================================================================
 

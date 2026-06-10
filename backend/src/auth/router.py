@@ -68,7 +68,7 @@ from .service import (
     revoke_session_v2,
 )
 from services.audit_log import log_audit
-from .dependencies import get_current_user, get_current_token_payload
+from .dependencies import get_current_user, get_current_token_payload, enforce_private_mode, is_private_mode_allowed
 from .email import send_verification_email, send_password_reset_email, send_welcome_email
 
 router = APIRouter()
@@ -90,6 +90,9 @@ async def register(data: UserRegister, session: AsyncSession = Depends(get_sessi
     breakdown les cohorts et funnels par canal d'acquisition (PH, Twitter,
     Karim B2B, etc.). Aucune nouvelle migration requise.
     """
+    # 🔒 Mode privé — aucune nouvelle inscription tant que l'accès est restreint.
+    enforce_private_mode(None)
+
     success, user, message = await create_user(
         session, username=data.username, email=data.email, password=data.password
     )
@@ -141,6 +144,9 @@ async def login(data: UserLogin, session: AsyncSession = Depends(get_session)):
                 status_code=403, detail="EMAIL_NOT_VERIFIED", headers={"X-Email": user.email if user else ""}
             )
         raise HTTPException(status_code=401, detail=message)
+
+    # 🔒 Mode privé — seul l'admin peut obtenir des tokens.
+    enforce_private_mode(user)
 
     # Générer les tokens avec session_token intégré
     access_token = create_access_token(user.id, user.is_admin, session_token)
@@ -628,6 +634,10 @@ async def google_callback(
     if not success or not user:
         return RedirectResponse(url=f"{FRONTEND_URL}/login?error=auth_failed", status_code=302)
 
+    # 🔒 Mode privé — seul l'admin/allowlist peut se connecter (redirection, pas de token).
+    if _core_config.is_private_mode() and not is_private_mode_allowed(user):
+        return RedirectResponse(url=f"{FRONTEND_URL}/login?error=private_mode", status_code=302)
+
     # Générer les tokens JWT avec session_token
     access_token = create_access_token(user.id, user.is_admin, session_token)
     refresh_token = create_refresh_token(user.id, session_token)
@@ -668,6 +678,9 @@ async def google_callback_post(data: GoogleCallbackRequest, session: AsyncSessio
 
     if not success or not user:
         raise HTTPException(status_code=400, detail=message)
+
+    # 🔒 Mode privé — seul l'admin peut obtenir des tokens.
+    enforce_private_mode(user)
 
     # Tokens JWT avec session_token
     access_token = create_access_token(user.id, user.is_admin, session_token)
@@ -753,6 +766,9 @@ async def google_token_login(data: GoogleMobileTokenRequest, session: AsyncSessi
     if not success or not user:
         log.warning(f"Google mobile login failed for {email}: {message}")
         raise HTTPException(status_code=400, detail=message)
+
+    # 🔒 Mode privé — seul l'admin peut obtenir des tokens.
+    enforce_private_mode(user)
 
     # 5. Générer nos JWT (device_name transmis pour traçabilité future)
     access_token = create_access_token(user.id, user.is_admin, session_token)

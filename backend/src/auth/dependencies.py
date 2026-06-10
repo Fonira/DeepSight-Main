@@ -42,6 +42,46 @@ def _jwt_config() -> dict:
 
 logger = logging.getLogger(__name__)
 
+
+def is_admin_user(user: Optional[User]) -> bool:
+    """True si l'utilisateur est admin (flag DB is_admin OU email == ADMIN_EMAIL)."""
+    if user is None:
+        return False
+    admin_email = (_core_config.ADMIN_CONFIG.get("ADMIN_EMAIL") or "").lower()
+    return bool(user.is_admin or ((user.email or "").lower() == admin_email))
+
+
+def is_private_mode_allowed(user: Optional[User]) -> bool:
+    """True si l'utilisateur peut accéder pendant le mode privé.
+
+    Admin (is_admin / ADMIN_EMAIL) OU email dans l'allowlist de sécurité
+    (cf core.config.private_mode_allowed_emails — garantit l'accès du fondateur).
+    """
+    if is_admin_user(user):
+        return True
+    email = ((getattr(user, "email", "") or "")).lower() if user is not None else ""
+    return bool(email and email in _core_config.private_mode_allowed_emails())
+
+
+def enforce_private_mode(user: Optional[User]) -> None:
+    """🔒 Mode privé : bloque tout sauf l'admin/allowlist quand PRIVATE_MODE est actif.
+
+    Lève une 403 explicite pour les non-autorisés. No-op si le mode est inactif
+    (cas par défaut en dev/test) ou si l'utilisateur est autorisé.
+    """
+    if _core_config.is_private_mode() and not is_private_mode_allowed(user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "private_mode",
+                "message": (
+                    "DeepSight est temporairement en accès privé (maintenance). "
+                    "L'accès est réservé à l'administrateur."
+                ),
+            },
+        )
+
+
 # Import du service de sécurité
 try:
     from core.security import is_token_blacklisted, check_rate_limit
@@ -187,6 +227,9 @@ async def get_current_user(
                     "wait_seconds": rate_info.get("wait_seconds", 60),
                 },
             )
+
+    # 🔒 Mode privé — coupe l'accès aux non-admins (y compris sessions déjà ouvertes)
+    enforce_private_mode(user)
 
     return user
 
