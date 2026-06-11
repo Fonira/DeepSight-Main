@@ -47,9 +47,11 @@ async def test_watchdog_timeout_marks_failed_and_releases_credits(isolate_task_s
     release_mock = AsyncMock()
     update_mock = AsyncMock()
     notify_mock = AsyncMock()
-    monkeypatch.setattr(_videos_router, "release_reserved_credits", release_mock)
-    monkeypatch.setattr(_videos_router, "update_task_status", update_mock)
-    monkeypatch.setattr(_videos_router, "notify_analysis_failed", notify_mock)
+    # raising=False : ces noms ne sont liés au niveau module que si l'import
+    # core.security réussit (pattern SECURITY_AVAILABLE) ; absents en CI.
+    monkeypatch.setattr(_videos_router, "release_reserved_credits", release_mock, raising=False)
+    monkeypatch.setattr(_videos_router, "update_task_status", update_mock, raising=False)
+    monkeypatch.setattr(_videos_router, "notify_analysis_failed", notify_mock, raising=False)
     # async_session_maker est ré-importé localement depuis db.database
     import db.database as _db
 
@@ -82,7 +84,7 @@ async def test_watchdog_success_is_transparent(isolate_task_store, monkeypatch):
     monkeypatch.setattr(_videos_router, "SECURITY_AVAILABLE", True)
 
     release_mock = AsyncMock()
-    monkeypatch.setattr(_videos_router, "release_reserved_credits", release_mock)
+    monkeypatch.setattr(_videos_router, "release_reserved_credits", release_mock, raising=False)
 
     analyze_mock = AsyncMock()
 

@@ -59,7 +59,7 @@ def is_private_mode_allowed(user: Optional[User]) -> bool:
     """
     if is_admin_user(user):
         return True
-    email = ((getattr(user, "email", "") or "")).lower() if user is not None else ""
+    email = (getattr(user, "email", "") or "").lower() if user is not None else ""
     return bool(email and email in _core_config.private_mode_allowed_emails())
 
 
@@ -75,8 +75,7 @@ def enforce_private_mode(user: Optional[User]) -> None:
             detail={
                 "code": "private_mode",
                 "message": (
-                    "DeepSight est temporairement en accès privé (maintenance). "
-                    "L'accès est réservé à l'administrateur."
+                    "DeepSight est temporairement en accès privé (maintenance). L'accès est réservé à l'administrateur."
                 ),
             },
         )
