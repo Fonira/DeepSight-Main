@@ -1072,8 +1072,9 @@ async def analyze_video(
     # Créer dans la DB aussi
     await create_task(session, task_id, current_user.id, "video_analysis")
 
-    # Lancer l'analyse en background
+    # Lancer l'analyse en background (sous watchdog anti-gel — timeout dur global)
     background_tasks.add_task(
+        _run_analysis_with_watchdog,
         _analyze_video_background_v6,  # 🆕 Nouvelle version
         task_id=task_id,
         video_id=video_id,
@@ -2860,6 +2861,75 @@ async def _async_none():
     sans logique conditionnelle dispersée.
     """
     return None
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ⏱️ WATCHDOG — garde-fou anti-gel des tâches d'analyse en arrière-plan
+# ═══════════════════════════════════════════════════════════════════════════════
+# Une BackgroundTask FastAPI sans borne temporelle peut rester bloquée
+# indéfiniment sur un ``await`` réseau non protégé (appel LLM/HTTP figé), laissant
+# l'UI sur « Analyse IA en cours » pour toujours et les crédits réservés coincés.
+# ``asyncio.wait_for`` borne l'exécution : sur dépassement, on libère les crédits,
+# on marque la tâche en échec avec un message explicite (loggé — donc visible même
+# si la capture Sentry ne couvre pas les BackgroundTasks) et on prévient l'user.
+# Override sans rebuild via l'env ``ANALYSIS_HARD_TIMEOUT_SEC``.
+ANALYSIS_HARD_TIMEOUT_SEC = int(os.getenv("ANALYSIS_HARD_TIMEOUT_SEC", "600"))
+
+
+async def _run_analysis_with_watchdog(analyze_fn, **kwargs) -> None:
+    """Exécute une tâche d'analyse en arrière-plan sous un timeout dur global.
+
+    Transparent en cas de succès : ``analyze_fn`` reçoit ``**kwargs`` tels quels et
+    conserve sa propre gestion d'erreurs (``except Exception``). Le ``CancelledError``
+    levé par ``wait_for`` sur dépassement hérite de ``BaseException`` et n'est donc PAS
+    avalé par le ``except Exception`` interne — il remonte ici sous forme de
+    ``asyncio.TimeoutError``, où l'on rejoue la logique d'échec (crédits + statut).
+    """
+    task_id = kwargs.get("task_id")
+    user_id = kwargs.get("user_id")
+    try:
+        await asyncio.wait_for(analyze_fn(**kwargs), timeout=ANALYSIS_HARD_TIMEOUT_SEC)
+    except asyncio.TimeoutError:
+        error_msg = (
+            f"L'analyse a dépassé le délai maximum de {ANALYSIS_HARD_TIMEOUT_SEC}s "
+            "(étape d'analyse IA figée). Opération interrompue, crédits restitués."
+        )
+        logger.error(
+            "⏱️ [WATCHDOG] Analysis task %s timed out after %ss — releasing credits",
+            (task_id or "?")[:12],
+            ANALYSIS_HARD_TIMEOUT_SEC,
+        )
+
+        # 🔐 Libérer les crédits réservés (même contrat que le except interne)
+        if SECURITY_AVAILABLE and task_id is not None and user_id is not None:
+            try:
+                await release_reserved_credits(user_id, task_id)
+                logger.error("🔓 [WATCHDOG] Credits released after timeout: task=%s", task_id[:12])
+            except Exception as release_err:
+                logger.error("⚠️ [WATCHDOG] Failed to release credits after timeout: %s", release_err)
+
+        if task_id is not None:
+            _task_store[task_id] = {
+                "status": "failed",
+                "progress": 0,
+                "message": error_msg,
+                "user_id": user_id,
+                "error": "analysis_timeout",
+            }
+
+            try:
+                from db.database import async_session_maker
+
+                async with async_session_maker() as session:
+                    await update_task_status(session, task_id, status="failed", progress=0, error=error_msg)
+            except Exception as db_err:
+                logger.error("⚠️ [WATCHDOG] Failed to persist failed status after timeout: %s", db_err)
+
+        if user_id is not None:
+            try:
+                await notify_analysis_failed(user_id=user_id, video_title="Vidéo", error=error_msg[:200])
+            except Exception as notify_err:
+                logger.error("⚠️ [WATCHDOG] Failed to send timeout notification: %s", notify_err)
 
 
 async def _analyze_video_background_v6(
