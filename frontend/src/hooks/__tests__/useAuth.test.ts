@@ -16,6 +16,7 @@ vi.mock("../../services/api", () => {
     authApi: {
       login: vi.fn(),
       loginWithGoogle: vi.fn(),
+      loginWithApple: vi.fn(),
       register: vi.fn(),
       verifyEmail: vi.fn(),
       logout: vi.fn(),
@@ -26,6 +27,8 @@ vi.mock("../../services/api", () => {
     setTokens: mockSetTokens,
     getAccessToken: mockGetAccessToken,
     getRefreshToken: mockGetRefreshToken,
+    // Auth V2 Step 3 — hard cap session côté client (useAuth.ts useMemo initial)
+    isSessionExpired: vi.fn(() => false),
     ApiError: class ApiError extends Error {
       status: number;
       data?: Record<string, unknown>;
