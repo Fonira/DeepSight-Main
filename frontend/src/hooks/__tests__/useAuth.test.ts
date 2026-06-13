@@ -26,6 +26,9 @@ vi.mock("../../services/api", () => {
     setTokens: mockSetTokens,
     getAccessToken: mockGetAccessToken,
     getRefreshToken: mockGetRefreshToken,
+    // Auth V2 Step 3 — utilisé par useAuth (useMemo initialUser). Doit être mocké
+    // sinon vitest lève "No isSessionExpired export defined on the mock".
+    isSessionExpired: vi.fn(() => false),
     ApiError: class ApiError extends Error {
       status: number;
       data?: Record<string, unknown>;
