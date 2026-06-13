@@ -390,11 +390,12 @@ ADMIN_CONFIG = {
 PRIVATE_MODE_LOCKDOWN = True
 
 # Filet de sécurité : emails TOUJOURS autorisés en mode privé, même si
-# ADMIN_EMAIL n'est pas réglé côté VPS. Garantit que le fondateur ne peut jamais
-# se verrouiller dehors (il n'a pas d'accès SSH pour corriger un lockout).
-# Override/extension possible via env PRIVATE_MODE_ALLOWED_EMAILS (CSV).
+# ADMIN_EMAIL n'est pas réglé côté VPS.
+# ⚠️ Choix utilisateur (2026-06-13) : accès réservé au SEUL compte pro
+# maxime@deepsightsynthesis.com (le gmail filet a été retiré sur sa demande).
+# En cas de souci sur ce compte, ré-autoriser via env PRIVATE_MODE_ALLOWED_EMAILS (CSV)
+# ou ADMIN_EMAIL côté VPS (les deux sont unis à ce set dans private_mode_allowed_emails()).
 PRIVATE_MODE_ALLOWED_EMAILS = {
-    "maximeleparc3@gmail.com",
     "maxime@deepsightsynthesis.com",
 }
 
