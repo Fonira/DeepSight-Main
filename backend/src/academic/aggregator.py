@@ -299,12 +299,18 @@ class AcademicAggregator:
         # spec 2026-05-17 § 3.3 — opt-in deep_search, Pro+, only if <10 papers
         # ═══════════════════════════════════════════════════════════════
         try:
-            from core.config import SCHOLAR_ENABLED
+            from core.config import SCHOLAR_ENABLED, is_public_data_only
         except Exception:
             SCHOLAR_ENABLED = True
 
+            def is_public_data_only() -> bool:
+                return False
+
+        # 🔒 PUBLIC_DATA_ONLY : Google Scholar via Decodo = scraping → désactivé.
+        # arXiv / Crossref / OpenAlex / Semantic Scholar (APIs publiques) restent actifs.
         should_use_scholar = (
             SCHOLAR_ENABLED
+            and not is_public_data_only()
             and getattr(request, "deep_search", False)
             and user_plan in ("pro", "expert")
             and len(all_papers) < SCHOLAR_PHASE_THRESHOLD

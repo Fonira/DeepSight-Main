@@ -21,6 +21,7 @@ import secrets
 from datetime import datetime
 from typing import Any
 
+from core.config import is_public_data_only
 from core.http_client import get_proxied_client
 from core.logging import logger
 from middleware.proxy_telemetry import record_proxy_usage
@@ -193,6 +194,11 @@ async def fetch_tiktok_comments(
     Returns:
         CommentsBatch avec sampled[], total_seen, disabled, bytes_used.
     """
+    # 🔒 PUBLIC_DATA_ONLY : le scraping de l'endpoint web TikTok est interdit.
+    if is_public_data_only():
+        logger.info("🔒 PUBLIC_DATA_ONLY: scraping commentaires TikTok désactivé (%s)", video_id)
+        return CommentsBatch(platform="tiktok", video_id=video_id, disabled=True)
+
     ms_token = _generate_ms_token()
     cursor = 0
     total_bytes = 0

@@ -76,6 +76,12 @@ class _DeepSightSettings(BaseSettings):
     YOUTUBE_PROXY: str = ""  # ex: socks5://user:pass@host:port ou http://user:pass@host:port
     # Kill switch Google Scholar Phase 4 (spec 2026-05-17 § 10.2). False → Phase 4 skip global.
     SCHOLAR_ENABLED: bool = True
+    # Mode "données publiques uniquement" (usage privé/personnel). Quand True, coupe
+    # TOUT scraping : Invidious, Piped, yt-dlp (subs + audio STT), recherche discovery
+    # yt-dlp, scraping TikTok (download + commentaires), Decodo/Google Scholar. Ne
+    # laisse que Supadata + APIs officielles (Mistral, arXiv/Crossref/OpenAlex,
+    # Tournesol). Défaut False → comportement SaaS inchangé (no-op en CI/tests).
+    PUBLIC_DATA_ONLY: bool = False
     # Tier 2 — sticky session Decodo (port 10001-10010, IP fixe ~10 min)
     # Utilise pour cohérence cookies session, swap automatique si default cumule trop d'erreurs.
     YOUTUBE_PROXY_STICKY: Optional[str] = None
@@ -387,7 +393,10 @@ PRIVATE_MODE_LOCKDOWN = True
 # ADMIN_EMAIL n'est pas réglé côté VPS. Garantit que le fondateur ne peut jamais
 # se verrouiller dehors (il n'a pas d'accès SSH pour corriger un lockout).
 # Override/extension possible via env PRIVATE_MODE_ALLOWED_EMAILS (CSV).
-PRIVATE_MODE_ALLOWED_EMAILS = {"maximeleparc3@gmail.com"}
+PRIVATE_MODE_ALLOWED_EMAILS = {
+    "maximeleparc3@gmail.com",
+    "maxime@deepsightsynthesis.com",
+}
 
 
 def is_private_mode() -> bool:
@@ -396,6 +405,19 @@ def is_private_mode() -> bool:
     if raw is not None:
         return raw.strip().lower() in ("1", "true", "yes", "on")
     return PRIVATE_MODE_LOCKDOWN and _settings.is_production
+
+
+def is_public_data_only() -> bool:
+    """True si DeepSight doit se limiter aux données publiques (zéro scraping).
+
+    Résolution : env `PUBLIC_DATA_ONLY` (true/1/yes/on) prioritaire, sinon valeur
+    du settings (`PUBLIC_DATA_ONLY`, défaut False). Pensé pour un déploiement
+    privé/personnel où seul Supadata + les APIs officielles sont autorisés.
+    """
+    raw = os.getenv("PUBLIC_DATA_ONLY")
+    if raw is not None:
+        return raw.strip().lower() in ("1", "true", "yes", "on")
+    return bool(_settings.PUBLIC_DATA_ONLY)
 
 
 def private_mode_allowed_emails() -> set:

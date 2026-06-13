@@ -180,6 +180,11 @@ async def refresh_token(data: RefreshTokenRequest, session: AsyncSession = Depen
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
 
+    # 🔒 Mode privé : re-vérifier l'accès à chaque refresh. Sans ça, un refresh
+    # token encore valide d'un compte non autorisé pourrait régénérer un access
+    # token après activation du lockdown.
+    enforce_private_mode(user)
+
     # Multi-device : on ne rotate plus le session_token à chaque refresh.
     # On réutilise celui du JWT (ou récupère/crée idempotent côté DB s'il
     # manque). Une révocation explicite (logout → DB NULL) reste détectée
@@ -859,6 +864,10 @@ async def apple_token_login(data: AppleMobileTokenRequest, session: AsyncSession
     if not success or not user:
         log.warning(f"Apple login failed: {message}")
         raise HTTPException(status_code=400, detail=message)
+
+    # 🔒 Mode privé : Apple Sign In aussi soumis à l'allowlist (parité avec
+    # login / google/token qui appellent déjà enforce_private_mode).
+    enforce_private_mode(user)
 
     # 4. Generer nos JWT
     access_token = create_access_token(user.id, user.is_admin, session_token)

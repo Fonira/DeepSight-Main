@@ -426,6 +426,15 @@ class YouTubeSearcher:
             Liste de résultats bruts (dictionnaires)
         """
         results = []
+
+        # 🔒 PUBLIC_DATA_ONLY : la recherche yt-dlp est du scraping → désactivée.
+        # La découverte repose alors uniquement sur Tournesol (API publique).
+        from core.config import is_public_data_only
+
+        if is_public_data_only():
+            logger.info("🔒 PUBLIC_DATA_ONLY: yt-dlp search désactivée (scraping)")
+            return results
+
         max_results = min(max_results, 30)  # yt-dlp limite augmentée
 
         try:
