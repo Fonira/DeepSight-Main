@@ -60,6 +60,7 @@ from core.config import (
     get_elevenlabs_key,
     get_mistral_key,
     get_youtube_proxy,
+    is_public_data_only,
     TRANSCRIPT_CONFIG,
 )
 from core.http_client import shared_http_client, get_proxied_client, record_proxied_response, smart_request
@@ -2526,6 +2527,21 @@ async def _get_transcript_with_timestamps_inner(
         print("  ❌ [Supadata] Failed — falling back to Phase 1", flush=True)
     else:
         print("  ⏭️ [Supadata] Skipped (circuit OPEN)", flush=True)
+
+    # ═══════════════════════════════════════════════════════════════════════════════
+    # 🔒 PUBLIC_DATA_ONLY : stop net après Supadata. Les phases suivantes
+    # (Invidious, Piped, yt-dlp, audio STT téléchargé via mirrors) sont du scraping
+    # → interdites en mode données publiques. On ne retourne QUE du Supadata.
+    # ═══════════════════════════════════════════════════════════════════════════════
+    if is_public_data_only():
+        print("", flush=True)
+        print(
+            "🔒 [PUBLIC_DATA_ONLY] Supadata indisponible et scraping désactivé "
+            "(Invidious/Piped/yt-dlp/STT) → aucune source publique disponible.",
+            flush=True,
+        )
+        print(f"{'=' * 70}", flush=True)
+        return None, None, None
 
     # ═══════════════════════════════════════════════════════════════════════════════
     # PHASE 1: Méthodes texte EN PARALLÈLE (sans Supadata)

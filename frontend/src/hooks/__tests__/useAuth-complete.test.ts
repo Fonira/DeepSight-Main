@@ -90,6 +90,9 @@ vi.mock("../../services/api", () => ({
     localStorage.removeItem("refresh_token");
     localStorage.removeItem("cached_user");
   }),
+  // Auth V2 Step 3 — utilisé par useAuth (useMemo initialUser). Doit être mocké
+  // sinon vitest lève "No isSessionExpired export defined on the mock".
+  isSessionExpired: vi.fn(() => false),
   ApiError: class ApiError extends Error {
     status: number;
     isUnauthorized: boolean;

@@ -22,6 +22,7 @@ import json
 from datetime import datetime
 from typing import Any, Iterator
 
+from core.config import is_public_data_only
 from core.http_client import get_proxied_client
 from core.logging import logger
 from middleware.proxy_telemetry import record_proxy_usage
@@ -422,6 +423,12 @@ async def fetch_youtube_comments(
     Returns:
         CommentsBatch avec sampled[], total_seen, disabled, bytes_used.
     """
+    # 🔒 PUBLIC_DATA_ONLY : l'API Innertube non officielle (via Decodo) est du
+    # scraping → interdite en mode données publiques.
+    if is_public_data_only():
+        logger.info("🔒 PUBLIC_DATA_ONLY: scraping commentaires YouTube désactivé (%s)", video_id)
+        return CommentsBatch(platform="youtube", video_id=video_id, disabled=True)
+
     total_bytes = 0
     token, disabled, b = await _fetch_continuation(video_id)
     total_bytes += b

@@ -1,10 +1,10 @@
 {
   "extension_name": {
-    "message": "DeepSight - AI Video Analysis",
+    "message": "Prisme - AI Video Analysis",
     "description": "Extension display name shown in Chrome Web Store and the browser toolbar"
   },
   "extension_short_name": {
-    "message": "DeepSight",
+    "message": "Prisme",
     "description": "Short name (max 12 chars) shown in app launcher and compact UI"
   },
   "extension_description": {

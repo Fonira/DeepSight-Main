@@ -31,7 +31,7 @@ from transcripts.audio_utils import (
     executor as audio_executor,
     _yt_dlp_extra_args,
 )
-from core.config import get_supadata_key, get_mistral_key
+from core.config import get_supadata_key, get_mistral_key, is_public_data_only
 from core.http_client import get_proxied_client, record_proxied_response, smart_request
 
 logger = logging.getLogger(__name__)
@@ -649,6 +649,12 @@ async def get_tiktok_transcript(
             return supadata_result
     except Exception as e:
         logger.warning(f"[TIKTOK] Supadata failed: {e}")
+
+    # 🔒 PUBLIC_DATA_ONLY : les phases suivantes (yt-dlp, download direct via APIs
+    # tierces, visual OCR sur vidéo téléchargée) sont du scraping → interdites.
+    if is_public_data_only():
+        logger.info(f"[TIKTOK] PUBLIC_DATA_ONLY: scraping désactivé, Supadata seul pour {vid}")
+        return None, None, None
 
     # ─── Phase 1 : yt-dlp standard ────────────────────────────────────────
     audio_data, audio_ext = await _download_with_retry(url, label="phase1-standard")

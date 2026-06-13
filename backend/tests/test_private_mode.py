@@ -108,7 +108,8 @@ def test_enforce_noop_when_inactive(monkeypatch):
 # --------------------------------------------------------------------------- #
 def test_founder_email_always_in_allowlist():
     # Le fondateur est toujours autorisé, indépendamment d'ADMIN_EMAIL/env.
-    assert "maximeleparc3@gmail.com" in config.private_mode_allowed_emails()
+    # Accès réservé au seul compte pro (décision 2026-06-13, gmail retiré).
+    assert "maxime@deepsightsynthesis.com" in config.private_mode_allowed_emails()
 
 
 def test_allowlist_extendable_via_env(monkeypatch):
@@ -121,7 +122,7 @@ def test_allowlist_extendable_via_env(monkeypatch):
 def test_founder_passes_private_mode_even_if_not_admin(monkeypatch):
     monkeypatch.setattr(config, "is_private_mode", lambda: True)
     monkeypatch.setitem(config.ADMIN_CONFIG, "ADMIN_EMAIL", "someone-else@deepsight.com")
-    founder = _FakeUser(is_admin=False, email="maximeleparc3@gmail.com")
+    founder = _FakeUser(is_admin=False, email="maxime@deepsightsynthesis.com")
     assert deps.is_private_mode_allowed(founder) is True
     # Ne lève pas.
     deps.enforce_private_mode(founder)
