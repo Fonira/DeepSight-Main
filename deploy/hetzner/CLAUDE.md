@@ -21,27 +21,26 @@ Réseau Docker : `repo_deepsight` (créé manuellement, déclaré `external: tru
 ## Fichiers ici
 
 - `Dockerfile` : Python 3.11 + ffmpeg + WeasyPrint deps. Build context = `../../backend`
-- `docker-compose.yml` : Stack complète. Usage : `docker compose -f deploy/hetzner/docker-compose.yml up -d`
+- `docker-compose.yml` : **DORMANT** — référence/fallback uniquement. La prod n'utilise PAS compose (cf. `AUTODEPLOY.md`).
 - `caddy/Caddyfile` : Reverse proxy api.deepsightsynthesis.com → backend:8080. Timeouts SSE 300s, HSTS, security headers.
+- `AUTODEPLOY.md` : mécanisme exact du déploiement automatique (GitHub Actions → SSH → `docker run`).
+- `RUNBOOK.md` : procédure manuelle, gestion des migrations alembic, rollback.
 
-## Déploiement backend (procédure standard)
+## Déploiement backend
 
-```bash
-# Depuis le VPS
-cd /opt/deepsight/repo
-git pull
-docker compose -f deploy/hetzner/docker-compose.yml up -d --build backend
-# Ou rebuild complet :
-docker compose -f deploy/hetzner/docker-compose.yml up -d --no-deps --build backend
-```
+Le déploiement est **automatique** via GitHub Actions (`.github/workflows/deploy-backend.yml`) → SSH au VPS → `docker build` + `docker run`. **Pas `docker compose`** : la prod tourne en `docker run` direct depuis la migration Railway → Hetzner. Voir [`AUTODEPLOY.md`](./AUTODEPLOY.md) pour le détail.
+
+**Push to main** touchant `backend/**`, `deploy/hetzner/**` ou le workflow lui-même = build + swap container backend en ~30s.
+
+**Pour une PR avec migration de schéma**, suivre [`RUNBOOK.md`](./RUNBOOK.md). Ordre canonique : `git pull` → `docker exec repo-backend-1 alembic upgrade head` → build + swap. Depuis l'`entrypoint.sh` (PR fix anomaly #5), le container exécute `alembic upgrade head` automatiquement au démarrage si `RUN_MIGRATIONS=true` est passé (le workflow l'active par défaut).
 
 ## ⚠️ Points critiques
 
-- Le réseau `repo_deepsight` est `external: true` → il doit exister AVANT le compose (`docker network create repo_deepsight`)
-- Les containers se réfèrent entre eux par leur `container_name` (pas le nom du service compose)
-- `env_file: ../../.env.production` + variables `environment:` dans le compose (ces dernières overrident)
-- Le Dockerfile copie `backend/src/` → le code tourne depuis `/app/src/`
-- HealthCheck backend = `curl -f http://localhost:8080/health`
+- Le réseau `repo_deepsight` est créé manuellement — `docker network create repo_deepsight` côté VPS, et `external: true` dans `docker-compose.yml` (qui n'est pas utilisé mais reste cohérent).
+- Les containers se réfèrent entre eux par leur `container_name`.
+- `--env-file /opt/deepsight/repo/.env.production` au `docker run`.
+- Le Dockerfile copie `backend/src/` → le code tourne depuis `/app/src/`. `alembic.ini` + `alembic/` sont à `/app/` (cf. PR #185).
+- HealthCheck backend = `curl -f http://localhost:8080/health` (Caddy repasse en `https://api.deepsightsynthesis.com/health`).
 
 ## Diagnostic rapide
 
