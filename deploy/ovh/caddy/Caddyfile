@@ -1,0 +1,161 @@
+# ────────────────────────────────────────────────────────────────────────────────
+# DeepSight — Caddy (OVHcloud VPS)
+# HTTPS automatique via Let's Encrypt pour les 3 domaines.
+#
+#   deepsightsynthesis.com       → redirection 301 vers www
+#   www.deepsightsynthesis.com   → site React (build Vite dans /srv/www)
+#   api.deepsightsynthesis.com   → API FastAPI (container backend:8080)
+#
+# Remplace frontend/vercel.json : mêmes réécritures (pages de partage, pages
+# chaînes/catégories) et mêmes en-têtes de sécurité. Les en-têtes (CSP, etc.)
+# sont générés depuis vercel.json à chaque déploiement dans
+# generated/headers.caddy : vercel.json reste la seule source à modifier.
+# ────────────────────────────────────────────────────────────────────────────────
+
+# Domaine nu → www
+deepsightsynthesis.com {
+	redir https://www.deepsightsynthesis.com{uri} permanent
+}
+
+# ═══ Site web ═══════════════════════════════════════════════════════════════════
+www.deepsightsynthesis.com {
+	encode zstd gzip
+
+	# En-têtes de sécurité générés depuis frontend/vercel.json (CSP, X-Frame-Options…)
+	import /etc/caddy/generated/headers.caddy
+
+	# ─── Pages servies par l'API (ex-rewrites Vercel) ───────────────────────────
+	# Le Host est forcé sur l'API, comme le faisait la réécriture externe Vercel.
+
+	@shareOgImage path_regexp shareimg ^/s/([^/]+)/og-image\.png$
+	handle @shareOgImage {
+		rewrite * /api/share/{re.shareimg.1}/og-image.png
+		reverse_proxy backend:8080 {
+			header_up Host api.deepsightsynthesis.com
+		}
+	}
+
+	@sharePage path_regexp sharepage ^/s/([^/]+)/page$
+	handle @sharePage {
+		rewrite * /api/share/{re.sharepage.1}/page
+		reverse_proxy backend:8080 {
+			header_up Host api.deepsightsynthesis.com
+		}
+	}
+
+	# Aperçus Open Graph pour les robots des réseaux sociaux sur /s/<token>
+	@shareBot {
+		path_regexp sharebot ^/s/([^/]+)$
+		header_regexp User-Agent (?i)(facebookexternalhit|Twitterbot|LinkedInBot|WhatsApp|Slackbot|TelegramBot|Discordbot|Googlebot|bingbot|Yandex|Baiduspider|DuckDuckBot)
+	}
+	handle @shareBot {
+		rewrite * /api/share/{re.sharebot.1}/og
+		reverse_proxy backend:8080 {
+			header_up Host api.deepsightsynthesis.com
+		}
+	}
+
+	handle /chaines {
+		rewrite * /api/aggregate/channels-render
+		reverse_proxy backend:8080 {
+			header_up Host api.deepsightsynthesis.com
+		}
+	}
+
+	@channel path_regexp channel ^/chaine/([^/]+)$
+	handle @channel {
+		rewrite * /api/aggregate/channel-render/{re.channel.1}
+		reverse_proxy backend:8080 {
+			header_up Host api.deepsightsynthesis.com
+		}
+	}
+
+	handle /categories {
+		rewrite * /api/aggregate/categories-render
+		reverse_proxy backend:8080 {
+			header_up Host api.deepsightsynthesis.com
+		}
+	}
+
+	@category path_regexp category ^/categorie/([^/]+)$
+	handle @category {
+		rewrite * /api/aggregate/category-render/{re.category.1}
+		reverse_proxy backend:8080 {
+			header_up Host api.deepsightsynthesis.com
+		}
+	}
+
+	# Les fonctions Vercel (/api/prerender, /api/status) n'existent pas ici.
+	# Le frontend appelle l'API sur api.deepsightsynthesis.com directement.
+	handle /api/* {
+		respond "Not found" 404
+	}
+
+	# ─── Site statique (SPA) ────────────────────────────────────────────────────
+	handle {
+		root * /srv/www
+
+		# Fichiers fingerprintés par Vite : cache long
+		@immutable path /assets/* /icons/*
+		header @immutable Cache-Control "public, max-age=31536000, immutable"
+
+		# Fichiers stables : 1 jour
+		@daily path /sitemap.xml /robots.txt /llms.txt /llms-full.txt /og-image.png /favicon.ico /logo.png /logo-deep-sight.png
+		header @daily Cache-Control "public, max-age=86400"
+
+		# Tout le reste (index.html et routes SPA) : toujours revalidé, pour
+		# qu'un nouveau déploiement soit visible immédiatement.
+		@revalidate not path /assets/* /icons/* /sitemap.xml /robots.txt /llms.txt /llms-full.txt /og-image.png /favicon.ico /logo.png /logo-deep-sight.png
+		header @revalidate Cache-Control "no-cache"
+
+		try_files {path} /index.html
+		file_server
+	}
+
+	log {
+		output file /data/logs/www.log {
+			roll_size 50mb
+			roll_keep 3
+		}
+	}
+}
+
+# ═══ API ════════════════════════════════════════════════════════════════════════
+api.deepsightsynthesis.com {
+	# SSE : flush immédiat, jamais de timeout (le client gère la déconnexion).
+	@sse path /api/voice/context/stream /api/notifications/sse/*
+	handle @sse {
+		reverse_proxy backend:8080 {
+			flush_interval -1
+			transport http {
+				read_timeout 0s
+				write_timeout 0s
+			}
+		}
+	}
+
+	# Autres endpoints : timeouts longs pour les analyses lentes.
+	handle {
+		reverse_proxy backend:8080 {
+			transport http {
+				read_timeout 300s
+				write_timeout 300s
+			}
+		}
+	}
+
+	header {
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+
+	log {
+		output file /data/logs/access.log {
+			roll_size 100mb
+			roll_keep 5
+		}
+	}
+}

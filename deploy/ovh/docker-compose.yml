@@ -1,0 +1,169 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# DeepSight — Stack de production OVHcloud VPS-1 (2 vCPU / 4 Go / 40 Go NVMe)
+#
+# Un seul serveur sert tout :
+#   www.deepsightsynthesis.com  → site React (build statique servi par Caddy)
+#   api.deepsightsynthesis.com  → API FastAPI
+#
+# Ne pas lancer à la main : passer par deploy/ovh/scripts/deploy.sh, qui
+# construit le frontend, génère les en-têtes de sécurité puis fait :
+#   docker compose --env-file /opt/deepsight/repo/.env.production \
+#     -f deploy/ovh/docker-compose.yml up -d --build
+#
+# Sécurité : seul Caddy publie des ports (80/443). PostgreSQL et Redis n'ont
+# AUCUN "ports:" → ils ne sont joignables que depuis le réseau Docker interne.
+# (Docker contourne UFW pour les ports publiés : en février 2026, Hetzner avait
+# reçu deux signalements BSI pour un Redis ouvert sur Internet.)
+#
+# Les noms de containers (repo-*) sont conservés pour que les commandes de
+# diagnostic existantes (skills, runbooks) restent valables.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+name: deepsight
+
+networks:
+  deepsight:
+    name: deepsight
+
+volumes:
+  postgres_data:
+  redis_data:
+  caddy_data:
+  caddy_config:
+
+services:
+  # ─── PostgreSQL 17 ──────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:17-alpine
+    container_name: repo-postgres-1
+    restart: unless-stopped
+    networks:
+      - deepsight
+    shm_size: 256mb
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Exécuté uniquement à la première initialisation (volume vide).
+      - ./postgres-init:/docker-entrypoint-initdb.d:ro
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-deepsight}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD manquant dans .env.production}
+      POSTGRES_DB: ${POSTGRES_DB:-deepsight}
+      PGDATA: /var/lib/postgresql/data
+    # Réglages dimensionnés pour 4 Go de RAM partagés avec l'API et Redis.
+    # max_connections : 2 workers × (pool SQLAlchemy 10+5 + pool cache 10) = 50, marge incluse.
+    command: >
+      postgres
+      -c shared_preload_libraries=pg_stat_statements
+      -c pg_stat_statements.max=5000
+      -c pg_stat_statements.track=all
+      -c log_min_duration_statement=500
+      -c max_connections=80
+      -c shared_buffers=256MB
+      -c effective_cache_size=1GB
+      -c work_mem=8MB
+      -c maintenance_work_mem=64MB
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+  # ─── Redis 7 (cache L1, protégé par mot de passe) ───────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: repo-redis-1
+    restart: unless-stopped
+    networks:
+      - deepsight
+    volumes:
+      - redis_data:/data
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD manquant dans .env.production}
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 192mb
+      --maxmemory-policy allkeys-lru
+      --requirepass ${REDIS_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" --no-auth-warning ping | grep -q PONG"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─── API FastAPI ────────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ../../backend
+      # Même image que l'ancien serveur : une seule définition de l'image backend.
+      dockerfile: ../deploy/hetzner/Dockerfile
+    image: deepsight-backend:latest
+    container_name: repo-backend-1
+    restart: unless-stopped
+    networks:
+      - deepsight
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - ../../.env.production
+    # Ces valeurs écrasent celles de .env.production : l'URL de la base et de
+    # Redis est toujours dérivée des mots de passe, jamais recopiée à la main.
+    environment:
+      ENV: production
+      PORT: "8080"
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-deepsight}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-deepsight}
+      VPS_DATABASE_URL: postgresql://${POSTGRES_USER:-deepsight}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-deepsight}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      DB_POOL_SIZE: "10"
+      DB_MAX_OVERFLOW: "5"
+    # L'ENTRYPOINT de l'image (alembic upgrade heads) reste actif ; on ne
+    # remplace que la commande uvicorn pour adapter le nombre de workers.
+    command:
+      - uvicorn
+      - main:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8080"
+      - --timeout-keep-alive
+      - "300"
+      - --limit-concurrency
+      - "200"
+      - --workers
+      - "${UVICORN_WORKERS:-2}"
+    volumes:
+      # Cookies yt-dlp (fichiers créés vides par bootstrap.sh si absents).
+      - /opt/deepsight/cookies.txt:/app/cookies.txt:ro
+      - /opt/deepsight/tiktok_cookies.txt:/app/tiktok_cookies.txt:ro
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ─── Caddy : HTTPS automatique, site statique + reverse proxy API ───────────
+  caddy:
+    image: caddy:2-alpine
+    container_name: repo-caddy-1
+    restart: unless-stopped
+    networks:
+      - deepsight
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    # service_started (et non healthy) : le site reste en ligne même si l'API
+    # redémarre ou échoue à démarrer.
+    depends_on:
+      backend:
+        condition: service_started
+    volumes:
+      - ./caddy:/etc/caddy:ro
+      - /opt/deepsight/www:/srv/www:ro
+      - caddy_data:/data
+      - caddy_config:/config
