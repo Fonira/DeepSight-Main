@@ -160,7 +160,7 @@ Pour modifier la CSP ou les en-têtes du site : édite `frontend/vercel.json` (s
    /opt/deepsight/repo/deploy/vps/scripts/setup-offsite-backup.sh
    ```
 
-   Le script demande l'ID de compte Cloudflare et un jeton R2 « Object Read & Write » limité au bucket (R2 → Manage API Tokens). Il génère ensuite une **phrase secrète** à ranger dans ton gestionnaire de mots de passe : sans elle, les copies R2 sont illisibles.
+   Le script demande les deux clés d'un jeton R2 « Object Read & Write » limité au bucket (R2 → Manage API Tokens), dans n'importe quel ordre. Il génère ensuite une **phrase secrète** à ranger dans ton gestionnaire de mots de passe : sans elle, les copies R2 sont illisibles.
 
    Si le serveur est perdu, sur le nouveau :
 

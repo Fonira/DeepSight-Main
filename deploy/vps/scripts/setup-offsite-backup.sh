@@ -10,7 +10,7 @@
 #
 # Ce que fait le script :
 #   1. installe rclone
-#   2. demande l'ID de compte Cloudflare et les deux clés du jeton (rien n'est affiché)
+#   2. demande les deux clés du jeton, dans n'importe quel ordre (rien n'est affiché)
 #   3. génère une phrase secrète : les dumps sont chiffrés AVANT de quitter le
 #      serveur, Cloudflare ne voit que des fichiers illisibles
 #   4. écrit /opt/deepsight/rclone.conf et /opt/deepsight/backup.env (droits 600),
@@ -21,11 +21,14 @@
 #   --force                remplace une configuration existante
 #   --existing-passphrase  saisit une phrase secrète existante au lieu d'en générer
 #                          une (nouveau serveur qui doit relire les anciennes copies)
-# Variable optionnelle : R2_BUCKET (défaut : deepsight-db-backups)
+# Variables optionnelles : R2_BUCKET (défaut : deepsight-db-backups), R2_ACCOUNT_ID
 # ═══════════════════════════════════════════════════════════════════════════════
 set -euo pipefail
 
 BUCKET="${R2_BUCKET:-deepsight-db-backups}"
+# Identifiant de compte Cloudflare : public (il apparaît dans les URL du tableau de
+# bord), ce n'est pas un secret. Surchargeable pour un autre compte.
+account_id="${R2_ACCOUNT_ID:-3f970202c154a52e46be47cfbd031e13}"
 BASE_DIR="/opt/deepsight"
 REPO_DIR="${REPO_DIR:-$BASE_DIR/repo}"
 RCLONE_CONF="$BASE_DIR/rclone.conf"
@@ -61,17 +64,33 @@ if ! command -v rclone >/dev/null 2>&1; then
 fi
 
 # ─── 2. Identifiants R2 ────────────────────────────────────────────────────────
-log "Identifiants du jeton R2 (bucket $BUCKET, juridiction UE)"
-read -r -p "ID de compte Cloudflare (R2 > Account Details > Account ID) : " account_id
-[[ "$account_id" =~ ^[0-9a-f]{32}$ ]] || die "ID de compte invalide : 32 caractères hexadécimaux attendus."
-read -r -p "Access Key ID du jeton (page du jeton, différent de l'ID de compte) : " access_key
-[[ "$access_key" =~ ^[0-9a-f]{32}$ ]] || die "Access Key ID invalide : 32 caractères hexadécimaux attendus."
-[[ "$access_key" != "$account_id" ]] \
-  || die "Tu as collé l'ID de compte à la place de l'Access Key ID : reprends la valeur « Access Key ID » de la page du jeton R2."
-read -r -s -p "Secret Access Key du jeton (la saisie reste invisible) : " secret_key
-echo
-[[ "$secret_key" =~ ^[0-9a-f]{64}$ ]] \
-  || die "Secret Access Key invalide : 64 caractères hexadécimaux attendus (valeur « Secret Access Key », pas « Token value »)."
+[[ "$account_id" =~ ^[0-9a-f]{32}$ ]] || die "R2_ACCOUNT_ID invalide : 32 caractères hexadécimaux attendus."
+log "Clés du jeton R2 (bucket $BUCKET, juridiction UE)"
+cat <<'EOF'
+Colle les deux valeurs du jeton, dans n'importe quel ordre :
+  - Access Key ID     (32 caractères)
+  - Secret Access Key (64 caractères)
+Rien ne s'affiche pendant la saisie : colle une valeur, appuie sur Entrée, puis la suivante.
+EOF
+access_key=""
+secret_key=""
+for n in 1 2; do
+  read -r -s -p "Valeur $n/2 : " value
+  echo
+  value="${value//[[:space:]]/}"
+  if [[ "$value" =~ ^[0-9a-f]{32}$ ]]; then
+    [[ "$value" != "$account_id" ]] \
+      || die "C'est l'ID de compte, pas une clé du jeton. Reprends « Access Key ID » sur la page du jeton."
+    access_key="$value"
+  elif [[ "$value" =~ ^[0-9a-f]{64}$ ]]; then
+    secret_key="$value"
+  else
+    die "Valeur non reconnue (${#value} caractères) : il faut l'Access Key ID (32) ou le Secret Access Key (64), pas « Token value »."
+  fi
+done
+[[ -n "$access_key" && -n "$secret_key" ]] \
+  || die "Il faut une valeur de 32 caractères ET une de 64 : tu as collé deux fois la même sorte de clé."
+echo "Access Key ID et Secret Access Key reconnus."
 
 # ─── 3. Phrase secrète de chiffrement ──────────────────────────────────────────
 if [[ $existing_passphrase -eq 1 ]]; then
