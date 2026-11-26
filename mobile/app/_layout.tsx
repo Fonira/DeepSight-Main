@@ -21,6 +21,7 @@ import { setAudioModeAsync } from "expo-audio";
 import { ShareIntentProvider } from "expo-share-intent";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createQueryClient } from "../src/utils/queryClient";
+import { analytics } from "../src/services/analytics";
 import { darkColors } from "../src/theme/colors";
 import {
   useShareIntent,
@@ -112,6 +113,11 @@ export default function RootLayout() {
       SplashScreen.hideAsync().catch(() => {});
     }
   }, [fontsLoaded]);
+
+  // Analytics : ne démarre que si l'utilisateur a donné son accord (opt-in RGPD)
+  useEffect(() => {
+    analytics.initialize().catch(() => {});
+  }, []);
 
   // Check for OTA updates on launch
   useEffect(() => {

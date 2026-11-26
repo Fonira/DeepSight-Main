@@ -12,7 +12,7 @@ de Magistral.
 Stratégie de routage retenue (Option A):
 - Override Expert-only via `get_optimal_model()` pour `task="synthesis"`
 - Pas de modification de `MISTRAL_FALLBACK_ORDER` → si Magistral fail, la
-  chaîne de fallback existante (large → medium → small → DeepSeek) prend
+  chaîne de fallback existante (large → medium → small) prend
   le relais via `llm_complete`.
 - Flag par défaut OFF → les tests non patchés conservent le comportement
   pré-Phase 4.

@@ -248,7 +248,7 @@ export default function SharedAnalysisPage() {
             ...(youtubeUrl && { contentUrl: youtubeUrl }),
             ...(videoId &&
               (analysis.video_url || "").includes("youtu") && {
-                embedUrl: `https://www.youtube.com/embed/${videoId}`,
+                embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}`,
               }),
             ...(duration && { duration: formatDurationISO(duration) }),
             ...(createdAt && {

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { View, Text, StyleSheet, Pressable } from "react-native";
+import { View, Text, StyleSheet, Pressable, Switch } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -9,6 +9,7 @@ import {
   type SimpleBottomSheetRef,
 } from "@/components/ui/SimpleBottomSheet";
 import { storage } from "@/utils/storage";
+import { analytics } from "@/services/analytics";
 import { STORAGE_KEYS } from "@/constants/config";
 import { sp, borderRadius } from "@/theme/spacing";
 import { fontFamily, fontSize } from "@/theme/typography";
@@ -33,6 +34,30 @@ export const PreferencesSection: React.FC = () => {
   );
 
   const sheetRef = useRef<SimpleBottomSheetRef>(null);
+
+  // RGPD : statistiques d'usage en opt-in strict (désactivées par défaut)
+  const [analyticsConsent, setAnalyticsConsent] = useState(false);
+
+  useEffect(() => {
+    analytics
+      .hasConsent()
+      .then(setAnalyticsConsent)
+      .catch(() => setAnalyticsConsent(false));
+  }, []);
+
+  const handleAnalyticsToggle = async (value: boolean) => {
+    Haptics.selectionAsync();
+    setAnalyticsConsent(value);
+    try {
+      if (value) {
+        await analytics.optIn();
+      } else {
+        await analytics.optOut();
+      }
+    } catch {
+      setAnalyticsConsent(!value);
+    }
+  };
 
   // Charger la langue depuis AsyncStorage
   useEffect(() => {
@@ -92,6 +117,24 @@ export const PreferencesSection: React.FC = () => {
 
         {renderRow("Thème", themeLabel, () => openSheet("theme"))}
         {renderRow("Langue", languageLabel, () => openSheet("language"))}
+
+        <View style={[styles.row, { borderBottomColor: colors.border }]}>
+          <View style={styles.toggleLabelWrap}>
+            <Text style={[styles.rowLabel, { color: colors.textPrimary }]}>
+              Statistiques d'usage
+            </Text>
+            <Text style={[styles.rowHelp, { color: colors.textTertiary }]}>
+              Nous aide à améliorer DeepSight. Désactivé par défaut,
+              modifiable à tout moment.
+            </Text>
+          </View>
+          <Switch
+            value={analyticsConsent}
+            onValueChange={handleAnalyticsToggle}
+            trackColor={{ false: colors.border, true: colors.accentPrimary }}
+            accessibilityLabel="Statistiques d'usage"
+          />
+        </View>
       </GlassCard>
 
       <SimpleBottomSheet

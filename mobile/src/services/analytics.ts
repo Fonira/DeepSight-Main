@@ -2,7 +2,9 @@
  * Analytics Service — Tracking léger pour DeepSight Mobile
  *
  * Collecte locale des événements + batch upload vers le backend.
- * Zéro dépendance externe, respecte RGPD (opt-out possible).
+ * Zéro dépendance externe. RGPD / CNIL : OPT-IN strict — aucun événement
+ * collecté ni identifiant de session stocké tant que l'utilisateur n'a pas
+ * activé « Statistiques d'usage » dans son profil (analytics.optIn()).
  *
  * Événements trackés :
  * - analysis_started / analysis_completed / analysis_failed / analysis_deleted
@@ -17,7 +19,12 @@
  */
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Platform, AppState, type AppStateStatus } from "react-native";
+import {
+  Platform,
+  AppState,
+  type AppStateStatus,
+  type NativeEventSubscription,
+} from "react-native";
 import { API_BASE_URL } from "../constants/config";
 
 // ─────────────────────────────────────────────────────────
@@ -74,7 +81,10 @@ interface AnalyticsConfig {
 // ─────────────────────────────────────────────────────────
 
 const STORAGE_KEY = "deepsight_analytics_queue";
-const OPT_OUT_KEY = "deepsight_analytics_opt_out";
+/** "true" uniquement après accord explicite. Absent ou "false" = aucun tracking. */
+const CONSENT_KEY = "deepsight_analytics_consent";
+/** Ancienne clé opt-out (avant relance 2026) — purgée, ne vaut jamais consentement. */
+const LEGACY_OPT_OUT_KEY = "deepsight_analytics_opt_out";
 const SESSION_ID_KEY = "deepsight_analytics_session";
 const BATCH_SIZE = 20;
 const FLUSH_INTERVAL_MS = 60_000; // 1 minute
@@ -88,8 +98,9 @@ class AnalyticsEngine {
   private queue: AnalyticsEvent[] = [];
   private sessionId: string = "";
   private flushTimer: ReturnType<typeof setInterval> | null = null;
+  private appStateSubscription: NativeEventSubscription | null = null;
   private config: AnalyticsConfig = {
-    enabled: true,
+    enabled: false,
     debug: __DEV__,
     batchSize: BATCH_SIZE,
     flushIntervalMs: FLUSH_INTERVAL_MS,
@@ -105,39 +116,54 @@ class AnalyticsEngine {
     if (this.isInitialized) return;
 
     try {
-      // Vérifier opt-out
-      const optOut = await AsyncStorage.getItem(OPT_OUT_KEY);
-      if (optOut === "true") {
+      await AsyncStorage.removeItem(LEGACY_OPT_OUT_KEY);
+
+      // RGPD : opt-in strict. Sans accord, on purge et on ne démarre rien.
+      if (!(await this.hasConsent())) {
         this.config.enabled = false;
+        await this.purgeLocalData();
         this.isInitialized = true;
         return;
       }
 
-      // Générer ou récupérer session ID
-      this.sessionId = await this.getOrCreateSessionId();
-
-      // Récupérer la queue persistée
-      const stored = await AsyncStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored) as AnalyticsEvent[];
-          this.queue = parsed.slice(-MAX_QUEUE_SIZE);
-        } catch {
-          this.queue = [];
-        }
-      }
-
-      // Démarrer le flush périodique
-      this.startFlushTimer();
-
-      // Écouter les changements d'état de l'app
-      AppState.addEventListener("change", this.handleAppStateChange);
-
+      await this.start();
       this.isInitialized = true;
-      this.log("Analytics initialized", { sessionId: this.sessionId });
     } catch (error) {
       if (__DEV__) console.warn("[Analytics] Init failed:", error);
     }
+  }
+
+  /**
+   * Démarre la collecte (uniquement après consentement).
+   */
+  private async start(): Promise<void> {
+    this.config.enabled = true;
+
+    // Générer ou récupérer session ID
+    this.sessionId = await this.getOrCreateSessionId();
+
+    // Récupérer la queue persistée
+    const stored = await AsyncStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored) as AnalyticsEvent[];
+        this.queue = parsed.slice(-MAX_QUEUE_SIZE);
+      } catch {
+        this.queue = [];
+      }
+    }
+
+    // Démarrer le flush périodique
+    this.startFlushTimer();
+
+    // Écouter les changements d'état de l'app
+    this.appStateSubscription?.remove();
+    this.appStateSubscription = AppState.addEventListener(
+      "change",
+      this.handleAppStateChange,
+    );
+
+    this.log("Analytics started", { sessionId: this.sessionId });
   }
 
   /**
@@ -234,33 +260,40 @@ class AnalyticsEngine {
   }
 
   /**
-   * Opt-out complet (RGPD)
+   * Retrait du consentement (RGPD) : arrêt immédiat + purge locale.
    */
   async optOut(): Promise<void> {
     this.config.enabled = false;
-    this.queue = [];
-    await AsyncStorage.setItem(OPT_OUT_KEY, "true");
-    await AsyncStorage.removeItem(STORAGE_KEY);
     this.stopFlushTimer();
+    this.appStateSubscription?.remove();
+    this.appStateSubscription = null;
+    await AsyncStorage.setItem(CONSENT_KEY, "false");
+    await this.purgeLocalData();
     this.log("User opted out of analytics");
   }
 
   /**
-   * Opt-in (réactiver)
+   * Consentement explicite (interrupteur « Statistiques d'usage »).
    */
   async optIn(): Promise<void> {
-    this.config.enabled = true;
-    await AsyncStorage.setItem(OPT_OUT_KEY, "false");
-    this.startFlushTimer();
+    await AsyncStorage.setItem(CONSENT_KEY, "true");
+    await this.start();
+    this.isInitialized = true;
     this.log("User opted in to analytics");
   }
 
   /**
-   * Vérifie si l'utilisateur a opt-out
+   * true uniquement si l'utilisateur a explicitement accepté.
+   */
+  async hasConsent(): Promise<boolean> {
+    return (await AsyncStorage.getItem(CONSENT_KEY)) === "true";
+  }
+
+  /**
+   * @deprecated Utiliser hasConsent(). Conservé pour compatibilité.
    */
   async isOptedOut(): Promise<boolean> {
-    const value = await AsyncStorage.getItem(OPT_OUT_KEY);
-    return value === "true";
+    return !(await this.hasConsent());
   }
 
   // ─── Private Methods ────────────────────────────────────
@@ -296,6 +329,12 @@ class AnalyticsEngine {
 
   private generateSessionId(): string {
     return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+  }
+
+  private async purgeLocalData(): Promise<void> {
+    this.queue = [];
+    this.sessionId = "";
+    await AsyncStorage.multiRemove([STORAGE_KEY, SESSION_ID_KEY]);
   }
 
   private async persistQueue(): Promise<void> {

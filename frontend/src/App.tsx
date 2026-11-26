@@ -40,7 +40,6 @@ import { SEO } from "./components/SEO";
 
 // "Le Saviez-Vous" widgets remplacés par placements organiques dans chaque page
 import { ErrorBoundary as RouteErrorBoundary } from "./components/ErrorBoundary";
-import { CrispChat } from "./components/CrispChat";
 import { CookieBanner } from "./components/CookieBanner";
 import { UpgradeModal } from "./components/UpgradeModal";
 import { VoicePrefsStagingProvider } from "./components/voice/staging/VoicePrefsStagingProvider";
@@ -1195,7 +1194,8 @@ const AppRoutes = () => {
                     </Routes>
                   </ErrorBoundary>
 
-                  <CrispChat />
+                  {/* Crisp (support chat) désactivé à la relance : non déclaré comme sous-traitant
+                      et chargé sans consentement. Réactivable en click-to-load (Crisp = FR 🇫🇷). */}
 
                   {/* 🔒 Modal upgrade global (403/429 interceptor) — wrapped to prevent crash */}
                   <ErrorBoundary fallback={null}>

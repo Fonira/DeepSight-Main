@@ -1,7 +1,7 @@
 /**
  * POLITIQUE DE CONFIDENTIALITE — Deep Sight
  * Page dediee conforme RGPD + Chrome Web Store requirement
- * Derniere mise a jour : Mars 2026
+ * Derniere mise a jour : Novembre 2026 (relance — audit RGPD)
  */
 
 import React from "react";
@@ -27,7 +27,7 @@ const LEGAL_INFO = {
     url: "https://www.deepsightsynthesis.com",
     name: "Deep Sight",
   },
-  lastUpdate: "2 mars 2026",
+  lastUpdate: "26 novembre 2026",
 };
 
 const Section: React.FC<{ title: string; children: React.ReactNode }> = ({
@@ -105,7 +105,7 @@ const PrivacyPolicy: React.FC = () => {
               {LEGAL_INFO.company.country}.
             </p>
             <p>
-              Contact DPO :{" "}
+              Contact donnees personnelles :{" "}
               <a
                 href={`mailto:${LEGAL_INFO.contact.email}`}
                 className="text-blue-400 hover:underline"
@@ -200,28 +200,31 @@ const PrivacyPolicy: React.FC = () => {
             </p>
           </Section>
 
-          <Section title="5. Partage des donnees">
+          <Section title="5. Partage des donnees et transferts hors UE">
             <p>
-              Vos donnees sont partagees avec les prestataires techniques
-              suivants, tous situes dans l'UE ou soumis a des garanties
-              adequates :
+              Vos donnees sont partagees uniquement avec les prestataires
+              techniques necessaires au Service. La liste complete et a jour
+              (finalite, localisation, garanties, DPA) est publiee sur la page{" "}
+              <Link
+                to="/legal/sub-processors"
+                className="text-blue-400 hover:underline"
+              >
+                Sous-traitants
+              </Link>
+              . Les principaux :
             </p>
             <ul className="list-disc pl-6 space-y-1.5">
               <li>
                 <strong className="text-white">Mistral AI</strong> (France) :
-                traitement IA des analyses et du chat
+                seul fournisseur IA pour les analyses et le chat
               </li>
               <li>
-                <strong className="text-white">Stripe Inc.</strong> (USA,
-                certifie Privacy Shield) : traitement des paiements
+                <strong className="text-white">netcup</strong> (Allemagne, UE) :
+                hebergement du site, de l'API et de la base de donnees
               </li>
               <li>
-                <strong className="text-white">Vercel Inc.</strong> (USA) :
-                hebergement frontend
-              </li>
-              <li>
-                <strong className="text-white">Railway Corp.</strong> (USA) :
-                hebergement backend et base de donnees
+                <strong className="text-white">Stripe</strong> : traitement des
+                paiements
               </li>
               <li>
                 <strong className="text-white">Resend</strong> : envoi d'emails
@@ -229,9 +232,19 @@ const PrivacyPolicy: React.FC = () => {
               </li>
               <li>
                 <strong className="text-white">Sentry</strong> : monitoring
-                d'erreurs (donnees anonymisees)
+                d'erreurs (sans donnees personnelles)
               </li>
             </ul>
+            <p className="mt-3">
+              <strong className="text-white">Transferts hors UE.</strong>{" "}
+              Certains prestataires sont etablis aux Etats-Unis. Ces transferts
+              sont encadres par la decision d'adequation de la Commission
+              europeenne « EU-U.S. Data Privacy Framework » lorsque le
+              prestataire y est certifie, et a defaut par les clauses
+              contractuelles types (CCT) adoptees par la Commission europeenne,
+              integrees aux accords de traitement (DPA) de ces prestataires.
+              Vous pouvez obtenir une copie de ces garanties en nous ecrivant.
+            </p>
             <p className="mt-3">
               Nous ne vendons ni ne louons vos donnees personnelles a des tiers.
             </p>
@@ -330,8 +343,19 @@ const PrivacyPolicy: React.FC = () => {
               </li>
               <li>
                 <strong className="text-white">Cookies analytiques</strong>{" "}
-                (optionnels) : PostHog (auto-heberge) pour les statistiques
-                d'usage anonymisees, soumis a votre consentement
+                (optionnels) : PostHog (heberge dans l'UE) pour les statistiques
+                d'usage, deposes uniquement apres votre consentement
+              </li>
+              <li>
+                <strong className="text-white">Application mobile</strong> :
+                les statistiques d'usage sont desactivees par defaut et ne sont
+                activees que si vous l'acceptez dans Profil → Preferences →
+                Statistiques d'usage
+              </li>
+              <li>
+                <strong className="text-white">Videos integrees</strong> : les
+                lecteurs YouTube utilisent le mode « youtube-nocookie », qui ne
+                depose pas de traceur avant la lecture
               </li>
             </ul>
             <p className="mt-2">
