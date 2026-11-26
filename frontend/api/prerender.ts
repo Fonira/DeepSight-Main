@@ -42,7 +42,7 @@ const FAQ_LANDING: FAQItem[] = [
   {
     question: "Qu'est-ce que DeepSight ?",
     answer:
-      "DeepSight est un SaaS d'analyse IA de vidéos YouTube et TikTok. Il transforme une vidéo en synthèse sourcée et nuancée, avec fact-checking, flashcards, quiz, mind maps, chat contextuel et voice agent. 100% européen, propulsé par Mistral AI (France) et hébergé chez Hetzner (Allemagne).",
+      "DeepSight est un SaaS d'analyse IA de vidéos YouTube et TikTok. Il transforme une vidéo en synthèse sourcée et nuancée, avec fact-checking, flashcards, quiz, mind maps, chat contextuel et voice agent. 100% européen, propulsé par Mistral AI (France) et hébergé dans l'UE chez netcup (Allemagne).",
   },
   {
     question: "DeepSight est-il gratuit ?",
@@ -57,7 +57,7 @@ const FAQ_LANDING: FAQItem[] = [
   {
     question: "Mes données sont-elles en sécurité ?",
     answer:
-      "Oui. DeepSight est 100% RGPD : hébergement Hetzner (Falkenstein, Allemagne), IA Mistral en France. Aucune revente de données, pas de tracking publicitaire, analytics PostHog opt-in seulement. Les vidéos ne sont jamais stockées — seules les métadonnées et les analyses générées le sont.",
+      "Oui. DeepSight est 100% RGPD : hébergement netcup (Union européenne), IA Mistral en France. Aucune revente de données, pas de tracking publicitaire, analytics PostHog opt-in seulement. Les vidéos ne sont jamais stockées — seules les métadonnées et les analyses générées le sont.",
   },
   {
     question: "Sur quelles plateformes DeepSight est-il disponible ?",
@@ -104,7 +104,7 @@ const PAGES: Record<string, Page> = {
     slug: "/",
     title: "DeepSight — Analyse YouTube & TikTok par IA, 100% européen",
     description:
-      "Synthèses sourcées, fact-checking, flashcards FSRS, voice agent ElevenLabs. Propulsé par Mistral AI (France) et hébergé en Europe (Hetzner Allemagne). Gratuit pour commencer.",
+      "Synthèses sourcées, fact-checking, flashcards FSRS, voice agent ElevenLabs. Propulsé par Mistral AI (France) et hébergé en Europe (netcup, Allemagne). Gratuit pour commencer.",
     h1: "Ne subissez plus vos vidéos — interrogez-les",
     sections: [
       {
@@ -125,7 +125,7 @@ const PAGES: Record<string, Page> = {
       },
       {
         heading: "Différenciateurs",
-        body: "100% européen : IA française (Mistral AI, Paris), hébergement allemand (Hetzner, Falkenstein), conformité RGPD native — vos données ne quittent pas l'Europe. Fact-checking nuancé : pas de vérité binaire, marqueurs épistémiques pour chaque affirmation. Tri-plateforme cohérent : un seul compte, un seul abonnement, trois interfaces (web, mobile iOS/Android, extension Chrome avec Side Panel). Voice agent ConvAI : conversations vocales naturelles avec contexte vidéo, rare sur ce marché. Sourcing transparent : chaque fact-check est accompagné de ses sources externes vérifiables.",
+        body: "100% européen : IA française (Mistral AI, Paris), hébergement européen (netcup, Allemagne), conformité RGPD native — serveur et base de données en Europe, prestataires listés publiquement. Fact-checking nuancé : pas de vérité binaire, marqueurs épistémiques pour chaque affirmation. Tri-plateforme cohérent : un seul compte, un seul abonnement, trois interfaces (web, mobile iOS/Android, extension Chrome avec Side Panel). Voice agent ConvAI : conversations vocales naturelles avec contexte vidéo, rare sur ce marché. Sourcing transparent : chaque fact-check est accompagné de ses sources externes vérifiables.",
       },
     ],
     faq: FAQ_LANDING,
@@ -168,7 +168,7 @@ const PAGES: Record<string, Page> = {
         name: "DeepSight",
         url: SITE_URL,
         logo: ORG_LOGO,
-        founder: { "@type": "Person", name: "Maxime Le Parc" },
+        founder: { "@type": "Person", name: "Maxime Leparc" },
         foundingDate: "2025",
         address: {
           "@type": "PostalAddress",
@@ -182,7 +182,7 @@ const PAGES: Record<string, Page> = {
     slug: "/about",
     title: "À propos de DeepSight — Vision, équipe, infrastructure",
     description:
-      "Vision, fondateur, partenaires et infrastructure de DeepSight. SaaS français, IA Mistral, hébergement Hetzner (UE), open-source friendly.",
+      "Vision, fondateur, partenaires et infrastructure de DeepSight. SaaS français, IA Mistral, hébergement netcup (UE), open-source friendly.",
     h1: "À propos de DeepSight",
     sections: [
       {
@@ -191,15 +191,15 @@ const PAGES: Record<string, Page> = {
       },
       {
         heading: "Fondateur",
-        body: "Maxime Le Parc, basé à Lyon, France. Entrepreneur indépendant. SAS française, RCS 994 558 898. Le projet est développé en solo avec Mistral AI comme partenaire technologique principal.",
+        body: "Maxime Leparc, basé à Lyon, France. Entrepreneur indépendant (entreprise individuelle), RCS 994 558 898. Le projet est développé en solo avec Mistral AI comme partenaire technologique principal.",
       },
       {
         heading: "Partenaires technologiques",
-        body: "Mistral AI (Paris, France) : analyses, chat, fact-checking. ElevenLabs (US/UK) : voice agent ConvAI. LiveKit : infrastructure WebRTC pour les sessions voice. Hetzner Cloud (Falkenstein, Allemagne) : hébergement backend (PostgreSQL 17, Redis 7, FastAPI Docker). Vercel : hébergement frontend. Supadata : extraction transcripts YouTube prioritaire. Stripe : paiements. Resend : emails transactionnels.",
+        body: "Mistral AI (Paris, France) : analyses, chat, fact-checking. ElevenLabs (US/UK) : voice agent ConvAI. LiveKit : infrastructure WebRTC pour les sessions voice. netcup (Allemagne, UE) : hébergement du site et du backend (PostgreSQL 17, Redis 7, FastAPI Docker). Supadata : extraction transcripts YouTube prioritaire. Stripe : paiements. Resend : emails transactionnels.",
       },
       {
         heading: "Infrastructure",
-        body: "Backend FastAPI Python 3.11 hébergé sur un VPS Hetzner à Falkenstein (Allemagne) avec stack Docker complète : PostgreSQL 17, Redis 7, Caddy reverse proxy avec SSL automatique. Frontend React 18 + TypeScript + Vite + Tailwind CSS sur Vercel. Mobile Expo SDK 54 + React Native 0.81 distribué via App Store et Play Store. Extension Chrome MV3 avec Side Panel + Preact (bundle 85 KB). Toute l'infrastructure tourne en Europe — vos données ne quittent pas le continent.",
+        body: "Backend FastAPI Python 3.11 et frontend React 18 + TypeScript + Vite + Tailwind CSS hébergés sur un VPS netcup dans l'UE, stack Docker complète : PostgreSQL 17, Redis 7, Caddy reverse proxy avec SSL automatique. Mobile Expo SDK 54 + React Native 0.81 distribué via App Store et Play Store. Extension Chrome MV3 avec Side Panel + Preact (bundle 85 KB). Serveur et base de données en Europe ; les prestataires hors UE sont listés publiquement avec leurs garanties.",
       },
       {
         heading: "Open-source friendly",
@@ -216,7 +216,7 @@ const PAGES: Record<string, Page> = {
           "@type": "Organization",
           name: "DeepSight",
           url: SITE_URL,
-          founder: { "@type": "Person", name: "Maxime Le Parc" },
+          founder: { "@type": "Person", name: "Maxime Leparc" },
           foundingDate: "2025",
         },
       },
@@ -287,7 +287,7 @@ const PAGES: Record<string, Page> = {
     sections: [
       {
         heading: "Comment nous joindre",
-        body: "Le formulaire de contact est la voie principale. DeepSight est édité par Maxime Le Parc, SAS française basée à Lyon (RCS 994 558 898). Pour des questions techniques, l'API publique est documentée à /api-docs et le statut des services en temps réel à /status.",
+        body: "Le formulaire de contact est la voie principale. DeepSight est édité par Maxime Leparc, entrepreneur individuel basé à Lyon (RCS 994 558 898). Pour des questions techniques, l'API publique est documentée à /api-docs et le statut des services en temps réel à /status.",
       },
       {
         heading: "Sujets fréquents",
@@ -432,7 +432,7 @@ ${page.sections
 ${page.faq ? renderFAQ(page.faq) : ""}
 </main>
 <footer>
-<p>DeepSight — SAS française fondée par Maxime Le Parc à Lyon (RCS 994 558 898). IA Mistral (Paris). Hébergement Hetzner (Falkenstein, Allemagne, EU). Conforme RGPD.</p>
+<p>DeepSight — entreprise individuelle de Maxime Leparc, Lyon (RCS 994 558 898). IA Mistral (Paris). Hébergement netcup (Allemagne, UE). Conforme RGPD.</p>
 <p>Cette page est une version simplifiée servie aux moteurs IA générative (GPTBot, ClaudeBot, PerplexityBot, etc.). Les utilisateurs humains accèdent à l'application interactive complète.</p>
 </footer>
 </body>

@@ -86,9 +86,9 @@ const TECH_PARTNERS: Partner[] = [
 
 const INFRA_PARTNERS: Partner[] = [
   {
-    name: "OVHcloud",
-    role: "Hosting (France)",
-    url: "https://www.ovhcloud.com",
+    name: "netcup",
+    role: "Hosting (EU)",
+    url: "https://www.netcup.com",
     icon: Database,
   },
   {

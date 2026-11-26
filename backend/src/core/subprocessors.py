@@ -26,7 +26,7 @@ from typing import Any, Final
 logger = logging.getLogger(__name__)
 
 DECLARED_SUBPROCESSORS: Final[tuple[str, ...]] = (
-    "OVHcloud",
+    "netcup",
     "Cloudflare R2",
     "AWS S3",
     "Stripe",

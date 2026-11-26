@@ -55,9 +55,10 @@ const LEGAL_INFO = {
     director: "Maxime Leparc",
   },
   hosting: {
-    name: "OVH SAS",
-    address: "2 rue Kellermann, 59100 Roubaix, France",
-    website: "https://www.ovhcloud.com",
+    name: "netcup GmbH",
+    address: "Emmy-Noether-Straße 10, 76131 Karlsruhe, Allemagne",
+    phone: "+49 721 7540755-0",
+    website: "https://www.netcup.com",
   },
   dpo: {
     name: "Maxime Leparc",
@@ -214,6 +215,9 @@ const MentionsLegales: React.FC = () => (
         <p className="text-sm text-text-secondary">
           {LEGAL_INFO.hosting.address}
         </p>
+        <p className="text-sm text-text-secondary">
+          Tél. : {LEGAL_INFO.hosting.phone}
+        </p>
         <a
           href={LEGAL_INFO.hosting.website}
           target="_blank"
@@ -226,8 +230,8 @@ const MentionsLegales: React.FC = () => (
       <div className="mt-4 p-3 bg-green-500/10 rounded-lg border border-green-500/20">
         <p className="text-green-200 text-sm">
           <Shield className="w-4 h-4 inline mr-2" />
-          Le site, l'API et les données utilisateur sont hébergés en France
-          chez OVHcloud. Vos données restent en Europe conformément au RGPD.
+          Le site, l'API et les données utilisateur sont hébergés dans l'Union
+          européenne chez netcup (Allemagne), conformément au RGPD.
         </p>
       </div>
     </section>

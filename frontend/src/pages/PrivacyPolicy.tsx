@@ -219,7 +219,7 @@ const PrivacyPolicy: React.FC = () => {
                 seul fournisseur IA pour les analyses et le chat
               </li>
               <li>
-                <strong className="text-white">OVHcloud</strong> (France) :
+                <strong className="text-white">netcup</strong> (Allemagne, UE) :
                 hebergement du site, de l'API et de la base de donnees
               </li>
               <li>

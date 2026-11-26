@@ -28,13 +28,12 @@ interface SubProcessor {
 
 const SUB_PROCESSORS: SubProcessor[] = [
   {
-    name: "OVHcloud",
+    name: "netcup",
     purposeFr: "Hébergement du serveur (site web, API, base de données, Redis)",
     purposeEn: "Server hosting (website, API, database, Redis)",
-    region: "France 🇫🇷",
+    region: "Union européenne 🇪🇺 (société en Allemagne)",
     transfer: "eu",
-    dpaUrl:
-      "https://www.ovhcloud.com/fr/personal-data-protection/legal-privacy-security/",
+    dpaUrl: "https://www.netcup.com/en/contact/data-privacy",
   },
   {
     name: "Stripe",
@@ -246,8 +245,8 @@ export default function LegalSubProcessors() {
             </h2>
             <p>
               {t(
-                "Les données utilisateur (compte, analyses, conversations) sont stockées sur un serveur OVHcloud en France. Les sauvegardes sont répliquées sur AWS S3 (UE) et Cloudflare R2 (USA, en redondance).",
-                "User data (account, analyses, conversations) is stored on an OVHcloud server in France. Backups are replicated to AWS S3 (EU) and Cloudflare R2 (USA, for redundancy).",
+                "Les données utilisateur (compte, analyses, conversations) sont stockées sur un serveur netcup dans l'Union européenne. Les sauvegardes sont répliquées sur AWS S3 (UE) et Cloudflare R2 (USA, en redondance).",
+                "User data (account, analyses, conversations) is stored on a netcup server in the European Union. Backups are replicated to AWS S3 (EU) and Cloudflare R2 (USA, for redundancy).",
               )}
             </p>
 
