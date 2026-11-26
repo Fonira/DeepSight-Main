@@ -8,7 +8,7 @@ Un seul serveur, un **netcup VPS 500 G12.5** (2 vCPU, 4 Go de RAM, 64 Go SSD, sn
 | `https://deepsightsynthesis.com` | redirection vers `www` |
 | `https://api.deepsightsynthesis.com` | Caddy → API FastAPI |
 
-PostgreSQL 17 et Redis 7 tournent dans Docker sur le même serveur, **sans aucun port ouvert vers Internet**. Le kit fonctionne sur n'importe quel VPS Ubuntu 24.04 ; seules les étapes 2 et 3 sont propres à netcup.
+PostgreSQL 17 et Redis 7 tournent dans Docker sur le même serveur, **sans aucun port ouvert vers Internet**. Le kit fonctionne sur n'importe quel VPS Debian 12/13 ou Ubuntu 24.04 ; seules les étapes 2 et 3 sont propres à netcup.
 
 > Les commandes `PowerShell` se tapent sur ton PC Windows. Les blocs `bash` se tapent **sur le serveur**, après connexion SSH. Remplace `IP_DU_VPS` par l'adresse IPv4 de ton serveur.
 
@@ -32,15 +32,17 @@ netcup.com → **Server** → **VPS** → **VPS 500 G12.5**, durée **1 mois**, 
 
 La mise à disposition peut prendre de quelques heures à un jour (netcup l'annonce en ce moment).
 
-## 3. Installer Ubuntu 24.04 avec ta clé
+## 3. Déposer ta clé sur le serveur
 
-Dans le SCP (servercontrolpanel.de) → ton serveur → **Media** → **Images** : choisis **Ubuntu 24.04**. Si le formulaire propose une clé SSH, colle la clé de l'étape 1.
-
-S'il ne la propose pas, ajoute-la avec le mot de passe root reçu par email (PowerShell, une seule fois) :
+netcup livre **Debian 13 (minimal)** : le kit le prend en charge tel quel, pas besoin de réinstaller. Ajoute ta clé avec le mot de passe root reçu dans l'email « Ihr vServer bei netcup ist bereitgestellt » (PowerShell, une seule fois) :
 
 ```powershell
-Get-Content $env:USERPROFILE\.ssh\id_vps.pub | ssh root@IP_DU_VPS "mkdir -p ~/.ssh ; cat >> ~/.ssh/authorized_keys ; chmod 600 ~/.ssh/authorized_keys"
+Get-Content $env:USERPROFILE\.ssh\id_vps.pub | ssh root@IP_DU_VPS "mkdir -p ~/.ssh ; chmod 700 ~/.ssh ; cat >> ~/.ssh/authorized_keys ; chmod 600 ~/.ssh/authorized_keys"
 ```
+
+À la première connexion, SSH demande de confirmer l'empreinte du serveur : elle doit correspondre à la ligne `ED25519` de l'email netcup. Tape `yes`, puis le mot de passe root.
+
+Debian minimal n'a pas `git` : installe-le avant l'étape 5 (connecté en root) avec `apt-get update ; apt-get install -y git`.
 
 ## 4. Pointer le DNS (Cloudflare)
 

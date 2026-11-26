@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ═══════════════════════════════════════════════════════════════════════════════
-# DeepSight — préparation d'un VPS neuf (Ubuntu 24.04 ; netcup ou autre)
+# DeepSight — préparation d'un VPS neuf (Debian 12/13 ou Ubuntu 24.04 ; netcup ou autre)
 #
 # À lancer UNE fois, en root (netcup) ou avec sudo (images avec utilisateur "ubuntu") :
 #   git clone --depth 50 https://github.com/Fonira/DeepSight-Main.git ~/ds-bootstrap
@@ -36,7 +36,25 @@ die() { printf '\033[1;31m[x] %s\033[0m\n' "$*" >&2; exit 1; }
 
 export DEBIAN_FRONTEND=noninteractive
 
+# Debian (image netcup par défaut) et Ubuntu sont pris en charge.
+# shellcheck disable=SC1091
+. /etc/os-release
+case "${ID:-}" in
+  debian|ubuntu) OS_ID="$ID" ;;
+  *) die "Système non pris en charge : ${PRETTY_NAME:-inconnu} (Debian 12/13 ou Ubuntu 24.04 attendus)" ;;
+esac
+OS_CODENAME="${UBUNTU_CODENAME:-${VERSION_CODENAME:-}}"
+[[ -n "$OS_CODENAME" ]] || die "Nom de version introuvable dans /etc/os-release"
+log "Système détecté : ${PRETTY_NAME:-$OS_ID $OS_CODENAME}"
+
 # ─── 1. Utilisateur de déploiement ─────────────────────────────────────────────
+# Les images minimales Debian n'ont pas sudo.
+if ! command -v visudo >/dev/null 2>&1; then
+  log "Installation de sudo"
+  apt-get update -q
+  apt-get install -y -q sudo
+fi
+
 if ! id "$DEPLOY_USER" >/dev/null 2>&1; then
   log "Création de l'utilisateur $DEPLOY_USER"
   useradd --create-home --shell /bin/bash --groups sudo "$DEPLOY_USER"
@@ -58,18 +76,16 @@ fi
 log "Mise à jour du système"
 apt-get update -q
 apt-get upgrade -y -q
-apt-get install -y -q ca-certificates curl git rsync ufw fail2ban unattended-upgrades openssl
+apt-get install -y -q ca-certificates curl git rsync ufw fail2ban python3-systemd unattended-upgrades openssl sudo
 dpkg-reconfigure -f noninteractive unattended-upgrades
 
 # ─── 3. Docker ─────────────────────────────────────────────────────────────────
 if ! command -v docker >/dev/null 2>&1; then
   log "Installation de Docker (dépôt officiel)"
   install -m 0755 -d /etc/apt/keyrings
-  curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+  curl -fsSL "https://download.docker.com/linux/$OS_ID/gpg" -o /etc/apt/keyrings/docker.asc
   chmod a+r /etc/apt/keyrings/docker.asc
-  # shellcheck disable=SC1091
-  codename="$(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}")"
-  echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $codename stable" \
+  echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/$OS_ID $OS_CODENAME stable" \
     > /etc/apt/sources.list.d/docker.list
   apt-get update -q
   apt-get install -y -q docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
@@ -108,7 +124,7 @@ fi
 log "Pare-feu UFW : SSH, HTTP, HTTPS"
 ufw default deny incoming >/dev/null
 ufw default allow outgoing >/dev/null
-ufw allow OpenSSH >/dev/null
+ufw allow 22/tcp >/dev/null
 ufw allow 80/tcp >/dev/null
 ufw allow 443/tcp >/dev/null
 ufw allow 443/udp >/dev/null
@@ -130,7 +146,14 @@ else
   warn "Aucune clé SSH dans $auth_keys : connexion par mot de passe laissée active."
   warn "Ajoute ta clé (voir README), puis relance ce script pour verrouiller SSH."
 fi
-systemctl enable --now fail2ban
+# Debian n'écrit plus /var/log/auth.log : fail2ban lit le journal systemd.
+cat > /etc/fail2ban/jail.d/10-deepsight.conf <<'CONF'
+[sshd]
+enabled = true
+backend = systemd
+CONF
+systemctl enable fail2ban >/dev/null 2>&1 || true
+systemctl restart fail2ban || warn "fail2ban n'a pas démarré (voir : journalctl -u fail2ban)"
 
 # ─── 7. Dossiers, repo, fichiers .env ──────────────────────────────────────────
 log "Dossiers $BASE_DIR"
