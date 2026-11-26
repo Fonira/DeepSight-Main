@@ -154,7 +154,24 @@ Pour modifier la CSP ou les en-têtes du site : édite `frontend/vercel.json` (s
 1. **Dump de la base** chaque nuit à 03h17 dans `/opt/deepsight/backups`, vérifié et conservé 14 jours. Journal : `/opt/deepsight/backups/backup.log`.
 2. **Snapshot netcup** (inclus) : à créer dans le SCP avant toute opération risquée (mise à jour système, migration). Il se restaure en un clic depuis le SCP.
 
-Les deux restent chez netcup. Pour ne plus jamais tout perdre d'un coup, rapatrie régulièrement une copie sur ton PC (PowerShell) :
+3. **Copie chiffrée sur Cloudflare R2** (bucket `deepsight-db-backups`, juridiction UE) après chaque dump, conservée 30 jours. Les fichiers sont chiffrés sur le serveur avant envoi : Cloudflare ne peut pas les lire. Mise en place, une seule fois, en tant que `deploy` :
+
+   ```bash
+   /opt/deepsight/repo/deploy/vps/scripts/setup-offsite-backup.sh
+   ```
+
+   Le script demande l'ID de compte Cloudflare et un jeton R2 « Object Read & Write » limité au bucket (R2 → Manage API Tokens). Il génère ensuite une **phrase secrète** à ranger dans ton gestionnaire de mots de passe : sans elle, les copies R2 sont illisibles.
+
+   Si le serveur est perdu, sur le nouveau :
+
+   ```bash
+   /opt/deepsight/repo/deploy/vps/scripts/setup-offsite-backup.sh --existing-passphrase
+   RCLONE_CONFIG=/opt/deepsight/rclone.conf rclone lsl deepsight-crypt:
+   RCLONE_CONFIG=/opt/deepsight/rclone.conf rclone copy deepsight-crypt:deepsight_AAAAMMJJ_HHMMSS.dump /opt/deepsight/backups/
+   /opt/deepsight/repo/deploy/vps/scripts/restore.sh /opt/deepsight/backups/deepsight_AAAAMMJJ_HHMMSS.dump
+   ```
+
+Tu peux aussi rapatrier une copie sur ton PC (PowerShell) :
 
 ```powershell
 New-Item -ItemType Directory -Force $env:USERPROFILE\Documents\DeepSight-backups | Out-Null ; scp -i $env:USERPROFILE\.ssh\id_vps "deploy@IP_DU_VPS:/opt/deepsight/backups/*.dump" $env:USERPROFILE\Documents\DeepSight-backups\
@@ -167,8 +184,6 @@ Sauvegarde manuelle et restauration, sur le serveur :
 ls -lh /opt/deepsight/backups
 /opt/deepsight/repo/deploy/vps/scripts/restore.sh /opt/deepsight/backups/deepsight_AAAAMMJJ_HHMMSS.dump
 ```
-
-Copie automatique hors serveur (optionnel, plus tard) : installer `rclone`, configurer un stockage S3, puis écrire `RCLONE_REMOTE=nom-du-remote:bucket` dans `/opt/deepsight/backup.env`.
 
 ---
 
@@ -190,6 +205,6 @@ Si la RAM sature (`free -h`) : passe au **VPS 1000 G12.5** (4 vCPU, 8 Go) depuis
 | En-têtes / CSP | `vercel.json` | toujours `vercel.json`, converti à chaque déploiement |
 | Redis | sans mot de passe, déjà signalé ouvert (BSI, février 2026) | mot de passe obligatoire, aucun port publié |
 | Workers API | 4 (16 Go de RAM) | 2 (4 Go), réglable via `UVICORN_WORKERS` |
-| Sauvegardes | APScheduler → R2, non vérifiées | dump vérifié chaque nuit + snapshots netcup |
+| Sauvegardes | APScheduler → R2, non vérifiées | dump vérifié chaque nuit, copie chiffrée sur R2 (UE) + snapshots netcup |
 
 **Pas repris** (à refaire si besoin) : la fonction Vercel `/api/prerender` (pages simplifiées pour les robots d'IA), `/api/status`, `vault-mcp`, les aperçus `studio` et les démos sur `sslip.io`.

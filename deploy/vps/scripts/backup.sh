@@ -9,7 +9,8 @@
 # - vérifie que le dump est lisible avant de le garder
 # - supprime les dumps de plus de KEEP_DAYS jours (14 par défaut)
 # - copie hors du serveur si /opt/deepsight/backup.env définit RCLONE_REMOTE
-#   (ex. RCLONE_REMOTE=s3-backup:deepsight-backups, avec rclone configuré)
+#   (écrit par setup-offsite-backup.sh : copie chiffrée vers Cloudflare R2 UE,
+#   conservée REMOTE_KEEP_DAYS jours, 30 par défaut)
 #
 # Les mots de passe sont lus dans le container : rien n'est passé en argument.
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -47,6 +48,8 @@ if [[ -n "${RCLONE_REMOTE:-}" ]]; then
   if command -v rclone >/dev/null 2>&1; then
     rclone copy "$target" "$RCLONE_REMOTE" --quiet
     echo "[$(date -Is)] Copie hors serveur : $RCLONE_REMOTE"
+    # Rétention distante, seulement après une copie réussie (set -e).
+    rclone delete "$RCLONE_REMOTE" --include 'deepsight_*.dump' --min-age "${REMOTE_KEEP_DAYS:-30}d" --quiet
   else
     echo "[$(date -Is)] ATTENTION : RCLONE_REMOTE défini mais rclone n'est pas installé" >&2
     exit 1
