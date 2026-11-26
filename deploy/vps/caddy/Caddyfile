@@ -1,5 +1,5 @@
 # ────────────────────────────────────────────────────────────────────────────────
-# DeepSight — Caddy (OVHcloud VPS)
+# DeepSight — Caddy (VPS de production)
 # HTTPS automatique via Let's Encrypt pour les 3 domaines.
 #
 #   deepsightsynthesis.com       → redirection 301 vers www

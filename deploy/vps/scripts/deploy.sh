@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # ═══════════════════════════════════════════════════════════════════════════════
-# DeepSight — déploiement sur le VPS OVHcloud (site + API)
+# DeepSight — déploiement sur le VPS de production (site + API)
 #
 # Usage (sur le serveur) :
-#   /opt/deepsight/repo/deploy/ovh/scripts/deploy.sh           # déploie main
-#   /opt/deepsight/repo/deploy/ovh/scripts/deploy.sh ma-branche
+#   /opt/deepsight/repo/deploy/vps/scripts/deploy.sh           # déploie main
+#   /opt/deepsight/repo/deploy/vps/scripts/deploy.sh ma-branche
 #
 # Étapes :
 #   1. récupère la branche depuis GitHub (le serveur ne garde aucune modif locale ;
@@ -33,7 +33,7 @@ grep -q '^MISTRAL_API_KEY=.\+' .env.production || die "MISTRAL_API_KEY vide dans
 grep -q '^ADMIN_EMAIL=.\+' .env.production || die "ADMIN_EMAIL vide dans .env.production"
 docker info >/dev/null 2>&1 || die "Docker inaccessible (te reconnecter après bootstrap.sh ?)"
 
-COMPOSE=(docker compose --env-file "$REPO_DIR/.env.production" -f "$REPO_DIR/deploy/ovh/docker-compose.yml")
+COMPOSE=(docker compose --env-file "$REPO_DIR/.env.production" -f "$REPO_DIR/deploy/vps/docker-compose.yml")
 
 # ─── 1. Code ───────────────────────────────────────────────────────────────────
 log "Récupération de la branche $BRANCH"
@@ -44,7 +44,7 @@ git log -1 --format='    %h %s (%ad)' --date=short
 
 # Le script s'est peut-être mis à jour : on relance la nouvelle version une fois.
 if [[ -z "${DEPLOY_REEXEC:-}" ]]; then
-  DEPLOY_REEXEC=1 exec "$REPO_DIR/deploy/ovh/scripts/deploy.sh" "$BRANCH"
+  DEPLOY_REEXEC=1 exec "$REPO_DIR/deploy/vps/scripts/deploy.sh" "$BRANCH"
 fi
 
 # ─── 2-3. Build du site + en-têtes ─────────────────────────────────────────────
@@ -55,7 +55,7 @@ docker run --rm \
   --env-file "$REPO_DIR/.env.frontend" \
   -v "$REPO_DIR:/repo" -w /repo/frontend \
   "$NODE_IMAGE" \
-  sh -c 'npm ci --no-audit --no-fund && npm run build && node /repo/deploy/ovh/scripts/vercel-headers-to-caddy.mjs'
+  sh -c 'npm ci --no-audit --no-fund && npm run build && node /repo/deploy/vps/scripts/vercel-headers-to-caddy.mjs'
 
 # Le prebuild régénère le sitemap suivi par git : on le remet à l'état du commit.
 git checkout -q -- frontend/public/sitemap.xml 2>/dev/null || true

@@ -2,7 +2,7 @@
 /**
  * vercel-headers-to-caddy.mjs
  *
- * Génère deploy/ovh/caddy/generated/headers.caddy à partir des en-têtes
+ * Génère deploy/vps/caddy/generated/headers.caddy à partir des en-têtes
  * globaux ("source": "/(.*)") de frontend/vercel.json.
  *
  * Pourquoi : vercel.json reste la seule source de vérité pour la CSP et les
@@ -10,7 +10,7 @@
  * Crisp ou de Google Fonts) s'applique au VPS au prochain deploy.sh, sans
  * avoir à recopier quoi que ce soit dans le Caddyfile.
  *
- * Usage (depuis la racine du repo) : node deploy/ovh/scripts/vercel-headers-to-caddy.mjs
+ * Usage (depuis la racine du repo) : node deploy/vps/scripts/vercel-headers-to-caddy.mjs
  * Exécuté automatiquement par deploy.sh, dans le container Node du build.
  */
 
@@ -21,7 +21,7 @@ import { fileURLToPath } from "node:url";
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, "../../..");
 const vercelPath = resolve(repoRoot, "frontend/vercel.json");
-const outPath = resolve(repoRoot, "deploy/ovh/caddy/generated/headers.caddy");
+const outPath = resolve(repoRoot, "deploy/vps/caddy/generated/headers.caddy");
 
 // Ajoutés par Vercel automatiquement sur ses domaines, absents de vercel.json.
 const EXTRA_HEADERS = [
@@ -69,7 +69,7 @@ for (const [key, value] of EXTRA_HEADERS) {
 }
 
 const lines = [
-  "# AUTO-GÉNÉRÉ par deploy/ovh/scripts/vercel-headers-to-caddy.mjs",
+  "# AUTO-GÉNÉRÉ par deploy/vps/scripts/vercel-headers-to-caddy.mjs",
   "# depuis frontend/vercel.json — ne pas modifier à la main.",
   "header {",
   ...headers.map(([key, value]) => `\t${key} ${quote(value)}`),

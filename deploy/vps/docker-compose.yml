@@ -1,14 +1,14 @@
 # ═══════════════════════════════════════════════════════════════════════════════
-# DeepSight — Stack de production OVHcloud VPS-1 (2 vCPU / 4 Go / 40 Go NVMe)
+# DeepSight — Stack de production sur un VPS unique (netcup VPS 500 : 2 vCPU / 4 Go / 64 Go)
 #
 # Un seul serveur sert tout :
 #   www.deepsightsynthesis.com  → site React (build statique servi par Caddy)
 #   api.deepsightsynthesis.com  → API FastAPI
 #
-# Ne pas lancer à la main : passer par deploy/ovh/scripts/deploy.sh, qui
+# Ne pas lancer à la main : passer par deploy/vps/scripts/deploy.sh, qui
 # construit le frontend, génère les en-têtes de sécurité puis fait :
 #   docker compose --env-file /opt/deepsight/repo/.env.production \
-#     -f deploy/ovh/docker-compose.yml up -d --build
+#     -f deploy/vps/docker-compose.yml up -d --build
 #
 # Sécurité : seul Caddy publie des ports (80/443). PostgreSQL et Redis n'ont
 # AUCUN "ports:" → ils ne sont joignables que depuis le réseau Docker interne.

@@ -9,7 +9,7 @@
 # - vérifie que le dump est lisible avant de le garder
 # - supprime les dumps de plus de KEEP_DAYS jours (14 par défaut)
 # - copie hors du serveur si /opt/deepsight/backup.env définit RCLONE_REMOTE
-#   (ex. RCLONE_REMOTE=ovh-s3:deepsight-backups, avec rclone configuré)
+#   (ex. RCLONE_REMOTE=s3-backup:deepsight-backups, avec rclone configuré)
 #
 # Les mots de passe sont lus dans le container : rien n'est passé en argument.
 # ═══════════════════════════════════════════════════════════════════════════════
