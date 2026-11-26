@@ -95,7 +95,7 @@ nano /opt/deepsight/repo/.env.production
 nano /opt/deepsight/repo/.env.frontend
 ```
 
-Minimum pour démarrer : `ADMIN_EMAIL` et `MISTRAL_API_KEY`. Laisse `PRIVATE_MODE=true` pour l'instant. Dans nano : `Ctrl+O` puis `Entrée` pour enregistrer, `Ctrl+X` pour quitter.
+Seul `ADMIN_EMAIL` est obligatoire. Sans `MISTRAL_API_KEY`, le site, la connexion et la base fonctionnent, mais pas les analyses ni le chat. Sans `SUPADATA_API_KEY`, les transcriptions YouTube passent par les méthodes de secours, souvent bloquées depuis un serveur. Ajoute ces clés dès que possible et relance `deploy.sh`. Laisse `PRIVATE_MODE=true` pour l'instant. Dans nano : `Ctrl+O` puis `Entrée` pour enregistrer, `Ctrl+X` pour quitter.
 
 ## 7. Déployer
 

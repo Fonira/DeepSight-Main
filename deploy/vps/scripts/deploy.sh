@@ -26,13 +26,12 @@ NODE_IMAGE="${NODE_IMAGE:-node:22-alpine}"
 ASSET_RETENTION_DAYS=14
 
 log() { printf '\n\033[1;36m==> %s\033[0m\n' "$*"; }
+warn() { printf '\033[1;33m[!] %s\033[0m\n' "$*"; }
 die() { printf '\033[1;31m[x] %s\033[0m\n' "$*" >&2; exit 1; }
 
 cd "$REPO_DIR"
 [[ -f .env.production ]] || die ".env.production manquant (lancer bootstrap.sh d'abord)"
 [[ -f .env.frontend ]] || die ".env.frontend manquant (lancer bootstrap.sh d'abord)"
-grep -q '^MISTRAL_API_KEY=.\+' .env.production || die "MISTRAL_API_KEY vide dans .env.production"
-grep -q '^ADMIN_EMAIL=.\+' .env.production || die "ADMIN_EMAIL vide dans .env.production"
 docker info >/dev/null 2>&1 || die "Docker inaccessible (te reconnecter après bootstrap.sh ?)"
 
 COMPOSE=(docker compose --env-file "$REPO_DIR/.env.production" -f "$REPO_DIR/deploy/vps/docker-compose.yml")
@@ -51,6 +50,14 @@ git log -1 --format='    %h %s (%ad)' --date=short
 if [[ -z "${DEPLOY_REEXEC:-}" ]]; then
   DEPLOY_REEXEC=1 exec "$REPO_DIR/deploy/vps/scripts/deploy.sh" "$BRANCH"
 fi
+
+# Vérifié après la mise à jour du script : ce sont les règles de la version déployée qui comptent.
+grep -q '^ADMIN_EMAIL=.\+' .env.production || die "ADMIN_EMAIL vide dans .env.production"
+# L'API démarre sans ces clés ; seules les fonctions qui en dépendent échouent.
+grep -q '^MISTRAL_API_KEY=.\+' .env.production \
+  || warn "MISTRAL_API_KEY vide : site et connexion OK, mais analyses et chat indisponibles"
+grep -q '^SUPADATA_API_KEY=.\+' .env.production \
+  || warn "SUPADATA_API_KEY vide : transcriptions YouTube limitées aux méthodes de secours"
 
 # ─── 2-3. Build du site + en-têtes ─────────────────────────────────────────────
 log "Build du site (npm ci + vite build)"
