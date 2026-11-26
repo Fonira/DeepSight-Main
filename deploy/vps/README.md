@@ -80,6 +80,8 @@ exit
 
 Le script crée l'utilisateur `deploy` (avec ta clé), installe Docker, le pare-feu et le swap, interdit la connexion root et par mot de passe, clone le repo dans `/opt/deepsight/repo`, crée les fichiers `.env` avec des mots de passe aléatoires et programme la sauvegarde nocturne. Il peut être relancé sans risque.
 
+Il tourne détaché de ta session : si SSH coupe, l'installation continue. Après reconnexion, `tail -f /var/log/deepsight-bootstrap.log` affiche où il en est. L'IP depuis laquelle tu le lances est exemptée de fail2ban. Sinon, des essais de mot de passe ratés juste avant feraient bannir ton IP en pleine installation (10 minutes). Si cela arrive quand même : console du SCP netcup, puis `fail2ban-client unban --all`.
+
 ## 6. Renseigner les clés
 
 À partir de maintenant, on se connecte toujours en `deploy` :

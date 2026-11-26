@@ -34,7 +34,41 @@ die() { printf '\033[1;31m[x] %s\033[0m\n' "$*" >&2; exit 1; }
 
 [[ $EUID -eq 0 ]] || die "Lancer en root ou avec sudo : sudo bash $0"
 
+# Une coupure SSH ne doit pas interrompre l'installation (dpkg resterait à moitié
+# configuré) : le script se relance détaché de la session et on suit son journal.
+LOG_FILE="/var/log/deepsight-bootstrap.log"
+if [[ -z "${DS_BOOTSTRAP_CHILD:-}" ]]; then
+  : > "$LOG_FILE"
+  DS_BOOTSTRAP_CHILD=1 setsid nohup bash "$0" "$@" > "$LOG_FILE" 2>&1 < /dev/null &
+  child=$!
+  printf 'Installation lancée en arrière-plan : elle continue même si SSH coupe.\n'
+  printf 'Pour la suivre après une reconnexion : tail -f %s\n' "$LOG_FILE"
+  tail -n +1 -f --pid="$child" "$LOG_FILE" || true
+  wait "$child"
+  exit $?
+fi
+
 export DEBIAN_FRONTEND=noninteractive
+
+# IP de la session SSH qui lance le script. fail2ban lit le journal dès son
+# installation : sans exception, des essais de mot de passe ratés juste avant
+# (clé pas encore posée) font bannir l'administrateur en pleine installation.
+ADMIN_IP="${SSH_CLIENT:-}"
+ADMIN_IP="${ADMIN_IP%% *}"
+[[ "$ADMIN_IP" =~ ^[0-9A-Fa-f.:]+$ ]] || ADMIN_IP=""
+
+write_fail2ban_jail() {
+  install -d -m 755 /etc/fail2ban/jail.d
+  cat > /etc/fail2ban/jail.d/10-deepsight.conf <<CONF
+[DEFAULT]
+ignoreip = 127.0.0.1/8 ::1${ADMIN_IP:+ $ADMIN_IP}
+
+# Debian n'écrit plus /var/log/auth.log : fail2ban lit le journal systemd.
+[sshd]
+enabled = true
+backend = systemd
+CONF
+}
 
 # Debian (image netcup par défaut) et Ubuntu sont pris en charge.
 # shellcheck disable=SC1091
@@ -76,6 +110,8 @@ fi
 log "Mise à jour du système"
 apt-get update -q
 apt-get upgrade -y -q
+# Écrit avant l'installation : fail2ban démarre déjà avec l'exception.
+write_fail2ban_jail
 apt-get install -y -q ca-certificates curl git rsync ufw fail2ban python3-systemd unattended-upgrades openssl sudo
 dpkg-reconfigure -f noninteractive unattended-upgrades
 
@@ -146,14 +182,13 @@ else
   warn "Aucune clé SSH dans $auth_keys : connexion par mot de passe laissée active."
   warn "Ajoute ta clé (voir README), puis relance ce script pour verrouiller SSH."
 fi
-# Debian n'écrit plus /var/log/auth.log : fail2ban lit le journal systemd.
-cat > /etc/fail2ban/jail.d/10-deepsight.conf <<'CONF'
-[sshd]
-enabled = true
-backend = systemd
-CONF
+write_fail2ban_jail
 systemctl enable fail2ban >/dev/null 2>&1 || true
 systemctl restart fail2ban || warn "fail2ban n'a pas démarré (voir : journalctl -u fail2ban)"
+if [[ -n "$ADMIN_IP" ]]; then
+  log "fail2ban : $ADMIN_IP (ta connexion actuelle) ne sera jamais bannie"
+  fail2ban-client unban "$ADMIN_IP" >/dev/null 2>&1 || true
+fi
 
 # ─── 7. Dossiers, repo, fichiers .env ──────────────────────────────────────────
 log "Dossiers $BASE_DIR"
