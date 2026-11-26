@@ -252,7 +252,7 @@ export default function PublicAnalysisPage() {
                 ...(youtubeUrl && { contentUrl: youtubeUrl }),
                 ...(videoId &&
                   (data.video_url || "").includes("youtu") && {
-                    embedUrl: `https://www.youtube.com/embed/${videoId}`,
+                    embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}`,
                   }),
                 ...(duration && { duration: formatDurationISO(duration) }),
                 ...(createdAt && {

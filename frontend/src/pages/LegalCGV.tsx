@@ -470,7 +470,6 @@ const LegalCGV: React.FC = () => {
                   {LEGAL_INFO.contact.phone}
                 </a>
               </li>
-              <li>Via le chat integre au Service (widget Crisp)</li>
             </ul>
             <p>
               L'Editeur s'engage a accuser reception de toute reclamation dans

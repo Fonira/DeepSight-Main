@@ -39,17 +39,14 @@ export function initSentry(): void {
       integrations: [
         // Capture automatique des erreurs React
         Sentry.browserTracingIntegration(),
-        // Replay des sessions (optionnel, consomme du quota)
-        Sentry.replayIntegration({
-          maskAllText: true,
-          blockAllMedia: true,
-        }),
+        // RGPD : pas de Session Replay (enregistrement de session = traceur
+        // non nécessaire, soumis à consentement). Désactivé à la relance 2026.
       ],
 
       // Échantillonnage
       tracesSampleRate: ENVIRONMENT === "production" ? 0.1 : 1.0,
-      replaysSessionSampleRate: 0.1,
-      replaysOnErrorSampleRate: 1.0,
+      replaysSessionSampleRate: 0,
+      replaysOnErrorSampleRate: 0,
 
       // Ne pas envoyer les données personnelles
       sendDefaultPii: false,

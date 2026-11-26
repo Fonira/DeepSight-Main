@@ -9,6 +9,11 @@ import { useLanguage } from "../contexts/LanguageContext";
 // To add a new sub-processor: add an entry below + sign their DPA + notify
 // users via in-app banner or email. Keep the list ordered by criticality
 // (auth > payments > AI > storage > observability).
+//
+// ⚠️ Source de vérité backend : backend/src/core/subprocessors.py
+// (DECLARED_SUBPROCESSORS). Les noms doivent être identiques — un test
+// (backend/tests/test_subprocessors.py) échoue sinon. Tout fournisseur absent
+// de cette liste a ses clés API neutralisées au démarrage du backend.
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface SubProcessor {
@@ -16,6 +21,8 @@ interface SubProcessor {
   purposeFr: string;
   purposeEn: string;
   region: string;
+  /** "eu" : données traitées dans l'UE. "outside_eu" : transfert encadré (DPF ou CCT). */
+  transfer: "eu" | "outside_eu";
   dpaUrl: string;
 }
 
@@ -25,6 +32,7 @@ const SUB_PROCESSORS: SubProcessor[] = [
     purposeFr: "Hébergement VPS principal (backend, DB, Redis)",
     purposeEn: "Primary VPS hosting (backend, DB, Redis)",
     region: "Allemagne 🇩🇪",
+    transfer: "eu",
     dpaUrl: "https://www.hetzner.com/legal/privacy-policy",
   },
   {
@@ -32,6 +40,7 @@ const SUB_PROCESSORS: SubProcessor[] = [
     purposeFr: "Hébergement frontend web (CDN edge)",
     purposeEn: "Web frontend hosting (edge CDN)",
     region: "USA 🇺🇸",
+    transfer: "outside_eu",
     dpaUrl: "https://vercel.com/legal/dpa",
   },
   {
@@ -39,6 +48,7 @@ const SUB_PROCESSORS: SubProcessor[] = [
     purposeFr: "Paiements, facturation, gestion des abonnements",
     purposeEn: "Payments, invoicing, subscription management",
     region: "Irlande 🇮🇪 (EU)",
+    transfer: "outside_eu",
     dpaUrl: "https://stripe.com/legal/dpa",
   },
   {
@@ -46,6 +56,7 @@ const SUB_PROCESSORS: SubProcessor[] = [
     purposeFr: "Modèles IA (analyses vidéo, chat, agents)",
     purposeEn: "AI models (video analyses, chat, agents)",
     region: "France 🇫🇷",
+    transfer: "eu",
     dpaUrl: "https://mistral.ai/terms#data-processing-agreement",
   },
   {
@@ -53,6 +64,7 @@ const SUB_PROCESSORS: SubProcessor[] = [
     purposeFr: "OAuth (connexion Google)",
     purposeEn: "OAuth (Google sign-in)",
     region: "USA 🇺🇸",
+    transfer: "outside_eu",
     dpaUrl: "https://cloud.google.com/terms/data-processing-addendum",
   },
   {
@@ -60,13 +72,15 @@ const SUB_PROCESSORS: SubProcessor[] = [
     purposeFr: "Emails transactionnels (vérification, reset, etc.)",
     purposeEn: "Transactional emails (verification, reset, etc.)",
     region: "USA 🇺🇸",
+    transfer: "outside_eu",
     dpaUrl: "https://resend.com/legal/dpa",
   },
   {
     name: "ElevenLabs",
-    purposeFr: "Synthèse vocale et reconnaissance audio (Quick Voice Call)",
-    purposeEn: "Text-to-speech and audio recognition (Quick Voice Call)",
+    purposeFr: "Synthèse vocale (audio des synthèses, appels vocaux) et transcription de secours",
+    purposeEn: "Text-to-speech (summary audio, voice calls) and fallback transcription",
     region: "USA 🇺🇸",
+    transfer: "outside_eu",
     dpaUrl: "https://elevenlabs.io/dpa",
   },
   {
@@ -74,6 +88,7 @@ const SUB_PROCESSORS: SubProcessor[] = [
     purposeFr: "Récupération de transcriptions YouTube",
     purposeEn: "YouTube transcript retrieval",
     region: "USA 🇺🇸",
+    transfer: "outside_eu",
     dpaUrl: "https://supadata.ai/privacy",
   },
   {
@@ -81,6 +96,7 @@ const SUB_PROCESSORS: SubProcessor[] = [
     purposeFr: "Enrichissement web (recherche pour le chat)",
     purposeEn: "Web enrichment (chat web search)",
     region: "USA 🇺🇸",
+    transfer: "outside_eu",
     dpaUrl: "https://www.perplexity.ai/hub/legal/privacy-policy",
   },
   {
@@ -88,13 +104,15 @@ const SUB_PROCESSORS: SubProcessor[] = [
     purposeFr: "Recherche web (fact-checking)",
     purposeEn: "Web search (fact-checking)",
     region: "USA 🇺🇸",
+    transfer: "outside_eu",
     dpaUrl: "https://brave.com/privacy/browser/",
   },
   {
     name: "Cloudflare R2",
-    purposeFr: "Sauvegardes redondantes (DB + thumbnails)",
-    purposeEn: "Redundant backups (DB + thumbnails)",
+    purposeFr: "Stockage des miniatures et audios, sauvegardes redondantes",
+    purposeEn: "Thumbnail and audio storage, redundant backups",
     region: "USA 🇺🇸",
+    transfer: "outside_eu",
     dpaUrl: "https://www.cloudflare.com/cloudflare-customer-dpa/",
   },
   {
@@ -102,6 +120,7 @@ const SUB_PROCESSORS: SubProcessor[] = [
     purposeFr: "Sauvegardes primaires de la base de données",
     purposeEn: "Primary database backups",
     region: "EU (eu-west-3) 🇪🇺",
+    transfer: "eu",
     dpaUrl: "https://aws.amazon.com/service-terms/",
   },
   {
@@ -109,6 +128,7 @@ const SUB_PROCESSORS: SubProcessor[] = [
     purposeFr: "Monitoring d'erreurs (rapports anonymisés)",
     purposeEn: "Error monitoring (anonymized reports)",
     region: "USA 🇺🇸",
+    transfer: "outside_eu",
     dpaUrl: "https://sentry.io/legal/dpa/",
   },
   {
@@ -116,6 +136,7 @@ const SUB_PROCESSORS: SubProcessor[] = [
     purposeFr: "Analytics produit (consentement utilisateur requis)",
     purposeEn: "Product analytics (user consent required)",
     region: "EU (eu.i.posthog.com) 🇪🇺",
+    transfer: "eu",
     dpaUrl: "https://posthog.com/dpa",
   },
 ];
@@ -152,7 +173,7 @@ export default function LegalSubProcessors() {
             </p>
             <p className="mt-2 text-sm text-text-tertiary">
               {t("Dernière mise à jour : ", "Last updated: ")}
-              <time dateTime="2026-05-05">2026-05-05</time>
+              <time dateTime="2026-11-26">2026-11-26</time>
             </p>
           </header>
 
@@ -163,6 +184,9 @@ export default function LegalSubProcessors() {
                   <th className="px-4 py-3">{t("Nom", "Name")}</th>
                   <th className="px-4 py-3">{t("Finalité", "Purpose")}</th>
                   <th className="px-4 py-3">{t("Région", "Region")}</th>
+                  <th className="px-4 py-3">
+                    {t("Encadrement", "Safeguard")}
+                  </th>
                   <th className="px-4 py-3">DPA</th>
                 </tr>
               </thead>
@@ -180,6 +204,11 @@ export default function LegalSubProcessors() {
                     </td>
                     <td className="px-4 py-3 text-text-secondary">
                       {sp.region}
+                    </td>
+                    <td className="px-4 py-3 text-text-secondary">
+                      {sp.transfer === "eu"
+                        ? t("Données dans l'UE", "Data in the EU")
+                        : t("Hors UE : DPF ou CCT", "Outside EU: DPF or SCCs")}
                     </td>
                     <td className="px-4 py-3">
                       <a
@@ -206,6 +235,16 @@ export default function LegalSubProcessors() {
               {t(
                 "Tout ajout ou retrait d'un sous-traitant est notifié aux utilisateurs au moins 30 jours avant son entrée en vigueur, soit par email, soit via une bannière dans l'application.",
                 "Any addition or removal of a sub-processor is communicated to users at least 30 days before it takes effect, either by email or via an in-app banner.",
+              )}
+            </p>
+
+            <h2 className="text-2xl font-semibold text-text-primary">
+              {t("Transferts hors Union européenne", "Transfers outside the EU")}
+            </h2>
+            <p>
+              {t(
+                "Lorsqu'un sous-traitant traite des données hors de l'UE, le transfert est encadré soit par la décision d'adéquation « EU-U.S. Data Privacy Framework » (DPF) si le fournisseur y est certifié, soit par les clauses contractuelles types (CCT) de la Commission européenne intégrées à son DPA. Nous privilégions les fournisseurs européens : les analyses et le chat reposent exclusivement sur Mistral AI (France).",
+                "When a sub-processor handles data outside the EU, the transfer relies either on the EU-U.S. Data Privacy Framework (DPF) adequacy decision when the provider is certified, or on the European Commission's Standard Contractual Clauses (SCCs) included in its DPA. We favour European providers: analyses and chat run exclusively on Mistral AI (France).",
               )}
             </p>
 
