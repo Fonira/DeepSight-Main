@@ -133,7 +133,7 @@ Déployer la dernière version de `main` depuis ton PC :
 ssh -i $env:USERPROFILE\.ssh\id_vps deploy@IP_DU_VPS "/opt/deepsight/repo/deploy/vps/scripts/deploy.sh"
 ```
 
-Déployer une autre branche : ajouter son nom après `deploy.sh`.
+Sans argument, `deploy.sh` redéploie la branche déjà en place sur le serveur. Pour passer sur une autre branche (par exemple `main` une fois le kit fusionné), ajoute son nom après `deploy.sh` : elle devient la branche par défaut des déploiements suivants.
 
 Diagnostic (sur le serveur) :
 

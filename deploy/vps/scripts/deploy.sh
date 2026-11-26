@@ -3,8 +3,8 @@
 # DeepSight — déploiement sur le VPS de production (site + API)
 #
 # Usage (sur le serveur) :
-#   /opt/deepsight/repo/deploy/vps/scripts/deploy.sh           # déploie main
-#   /opt/deepsight/repo/deploy/vps/scripts/deploy.sh ma-branche
+#   /opt/deepsight/repo/deploy/vps/scripts/deploy.sh             # redéploie la branche actuelle
+#   /opt/deepsight/repo/deploy/vps/scripts/deploy.sh ma-branche  # passe sur une autre branche
 #
 # Étapes :
 #   1. récupère la branche depuis GitHub (le serveur ne garde aucune modif locale ;
@@ -17,8 +17,10 @@
 # ═══════════════════════════════════════════════════════════════════════════════
 set -euo pipefail
 
-BRANCH="${1:-main}"
 REPO_DIR="${REPO_DIR:-/opt/deepsight/repo}"
+# Sans argument : la branche déjà en place (évite de basculer sur main par mégarde).
+BRANCH="${1:-$(git -C "$REPO_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || echo main)}"
+[[ "$BRANCH" != "HEAD" ]] || BRANCH=main
 WWW_DIR="${WWW_DIR:-/opt/deepsight/www}"
 NODE_IMAGE="${NODE_IMAGE:-node:22-alpine}"
 ASSET_RETENTION_DAYS=14
@@ -41,6 +43,9 @@ git fetch --depth 50 origin "+refs/heads/$BRANCH:refs/remotes/origin/$BRANCH"
 git checkout -q -B "$BRANCH" "origin/$BRANCH"
 git reset -q --hard "origin/$BRANCH"
 git log -1 --format='    %h %s (%ad)' --date=short
+
+[[ -x "$REPO_DIR/deploy/vps/scripts/deploy.sh" ]] \
+  || die "La branche $BRANCH ne contient pas deploy/vps : relance avec une branche qui l'a (ex. feat/infra-ovh)"
 
 # Le script s'est peut-être mis à jour : on relance la nouvelle version une fois.
 if [[ -z "${DEPLOY_REEXEC:-}" ]]; then
