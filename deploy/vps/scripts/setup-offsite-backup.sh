@@ -64,11 +64,14 @@ fi
 log "Identifiants du jeton R2 (bucket $BUCKET, juridiction UE)"
 read -r -p "ID de compte Cloudflare (R2 > Account Details > Account ID) : " account_id
 [[ "$account_id" =~ ^[0-9a-f]{32}$ ]] || die "ID de compte invalide : 32 caractères hexadécimaux attendus."
-read -r -p "Access Key ID : " access_key
-[[ "$access_key" =~ ^[A-Za-z0-9]+$ ]] || die "Access Key ID vide ou invalide."
-read -r -s -p "Secret Access Key (la saisie reste invisible) : " secret_key
+read -r -p "Access Key ID du jeton (page du jeton, différent de l'ID de compte) : " access_key
+[[ "$access_key" =~ ^[0-9a-f]{32}$ ]] || die "Access Key ID invalide : 32 caractères hexadécimaux attendus."
+[[ "$access_key" != "$account_id" ]] \
+  || die "Tu as collé l'ID de compte à la place de l'Access Key ID : reprends la valeur « Access Key ID » de la page du jeton R2."
+read -r -s -p "Secret Access Key du jeton (la saisie reste invisible) : " secret_key
 echo
-[[ "$secret_key" =~ ^[A-Za-z0-9]+$ ]] || die "Secret Access Key vide ou invalide."
+[[ "$secret_key" =~ ^[0-9a-f]{64}$ ]] \
+  || die "Secret Access Key invalide : 64 caractères hexadécimaux attendus (valeur « Secret Access Key », pas « Token value »)."
 
 # ─── 3. Phrase secrète de chiffrement ──────────────────────────────────────────
 if [[ $existing_passphrase -eq 1 ]]; then
