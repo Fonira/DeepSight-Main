@@ -2112,7 +2112,7 @@ async def generate_summary(
     if web_context:
         max_tokens = int(max_tokens * 1.2)  # +20%
 
-    # 🔄 Centralized LLM call with automatic fallback chain (Mistral → DeepSeek)
+    # 🔄 Centralized LLM call with automatic fallback chain (chaîne Mistral)
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt},

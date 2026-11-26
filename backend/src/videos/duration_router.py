@@ -332,7 +332,7 @@ def get_optimal_model(
     # ── Magistral epistemic routing (Phase 4) ────────────────────────────────
     # Override Expert-only pour la synthèse finale uniquement. Si Magistral
     # fail (429/5xx), llm_complete() retombe sur la chaîne de fallback existante
-    # (mistral-large-2512 → medium → small → DeepSeek) — pas besoin de modifier
+    # (mistral-large-2512 → medium → small) — pas besoin de modifier
     # MISTRAL_FALLBACK_ORDER.
     if task == "synthesis" and MAGISTRAL_EPISTEMIC_ENABLED and raw_plan in MAGISTRAL_EPISTEMIC_TIERS:
         # Reprendre les max_tokens du modèle large (paramétrage Pro/Expert

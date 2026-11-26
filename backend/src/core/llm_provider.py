@@ -4,7 +4,8 @@ LLM Provider — Centralized AI API calls with automatic fallback chain.
 Fallback order:
   1. Requested Mistral model
   2. Other Mistral models (ascending tier)
-  3. DeepSeek (last resort, non-EU)
+
+RGPD / souveraineté : chaîne 100 % Mistral (UE). DeepSeek retiré (relance 2026).
 
 Usage:
     from core.llm_provider import llm_complete, llm_complete_stream
@@ -38,8 +39,6 @@ import httpx
 
 from core.config import (
     get_mistral_key,
-    get_deepseek_key,
-    is_deepseek_available,
     resolve_mistral_model,
 )
 
@@ -49,7 +48,6 @@ from core.config import (
 # =============================================================================
 
 MISTRAL_API_URL = "https://api.mistral.ai/v1/chat/completions"
-DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
 
 # Mistral models ordered by tier (ascending) for fallback
 MISTRAL_FALLBACK_ORDER = [
@@ -79,7 +77,7 @@ class LLMResult:
 
     content: str
     model_used: str
-    provider: str  # "mistral" or "deepseek"
+    provider: str  # always "mistral"
     tokens_input: int = 0
     tokens_output: int = 0
     tokens_total: int = 0
@@ -207,7 +205,6 @@ def _build_fallback_chain(
 
     1. Requested Mistral model
     2. Other Mistral models from MISTRAL_FALLBACK_ORDER (if allowed)
-    3. DeepSeek deepseek-chat (if key available)
     """
     chain = []
     seen = set()
@@ -228,10 +225,6 @@ def _build_fallback_chain(
             continue
         chain.append({"provider": "mistral", "model": model, "url": MISTRAL_API_URL})
         seen.add(model)
-
-    # 3. DeepSeek as last resort
-    if is_deepseek_available():
-        chain.append({"provider": "deepseek", "model": "deepseek-chat", "url": DEEPSEEK_API_URL})
 
     return chain
 
@@ -268,7 +261,6 @@ async def llm_complete(
         LLMResult with content and metadata, or None on total failure
     """
     mistral_key = get_mistral_key()
-    deepseek_key = get_deepseek_key()
 
     if not mistral_key:
         print("❌ [LLM] No MISTRAL_API_KEY configured", flush=True)
@@ -284,7 +276,7 @@ async def llm_complete(
         provider = entry["provider"]
         current_model = entry["model"]
         url = entry["url"]
-        api_key = mistral_key if provider == "mistral" else deepseek_key
+        api_key = mistral_key
         is_fallback = i > 0
 
         if not api_key:
@@ -408,7 +400,6 @@ async def llm_complete_stream(
         Content chunks as strings
     """
     mistral_key = get_mistral_key()
-    deepseek_key = get_deepseek_key()
 
     if not mistral_key:
         yield "Error: No MISTRAL_API_KEY configured"
@@ -422,7 +413,7 @@ async def llm_complete_stream(
         provider = entry["provider"]
         current_model = entry["model"]
         url = entry["url"]
-        api_key = mistral_key if provider == "mistral" else deepseek_key
+        api_key = mistral_key
         is_fallback = i > 0
 
         if not api_key:

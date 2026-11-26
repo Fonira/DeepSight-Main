@@ -203,8 +203,8 @@ async def call_mistral_json(
     temperature: float = 0.1,
 ) -> str:
     """
-    Appelle l'API Mistral avec fallback automatique (Mistral → DeepSeek).
-    Note: JSON mode n'est pas garanti via le fallback DeepSeek,
+    Appelle l'API Mistral avec fallback automatique (chaîne Mistral).
+    Note: JSON mode garanti uniquement sur les modèles Mistral compatibles,
     mais le prompt demande du JSON donc ça marche en pratique.
     Retourne le contenu brut de la réponse.
     """

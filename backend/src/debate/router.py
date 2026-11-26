@@ -296,7 +296,7 @@ async def _call_mistral(
     max_tokens: int = 4096,
     json_mode: bool = False,
 ) -> Optional[str]:
-    """Call LLM with automatic fallback chain (Mistral → DeepSeek)."""
+    """Call LLM with automatic fallback chain (chaîne Mistral)."""
     result = await llm_complete(
         messages=messages,
         model=model,
@@ -324,7 +324,7 @@ async def _call_magistral(
 
     Magistral est invoqué via la même API Mistral (`magistral-medium-2509`).
     En cas d'erreur 429/5xx, llm_complete() bascule automatiquement sur la
-    chaîne MISTRAL_FALLBACK_ORDER (small → medium → large → DeepSeek).
+    chaîne MISTRAL_FALLBACK_ORDER (small → medium → large).
 
     Sprint Débat IA v2 — utilisé pour l'analyse comparative entre vidéo A
     et chaque perspective B/B'/B''.

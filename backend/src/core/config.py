@@ -14,6 +14,10 @@ from typing import Dict, Any, Optional
 from pydantic_settings import BaseSettings
 from pydantic import Field, model_validator
 from core.logging import logger
+from core.subprocessors import (
+    enforce_on_environ as _enforce_subprocessors_on_environ,
+    enforce_on_settings as _enforce_subprocessors_on_settings,
+)
 
 
 # =============================================================================
@@ -55,7 +59,6 @@ class _DeepSightSettings(BaseSettings):
     GROQ_API_KEY: str = ""
     DEEPGRAM_API_KEY: str = ""
     ASSEMBLYAI_API_KEY: str = ""
-    DEEPSEEK_API_KEY: str = ""
     SEMANTIC_SCHOLAR_API_KEY: str = ""
     FAL_API_KEY: str = ""
     TOGETHER_API_KEY: str = ""
@@ -332,7 +335,11 @@ class _DeepSightSettings(BaseSettings):
 
 
 # Instantiate settings (reads .env + env vars)
+# RGPD : les sous-traitants non déclarés sont neutralisés avant ET après lecture
+# (os.environ, puis valeurs venant du fichier .env). Voir core/subprocessors.py.
+_enforce_subprocessors_on_environ()
 _settings = _DeepSightSettings()
+_enforce_subprocessors_on_settings(_settings)
 
 # =============================================================================
 # BACKWARD-COMPATIBLE MODULE EXPORTS
@@ -424,7 +431,6 @@ SUPADATA_API_KEY = _settings.SUPADATA_API_KEY
 PERPLEXITY_API_KEY = _settings.PERPLEXITY_API_KEY
 BRAVE_SEARCH_API_KEY = _settings.BRAVE_SEARCH_API_KEY
 OPENAI_API_KEY = _settings.OPENAI_API_KEY
-DEEPSEEK_API_KEY = _settings.DEEPSEEK_API_KEY
 FAL_API_KEY = _settings.FAL_API_KEY
 TOGETHER_API_KEY = _settings.TOGETHER_API_KEY
 MISTRAL_IMAGE_AGENT_ID = _settings.MISTRAL_IMAGE_AGENT_ID
@@ -799,7 +805,7 @@ MISTRAL_MODERATION_MODEL = "mistral-moderation-latest"
 #
 # Stratégie: override Expert-only via duration_router.get_optimal_model(),
 # hors MISTRAL_FALLBACK_ORDER. Si Magistral fail (429/5xx), la chaîne de
-# fallback existante (mistral-large-2512 → medium → small → DeepSeek) prend
+# fallback existante (mistral-large-2512 → medium → small, 100 % Mistral) prend
 # le relais via llm_complete().
 #
 # ROLLOUT: flag par défaut OFF. Activation après validation qualité manuelle
@@ -963,14 +969,6 @@ def get_brave_key() -> str:
 
 def get_openai_key() -> Optional[str]:
     return OPENAI_API_KEY or None
-
-
-def get_deepseek_key() -> Optional[str]:
-    return DEEPSEEK_API_KEY or None
-
-
-def is_deepseek_available() -> bool:
-    return bool(DEEPSEEK_API_KEY)
 
 
 def is_openai_available() -> bool:

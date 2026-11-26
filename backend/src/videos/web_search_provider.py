@@ -276,7 +276,7 @@ async def _call_mistral_api(
         )
         return result.content, result.tokens_total
 
-    raise Exception("All LLM providers exhausted (Mistral + DeepSeek)")
+    raise Exception("All LLM providers exhausted (Mistral)")
 
 
 async def _brave_fallback_search(

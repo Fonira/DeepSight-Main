@@ -955,7 +955,7 @@ async def generate_chat_response(
         return _strip_chat_artefacts(mistral_response)
 
     # ═══════════════════════════════════════════════════════════════════════════════
-    # 🇪🇺 FALLBACK CHAIN — chaîne Mistral pure (small/medium/large) puis DeepSeek
+    # 🇪🇺 FALLBACK CHAIN — chaîne Mistral pure (small/medium/large)
     # via core.llm_provider.llm_complete (auto-fallback 429/5xx + circuit breaker).
     # Remplace l'ancien fallback OpenAI gpt-4-turbo-preview (jamais déclenché en
     # prod, contradictoire avec le positionnement 100% européen).

@@ -7,7 +7,14 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-from fastapi import FastAPI, Request
+# RGPD : neutralise les clés des sous-traitants non déclarés AVANT tout autre
+# import (core.logging installe Axiom à l'import, certains modules lisent
+# os.environ directement). Voir core/subprocessors.py.
+from core.subprocessors import enforce_on_environ
+
+enforce_on_environ()
+
+from fastapi import FastAPI, Request  # noqa: E402
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
