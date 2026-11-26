@@ -2,7 +2,7 @@
 
 > Extended version of `/llms.txt`. Lists key public pages and the canonical URL pattern for individual analyses. Inline content of public analyses is intentionally excluded in V1 — it will be added once the public-pages release ships and the Markdown export builder is wired into a build-time crawler.
 
-DeepSight is an AI-powered YouTube and TikTok video analyzer. 100% European stack (Mistral AI for analysis, Hetzner for hosting, GDPR-native). Available as Web app, Mobile app (iOS/Android via Expo) and Chrome Extension (Manifest V3 side panel). Single account, single subscription, three interfaces.
+DeepSight is an AI-powered YouTube and TikTok video analyzer. 100% European stack (Mistral AI for analysis, OVHcloud (France) for hosting, GDPR-native). Available as Web app, Mobile app (iOS/Android via Expo) and Chrome Extension (Manifest V3 side panel). Single account, single subscription, three interfaces.
 
 Tagline: "Don't endure your videos — interrogate them."
 
@@ -65,11 +65,11 @@ A dynamic index of public analyses (newest 100) will be added to this file once 
 
 | Layer | Technology | Hosting |
 |---|---|---|
-| Backend | FastAPI / Python 3.11 | Hetzner VPS (Falkenstein, Germany), Docker |
-| Frontend | React 18 / TypeScript / Vite / Tailwind CSS | Vercel |
+| Backend | FastAPI / Python 3.11 | OVHcloud VPS (France), Docker |
+| Frontend | React 18 / TypeScript / Vite / Tailwind CSS | OVHcloud VPS (France), Caddy |
 | Mobile | Expo SDK 54 / React Native 0.81 / React 19 | EAS Build (App Store + Play Store) |
 | Extension | Chrome Manifest V3 / Preact | Chrome Web Store |
-| Database | PostgreSQL 17 + Redis 7 | Hetzner |
+| Database | PostgreSQL 17 + Redis 7 | OVHcloud |
 | AI | Mistral AI (small / medium / large 2512) | Mistral, Paris |
 | Voice | ElevenLabs ConvAI + LiveKit | ElevenLabs |
 | Transcripts | 7-method cascade (Supadata, youtube-transcript-api, Invidious, Piped, yt-dlp, Whisper STT) | — |

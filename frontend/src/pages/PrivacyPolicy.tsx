@@ -219,16 +219,12 @@ const PrivacyPolicy: React.FC = () => {
                 seul fournisseur IA pour les analyses et le chat
               </li>
               <li>
-                <strong className="text-white">Hetzner</strong> (Allemagne) :
-                hebergement du backend et de la base de donnees
+                <strong className="text-white">OVHcloud</strong> (France) :
+                hebergement du site, de l'API et de la base de donnees
               </li>
               <li>
                 <strong className="text-white">Stripe</strong> : traitement des
                 paiements
-              </li>
-              <li>
-                <strong className="text-white">Vercel</strong> : hebergement du
-                site web
               </li>
               <li>
                 <strong className="text-white">Resend</strong> : envoi d'emails

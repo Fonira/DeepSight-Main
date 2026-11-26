@@ -55,16 +55,9 @@ const LEGAL_INFO = {
     director: "Maxime Leparc",
   },
   hosting: {
-    frontend: {
-      name: "Vercel Inc.",
-      address: "340 S Lemon Ave #4133, Walnut, CA 91789, USA",
-      website: "https://vercel.com",
-    },
-    backend: {
-      name: "Hetzner Online GmbH",
-      address: "Industriestr. 25, 91710 Gunzenhausen, Allemagne",
-      website: "https://www.hetzner.com",
-    },
+    name: "OVH SAS",
+    address: "2 rue Kellermann, 59100 Roubaix, France",
+    website: "https://www.ovhcloud.com",
   },
   dpo: {
     name: "Maxime Leparc",
@@ -213,44 +206,28 @@ const MentionsLegales: React.FC = () => (
         </div>
         <h3 className="text-lg font-semibold text-white">Hébergement</h3>
       </div>
-      <div className="grid md:grid-cols-2 gap-6">
-        <div className="space-y-2 text-text-primary">
-          <p className="text-white font-medium">Frontend (Site web)</p>
-          <p>{LEGAL_INFO.hosting.frontend.name}</p>
-          <p className="text-sm text-text-secondary">
-            {LEGAL_INFO.hosting.frontend.address}
-          </p>
-          <a
-            href={LEGAL_INFO.hosting.frontend.website}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-amber-400 hover:underline text-sm"
-          >
-            {LEGAL_INFO.hosting.frontend.website}
-          </a>
-        </div>
-        <div className="space-y-2 text-text-primary">
-          <p className="text-white font-medium">Backend (API & données)</p>
-          <p>{LEGAL_INFO.hosting.backend.name}</p>
-          <p className="text-sm text-text-secondary">
-            {LEGAL_INFO.hosting.backend.address}
-          </p>
-          <a
-            href={LEGAL_INFO.hosting.backend.website}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-amber-400 hover:underline text-sm"
-          >
-            {LEGAL_INFO.hosting.backend.website}
-          </a>
-        </div>
+      <div className="space-y-2 text-text-primary">
+        <p className="text-white font-medium">
+          Site web, API et données utilisateur
+        </p>
+        <p>{LEGAL_INFO.hosting.name}</p>
+        <p className="text-sm text-text-secondary">
+          {LEGAL_INFO.hosting.address}
+        </p>
+        <a
+          href={LEGAL_INFO.hosting.website}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-amber-400 hover:underline text-sm"
+        >
+          {LEGAL_INFO.hosting.website}
+        </a>
       </div>
       <div className="mt-4 p-3 bg-green-500/10 rounded-lg border border-green-500/20">
         <p className="text-green-200 text-sm">
           <Shield className="w-4 h-4 inline mr-2" />
-          Le backend et les données utilisateur sont hébergés en Allemagne (UE)
-          chez Hetzner. Le frontend est servi depuis le CDN mondial de Vercel.
-          Vos données restent en Europe conformément au RGPD.
+          Le site, l'API et les données utilisateur sont hébergés en France
+          chez OVHcloud. Vos données restent en Europe conformément au RGPD.
         </p>
       </div>
     </section>

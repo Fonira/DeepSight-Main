@@ -28,20 +28,13 @@ interface SubProcessor {
 
 const SUB_PROCESSORS: SubProcessor[] = [
   {
-    name: "Hetzner",
-    purposeFr: "Hébergement VPS principal (backend, DB, Redis)",
-    purposeEn: "Primary VPS hosting (backend, DB, Redis)",
-    region: "Allemagne 🇩🇪",
+    name: "OVHcloud",
+    purposeFr: "Hébergement du serveur (site web, API, base de données, Redis)",
+    purposeEn: "Server hosting (website, API, database, Redis)",
+    region: "France 🇫🇷",
     transfer: "eu",
-    dpaUrl: "https://www.hetzner.com/legal/privacy-policy",
-  },
-  {
-    name: "Vercel",
-    purposeFr: "Hébergement frontend web (CDN edge)",
-    purposeEn: "Web frontend hosting (edge CDN)",
-    region: "USA 🇺🇸",
-    transfer: "outside_eu",
-    dpaUrl: "https://vercel.com/legal/dpa",
+    dpaUrl:
+      "https://www.ovhcloud.com/fr/personal-data-protection/legal-privacy-security/",
   },
   {
     name: "Stripe",
@@ -253,8 +246,8 @@ export default function LegalSubProcessors() {
             </h2>
             <p>
               {t(
-                "Les données utilisateur (compte, analyses, conversations) sont stockées sur un VPS Hetzner en Allemagne. Les sauvegardes sont répliquées sur AWS S3 (UE) et Cloudflare R2 (USA, en redondance).",
-                "User data (account, analyses, conversations) is stored on a Hetzner VPS in Germany. Backups are replicated to AWS S3 (EU) and Cloudflare R2 (USA, for redundancy).",
+                "Les données utilisateur (compte, analyses, conversations) sont stockées sur un serveur OVHcloud en France. Les sauvegardes sont répliquées sur AWS S3 (UE) et Cloudflare R2 (USA, en redondance).",
+                "User data (account, analyses, conversations) is stored on an OVHcloud server in France. Backups are replicated to AWS S3 (EU) and Cloudflare R2 (USA, for redundancy).",
               )}
             </p>
 
