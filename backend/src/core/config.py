@@ -259,6 +259,9 @@ class _DeepSightSettings(BaseSettings):
     BACKUP_CRON_HOUR: int = 3
     BACKUP_CRON_MINUTE: int = 0
     BACKUP_RETENTION_DAYS: int = 30
+    # Sauvegarde intégrée à l'app (pg_dump en RAM par worker). À désactiver
+    # quand l'hôte fait déjà ses propres sauvegardes (VPS : backup.sh à 03:17).
+    APP_BACKUP_ENABLED: bool = True
 
     # -- R2 Thumbnail Storage --
     R2_ACCOUNT_ID: str = ""
@@ -655,6 +658,7 @@ BACKUP_CONFIG = {
     "CRON_HOUR": _settings.BACKUP_CRON_HOUR,
     "CRON_MINUTE": _settings.BACKUP_CRON_MINUTE,
     "RETENTION_DAYS": _settings.BACKUP_RETENTION_DAYS,
+    "ENABLED": _settings.APP_BACKUP_ENABLED,
 }
 
 # =============================================================================
