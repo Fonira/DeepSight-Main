@@ -4,6 +4,7 @@ import { tokenStorage } from "../utils/storage";
 import NetInfo from "@react-native-community/netinfo";
 import { withRetryPreset } from "./RetryService";
 import { tokenManager } from "./TokenManager";
+import { ApiError, apiErrorFromResponse } from "./apiErrors";
 import type {
   User,
   AnalysisSummary,
@@ -48,27 +49,8 @@ const checkConnectivity = async (): Promise<boolean> => {
 // Retry helper with exponential backoff
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// API Error class
-export class ApiError extends Error {
-  constructor(
-    message: string,
-    public status: number,
-    public code?: string,
-    public detail?: string,
-  ) {
-    super(message);
-    this.name = "ApiError";
-  }
-
-  // Helper to check if this is an email verification required error
-  get isEmailNotVerified(): boolean {
-    return (
-      this.status === 403 &&
-      (this.code === "EMAIL_NOT_VERIFIED" ||
-        this.detail === "EMAIL_NOT_VERIFIED")
-    );
-  }
-}
+// API Error class — définie dans ./apiErrors (lecture de `detail` objet/tableau/chaîne)
+export { ApiError };
 
 // Token refresh lock — shared promise prevents race conditions when multiple
 // requests get 401 simultaneously: all await the same refresh attempt.
@@ -179,12 +161,7 @@ const _requestRaw = async <T>(
         });
 
         if (!retryResponse.ok) {
-          const errorData = await retryResponse.json().catch(() => ({}));
-          throw new ApiError(
-            errorData.message || "Request failed",
-            retryResponse.status,
-            errorData.code,
-          );
+          throw await apiErrorFromResponse(retryResponse);
         }
 
         return await retryResponse.json();
@@ -193,26 +170,10 @@ const _requestRaw = async <T>(
       }
     }
 
-    // Handle other errors
+    // Handle other errors — `detail` peut être une chaîne, un objet
+    // {code, message} ou un tableau de validation : voir ./apiErrors
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      // Handle Pydantic validation errors where detail is an array of objects
-      const detail = errorData.detail;
-      const errorMessage =
-        errorData.message ||
-        (Array.isArray(detail)
-          ? detail.map((d: any) => d.msg || String(d)).join(", ")
-          : detail) ||
-        errorData.error ||
-        "Request failed";
-      const errorCode =
-        errorData.code || (Array.isArray(detail) ? "VALIDATION_ERROR" : detail);
-      throw new ApiError(
-        errorMessage,
-        response.status,
-        errorCode,
-        errorData.detail,
-      );
+      throw await apiErrorFromResponse(response);
     }
 
     // Parse response
@@ -567,23 +528,16 @@ export const userApi = {
             },
           );
           if (!retryResponse.ok) {
-            const errorData = await retryResponse.json().catch(() => ({}));
-            throw new ApiError(
-              errorData.message || "Failed to upload avatar",
-              retryResponse.status,
-              errorData.code,
+            throw await apiErrorFromResponse(
+              retryResponse,
+              "Failed to upload avatar",
             );
           }
           return retryResponse.json();
         }
 
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new ApiError(
-            errorData.message || "Failed to upload avatar",
-            response.status,
-            errorData.code,
-          );
+          throw await apiErrorFromResponse(response, "Failed to upload avatar");
         }
 
         return response.json();
