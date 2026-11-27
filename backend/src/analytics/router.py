@@ -69,6 +69,7 @@ class EventPayload(BaseModel):
             "upgrade_plan_selected",
             "upgrade_checkout_started",
             "analysis_deleted",
+            "payment_cancel_reason",
         }
         if v not in allowed:
             raise ValueError(f"Unknown event: {v}")

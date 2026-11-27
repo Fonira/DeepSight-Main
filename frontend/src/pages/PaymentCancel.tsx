@@ -36,12 +36,19 @@ export const PaymentCancel: React.FC = () => {
     try {
       const API_URL =
         import.meta.env.VITE_API_URL || "https://api.deepsightsynthesis.com";
-      fetch(`${API_URL}/api/analytics/event`, {
+      // Format attendu par POST /api/analytics/events (lot d'événements)
+      fetch(`${API_URL}/api/analytics/events`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          event: "payment_cancel_reason",
-          properties: { reason },
+          events: [
+            {
+              name: "payment_cancel_reason",
+              properties: { reason },
+              timestamp: new Date().toISOString(),
+              session_id: `web-${Date.now().toString(36)}`,
+            },
+          ],
           platform: "web",
         }),
       }).catch(() => {}); // Silently fail
