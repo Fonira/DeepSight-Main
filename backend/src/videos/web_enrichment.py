@@ -554,6 +554,7 @@ def build_pre_analysis_prompt(
 {transcript_excerpt[:2000]}
 
 🎯 MISSION: Recherche les informations web ACTUELLES et RÉCENTES liées à ce sujet.
+⛔ Ne donne aucune information sur l'identité du vidéaste ou du fondateur de la chaîne, sauf si une source citée l'indique explicitement.
 
 📋 FORMAT DE RÉPONSE (pour enrichir une analyse IA):
 
@@ -582,6 +583,7 @@ Réponds en français, sois factuel et cite tes sources. Max 400 mots."""
 {transcript_excerpt[:2000]}
 
 🎯 MISSION: Search for CURRENT and RECENT web information related to this topic.
+⛔ Do not give any information about the identity of the creator or the channel's founder unless a cited source states it explicitly.
 
 📋 RESPONSE FORMAT (to enrich an AI analysis):
 
@@ -611,6 +613,7 @@ Be factual and cite your sources. Max 400 words."""
 {transcript_excerpt[:3000]}
 
 🎯 MISSION: Recherche approfondie pour contextualiser et fact-checker ce contenu.
+⛔ Ne donne aucune information sur l'identité du vidéaste ou du fondateur de la chaîne, sauf si une source citée l'indique explicitement.
 
 📋 FORMAT DE RÉPONSE DÉTAILLÉ:
 
@@ -649,6 +652,7 @@ Réponds en français, sois exhaustif mais structuré. Max 700 mots."""
 {transcript_excerpt[:3000]}
 
 🎯 MISSION: In-depth research to contextualize and fact-check this content.
+⛔ Do not give any information about the identity of the creator or the channel's founder unless a cited source states it explicitly.
 
 📋 DETAILED RESPONSE FORMAT:
 
