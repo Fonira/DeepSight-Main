@@ -155,7 +155,7 @@ Pour modifier la CSP ou les en-têtes du site : édite `frontend/vercel.json` (s
 
 Le workflow `.github/workflows/deploy-vps.yml` lance `deploy.sh` sur le serveur, ce qui permet de déployer sans ton PC (par exemple depuis une session Claude). Sa clé SSH est **dédiée et bridée** : côté serveur, `authorized_keys` lui impose la commande `~/bin/deepsight-ci-deploy.sh` (copie de `scripts/ci-deploy.sh`), qui n'accepte que `deploy <branche>` et `status`. Pas de shell, pas de redirection de port.
 
-**Mise en place (une seule fois, dans cmd sur ton PC, avec `gh` connecté au compte Fonira).** La clé privée passe directement du serveur au secret GitHub, sans jamais s'afficher, puis elle est supprimée du serveur :
+**Mise en place (une seule fois, sur ton PC avec `gh` connecté au compte Fonira ; ci-dessous en cmd — en PowerShell, remplacer `%USERPROFILE%` par `$env:USERPROFILE`).** La clé privée passe directement du serveur au secret GitHub, sans jamais s'afficher, puis elle est supprimée du serveur :
 
 ```bat
 ssh -i %USERPROFILE%\.ssh\id_vps deploy@62.83.136.156 "cd /opt/deepsight/repo ; git fetch -q origin feat/infra-ovh ; git reset -q --hard FETCH_HEAD ; bash deploy/vps/scripts/setup-ci-deploy.sh install"

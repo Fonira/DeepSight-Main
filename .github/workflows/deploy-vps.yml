@@ -70,9 +70,11 @@ jobs:
           VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
         run: |
           install -m 700 -d ~/.ssh
-          printf '%s\n' "$VPS_DEPLOY_KEY" > ~/.ssh/id_deploy
+          # tr -d '\r' : un secret envoyé depuis PowerShell peut arriver en fins
+          # de ligne Windows, qu'OpenSSH refuse dans une clé privée.
+          printf '%s\n' "$VPS_DEPLOY_KEY" | tr -d '\r' > ~/.ssh/id_deploy
           chmod 600 ~/.ssh/id_deploy
-          printf '%s\n' "$VPS_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          printf '%s\n' "$VPS_KNOWN_HOSTS" | tr -d '\r' > ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
 
       - name: Déployer ${{ env.DEPLOY_BRANCH }}
