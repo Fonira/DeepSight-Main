@@ -48,10 +48,7 @@ interface ProxyUsageResponse {
 }
 
 interface Props {
-  adminFetch: (
-    endpoint: string,
-    options?: RequestInit,
-  ) => Promise<ProxyUsageResponse>;
+  adminFetch: (endpoint: string) => Promise<ProxyUsageResponse>;
   language: "fr" | "en";
 }
 

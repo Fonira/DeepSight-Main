@@ -6,6 +6,7 @@ import type {
   PlanInfo,
   QuickChatResponse,
   MessageResponse,
+  GuestAnalyzeResponse,
 } from "../../types";
 import {
   extractVideoId,
@@ -32,6 +33,21 @@ import { ExternalSourcesCompact } from "../components/ExternalSourcesCompact";
 import { RevokeAllDevicesButton } from "../components/RevokeAllDevicesButton";
 import { DeepSightSpinner } from "../shared/DeepSightSpinner";
 import { useTranslation } from "../../i18n/useTranslation";
+import { localizeError } from "../../i18n/errorMessages";
+import { isAnalysisQuotaExceeded } from "../../utils/plan";
+import { escapeHtml, markdownToFullHtml } from "../../utils/sanitize";
+import {
+  DASHBOARD_URL,
+  HISTORY_URL,
+  REGISTER_URL,
+  STUDY_HUB_URL,
+  analysisUrl,
+} from "../../utils/webappLinks";
+import {
+  POLL_INTERVAL_MS,
+  MAX_POLL_DURATION_MS,
+  decidePollAfterError,
+} from "../pollingPolicy";
 
 interface MainViewProps {
   user: User | null;
@@ -52,7 +68,8 @@ type AnalysisPhase =
   | { phase: "idle" }
   | { phase: "analyzing"; progress: number; message: string; taskId?: string }
   | { phase: "complete"; summaryId: number; summary: Summary }
-  | { phase: "error"; message: string };
+  | { phase: "guestComplete"; result: GuestAnalyzeResponse }
+  | { phase: "error"; message: string; code?: string };
 
 export const MainView: React.FC<MainViewProps> = ({
   user,
@@ -76,7 +93,16 @@ export const MainView: React.FC<MainViewProps> = ({
   const [guestUsed, setGuestUsed] = useState(false);
   const [quickChatLoading, setQuickChatLoading] = useState(false);
   const [showYtBanner, setShowYtBanner] = useState(false);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Incrémenté à chaque démarrage/arrêt : un poll en vol d'une génération
+  // précédente (annulation, démontage) n'a plus le droit de toucher l'état.
+  const pollGenerationRef = useRef(0);
+
+  const stopPolling = useCallback((): void => {
+    pollGenerationRef.current += 1;
+    if (pollRef.current) clearTimeout(pollRef.current);
+    pollRef.current = null;
+  }, []);
 
   useEffect(() => {
     if (isGuest) {
@@ -133,13 +159,19 @@ export const MainView: React.FC<MainViewProps> = ({
     const handleTabActivated = (): void => {
       void detectActiveVideo();
     };
-    // Re-détecte uniquement quand l'URL change (navigation SPA YouTube,
-    // etc.) — pas sur tous les events onUpdated (sinon flood).
+    // Re-détecte quand l'URL change (navigation SPA YouTube, etc.) ou à la
+    // fin d'un chargement — pas sur tous les events onUpdated (sinon flood).
+    // Sans la permission "tabs", Chrome ne fournit `changeInfo.url` (et
+    // `tab.url`) que pour YouTube/TikTok : en quittant YouTube pour un autre
+    // site, seul `status: "complete"` signale la navigation → la carte
+    // vidéo doit disparaître.
     const handleTabUpdated = (
       _tabId: number,
-      changeInfo: { url?: string },
+      changeInfo: { url?: string; status?: string },
     ): void => {
-      if (changeInfo.url) void detectActiveVideo();
+      if (changeInfo.url || changeInfo.status === "complete") {
+        void detectActiveVideo();
+      }
     };
 
     Browser.tabs.onActivated.addListener(handleTabActivated);
@@ -149,18 +181,17 @@ export const MainView: React.FC<MainViewProps> = ({
       cancelled = true;
       Browser.tabs.onActivated.removeListener(handleTabActivated);
       Browser.tabs.onUpdated.removeListener(handleTabUpdated);
-      if (pollRef.current) clearInterval(pollRef.current);
+      stopPolling();
     };
-  }, [isGuest]);
+  }, [isGuest, stopPolling]);
 
   async function loadRecentAnalyses(): Promise<void> {
     const items = await getRecentAnalyses();
     setRecentAnalyses(items);
   }
 
-  const isQuotaExceeded = planInfo
-    ? planInfo.analyses_this_month >= planInfo.monthly_analyses
-    : false;
+  const isQuotaExceeded = isAnalysisQuotaExceeded(planInfo);
+  const hasAnalysisQuota = planInfo ? planInfo.monthly_analyses > 0 : false;
   const quotaRemaining = planInfo
     ? planInfo.monthly_analyses - planInfo.analyses_this_month
     : null;
@@ -184,7 +215,11 @@ export const MainView: React.FC<MainViewProps> = ({
   // (badge essai gratuit ou disabled). Pro reste "pro" pour permettre le CTA
   // upgrade futur — actuellement le widget ne distingue pas pro.
   const voicePlan: "free" | "pro" | "expert" =
-    userPlanId === "expert" ? "expert" : userPlanId === "pro" ? "pro" : "free";
+    userPlanId === "expert" || userPlanId === "unlimited"
+      ? "expert"
+      : userPlanId === "pro"
+        ? "pro"
+        : "free";
   // [I4] voice_quota exposé par /api/billing/my-plan — si dispo, on s'en sert
   // pour afficher des badges honnêtes ; sinon valeurs pessimistes par défaut.
   // Le backend reste SoT au moment du POST /voice/session.
@@ -205,19 +240,55 @@ export const MainView: React.FC<MainViewProps> = ({
         data: { url: video.url, lang },
       });
 
-      if (!response.success)
-        throw new Error(response.error || "Quick Chat failed");
+      if (!response.success) {
+        if (response.errorCode === "session_expired") onLogout();
+        onError(localizeError(t.errors, response));
+        return;
+      }
 
       const result = response.result as QuickChatResponse;
       Browser.tabs.create({
-        url: `${WEBAPP_URL}/chat?summary=${result.summary_id}`,
+        url: analysisUrl(result.summary_id, "chat"),
       });
     } catch (e) {
-      onError((e as Error).message);
+      onError(localizeError(t.errors, (e as Error).message));
     } finally {
       setQuickChatLoading(false);
     }
-  }, [video, lang, onError]);
+  }, [video, lang, onError, onLogout, t]);
+
+  // Mode découverte : analyse express synchrone (POST /videos/analyze/guest),
+  // résultat éphémère affiché tel quel, puis invitation à créer un compte.
+  const runGuestAnalysis = useCallback(
+    async (url: string): Promise<void> => {
+      let response: MessageResponse;
+      try {
+        response = await Browser.runtime.sendMessage<unknown, MessageResponse>(
+          { action: "START_GUEST_ANALYSIS", data: { url } },
+        );
+      } catch {
+        response = { success: false, errorCode: "network_error" };
+      }
+
+      if (!response?.success || !response.result) {
+        if (response?.errorCode === "guest_quota_exhausted") {
+          setGuestUsed(true);
+        }
+        setAnalysis({
+          phase: "error",
+          message: localizeError(t.errors, response, t.analysis.failed),
+          code: response?.errorCode,
+        });
+        return;
+      }
+
+      const result = response.result as GuestAnalyzeResponse;
+      const count = await incrementFreeAnalysisCount();
+      if (result.remaining_analyses <= 0 || count >= 3) setGuestUsed(true);
+      setAnalysis({ phase: "guestComplete", result });
+    },
+    [t],
+  );
 
   const startAnalysis = useCallback(async () => {
     if (!video) return;
@@ -236,6 +307,11 @@ export const MainView: React.FC<MainViewProps> = ({
       message: t.analysis.starting,
     });
 
+    if (isGuest) {
+      await runGuestAnalysis(video.url);
+      return;
+    }
+
     try {
       const startRes = await Browser.runtime.sendMessage<
         unknown,
@@ -246,9 +322,14 @@ export const MainView: React.FC<MainViewProps> = ({
       });
 
       if (!startRes.success) {
+        if (startRes.errorCode === "session_expired") {
+          onLogout();
+          return;
+        }
         setAnalysis({
           phase: "error",
-          message: startRes.error || t.analysis.startFailed,
+          message: localizeError(t.errors, startRes, t.analysis.startFailed),
+          code: startRes.errorCode,
         });
         return;
       }
@@ -262,78 +343,152 @@ export const MainView: React.FC<MainViewProps> = ({
         taskId,
       });
 
-      pollRef.current = setInterval(async () => {
+      stopPolling();
+      const generation = pollGenerationRef.current;
+      const isCurrent = (): boolean => generation === pollGenerationRef.current;
+      const startedAt = Date.now();
+      let failures = 0;
+
+      const fail = (source: MessageResponse, fallback: string): void => {
+        if (!isCurrent()) return;
+        stopPolling();
+        if (source.errorCode === "session_expired") {
+          onLogout();
+          return;
+        }
+        setAnalysis({
+          phase: "error",
+          message: localizeError(t.errors, source, fallback),
+          code: source.errorCode,
+        });
+      };
+
+      const schedule = (delayMs: number): void => {
+        if (!isCurrent()) return;
+        if (Date.now() - startedAt > MAX_POLL_DURATION_MS) {
+          stopPolling();
+          setAnalysis({ phase: "error", message: t.analysis.timeout });
+          return;
+        }
+        pollRef.current = setTimeout(() => void poll(), delayMs);
+      };
+
+      const poll = async (): Promise<void> => {
+        pollRef.current = null;
+        let statusRes: MessageResponse;
         try {
-          const statusRes = await Browser.runtime.sendMessage<
+          statusRes = await Browser.runtime.sendMessage<
             unknown,
             MessageResponse
           >({
             action: "GET_TASK_STATUS",
             data: { taskId },
           });
+        } catch {
+          // SW endormi / injoignable : traité comme une erreur réseau.
+          statusRes = {
+            success: false,
+            error: "NETWORK_ERROR",
+            errorCode: "network_error",
+          };
+        }
+        if (!isCurrent()) return;
 
-          if (!statusRes.success || !statusRes.status) return;
-          const status = statusRes.status;
+        if (!statusRes?.success || !statusRes.status) {
+          const response: MessageResponse = statusRes ?? { success: false };
+          if (response.errorCode !== "rate_limited") failures += 1;
+          const decision = decidePollAfterError(response, failures);
+          if (decision.kind === "stop") {
+            fail(response, t.analysis.failed);
+          } else {
+            schedule(decision.delayMs);
+          }
+          return;
+        }
+        failures = 0;
+        const status = statusRes.status;
 
-          if (status.status === "completed" && status.result?.summary_id) {
-            if (pollRef.current) clearInterval(pollRef.current);
+        if (status.status === "completed" && status.result?.summary_id) {
+          stopPolling();
 
-            if (isGuest) {
-              await incrementFreeAnalysisCount();
-              setGuestUsed(true);
-            }
+          await addRecentAnalysis({
+            videoId: video.videoId,
+            summaryId: status.result.summary_id,
+            title: status.result.video_title || video.title,
+          });
 
-            await addRecentAnalysis({
-              videoId: video.videoId,
-              summaryId: status.result.summary_id,
-              title: status.result.video_title || video.title,
-            });
-
-            const summaryRes = await Browser.runtime.sendMessage<
+          let summaryRes: MessageResponse;
+          try {
+            summaryRes = await Browser.runtime.sendMessage<
               unknown,
               MessageResponse
             >({
               action: "GET_SUMMARY",
               data: { summaryId: status.result.summary_id },
             });
+          } catch {
+            summaryRes = { success: false, errorCode: "network_error" };
+          }
 
-            if (summaryRes.success && summaryRes.summary) {
-              setAnalysis({
-                phase: "complete",
-                summaryId: status.result.summary_id,
-                summary: summaryRes.summary,
-              });
-              loadRecentAnalyses();
+          if (summaryRes.success && summaryRes.summary) {
+            setAnalysis({
+              phase: "complete",
+              summaryId: status.result.summary_id,
+              summary: summaryRes.summary,
+            });
+            loadRecentAnalyses();
+          } else {
+            // Sans ça, le side panel restait bloqué sur le spinner.
+            if (summaryRes.errorCode === "session_expired") {
+              onLogout();
+              return;
             }
-          } else if (status.status === "failed") {
-            if (pollRef.current) clearInterval(pollRef.current);
             setAnalysis({
               phase: "error",
-              message: status.error || t.analysis.failed,
-            });
-          } else if (status.status === "cancelled") {
-            if (pollRef.current) clearInterval(pollRef.current);
-            setAnalysis({ phase: "idle" });
-          } else {
-            setAnalysis({
-              phase: "analyzing",
-              progress: status.progress || 0,
-              message: status.message || t.analysis.processing,
-              taskId,
+              message: localizeError(t.errors, summaryRes, t.analysis.failed),
+              code: summaryRes.errorCode,
             });
           }
-        } catch {
-          // Polling error — will retry
+        } else if (
+          status.status === "failed" ||
+          status.status === "completed"
+        ) {
+          // "completed" sans summary_id : rien à afficher, on n'insiste pas.
+          stopPolling();
+          setAnalysis({
+            phase: "error",
+            message: status.error || t.analysis.failed,
+          });
+        } else if (status.status === "cancelled") {
+          stopPolling();
+          setAnalysis({ phase: "idle" });
+        } else {
+          setAnalysis({
+            phase: "analyzing",
+            progress: status.progress || 0,
+            message: status.message || t.analysis.processing,
+            taskId,
+          });
+          schedule(POLL_INTERVAL_MS);
         }
-      }, 2500);
+      };
+
+      schedule(POLL_INTERVAL_MS);
     } catch (e) {
-      setAnalysis({ phase: "error", message: (e as Error).message });
+      setAnalysis({
+        phase: "error",
+        message: localizeError(
+          t.errors,
+          (e as Error).message,
+          t.analysis.startFailed,
+        ),
+      });
     }
-  }, [video, mode, lang, isGuest, t]);
+  }, [video, mode, lang, isGuest, t, onLogout, stopPolling, runGuestAnalysis]);
 
   const cancelAnalysis = useCallback(async () => {
     if (analysis.phase !== "analyzing" || !analysis.taskId) return;
-    if (pollRef.current) clearInterval(pollRef.current);
+    stopPolling();
     try {
       await Browser.runtime.sendMessage({
         action: "CANCEL_ANALYSIS",
@@ -345,7 +500,7 @@ export const MainView: React.FC<MainViewProps> = ({
       }
     }
     setAnalysis({ phase: "idle" });
-  }, [analysis]);
+  }, [analysis, stopPolling]);
 
   // Full-screen digest short-circuit — renders SynthesisFull above the
   // rest of the MainView body. Back button restores the compact view ;
@@ -424,8 +579,8 @@ export const MainView: React.FC<MainViewProps> = ({
           <button
             className="v3-icon-btn"
             onClick={() => Browser.tabs.create({ url: WEBAPP_URL })}
-            title="Ouvrir DeepSight"
-            aria-label="Ouvrir DeepSight"
+            title={t.suggestions.openApp}
+            aria-label={t.suggestions.openApp}
           >
             <ExternalLinkIcon size={13} />
           </button>
@@ -456,7 +611,8 @@ export const MainView: React.FC<MainViewProps> = ({
               <span
                 className={`v3-quota-item${quotaWarning ? " warning" : ""}`}
               >
-                {planInfo.analyses_this_month}/{planInfo.monthly_analyses}{" "}
+                {planInfo.analyses_this_month}
+                {hasAnalysisQuota ? `/${planInfo.monthly_analyses}` : ""}{" "}
                 {t.common.analyses}
               </span>
             ) : (
@@ -589,7 +745,7 @@ export const MainView: React.FC<MainViewProps> = ({
                 <button
                   className="v3-button-primary"
                   onClick={() =>
-                    Browser.tabs.create({ url: `${WEBAPP_URL}/register` })
+                    Browser.tabs.create({ url: REGISTER_URL })
                   }
                 >
                   {t.common.createAccount} {"↗"}
@@ -677,30 +833,24 @@ export const MainView: React.FC<MainViewProps> = ({
                     suggestions={[
                       {
                         id: "flashcards",
-                        label: "Créer flashcards",
+                        label: t.suggestions.flashcards,
                         icon: "🎴",
                         onTrigger: () =>
-                          Browser.tabs.create({
-                            url: `${WEBAPP_URL}/study/${video.videoId}`,
-                          }),
+                          Browser.tabs.create({ url: STUDY_HUB_URL }),
                       },
                       {
-                        id: "sources",
-                        label: "Voir sources",
+                        id: "history",
+                        label: t.suggestions.history,
                         icon: "🔍",
                         onTrigger: () =>
-                          Browser.tabs.create({
-                            url: `${WEBAPP_URL}/library`,
-                          }),
+                          Browser.tabs.create({ url: HISTORY_URL }),
                       },
                       {
                         id: "openweb",
-                        label: "Ouvrir dans l'app",
+                        label: t.suggestions.openApp,
                         icon: "🌐",
                         onTrigger: () =>
-                          Browser.tabs.create({
-                            url: `${WEBAPP_URL}/`,
-                          }),
+                          Browser.tabs.create({ url: DASHBOARD_URL }),
                       },
                     ]}
                   />
@@ -752,13 +902,44 @@ export const MainView: React.FC<MainViewProps> = ({
               />
             </div>
             <p className="v3-progress-text">{analysis.message}</p>
+            {/* L'analyse invitée est synchrone : rien à annuler côté API. */}
+            {analysis.taskId && (
+              <button
+                className="v3-button-secondary"
+                onClick={cancelAnalysis}
+                style={{ marginTop: 12 }}
+                aria-label={t.common.cancel}
+              >
+                {t.common.cancel}
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* ── Guest result (mode découverte, non sauvegardé) ─────── */}
+        {analysis.phase === "guestComplete" && (
+          <div className="v3-card">
+            <div className="v3-card-eyebrow">{t.guest.banner}</div>
+            <h3 className="v3-card-title">{analysis.result.video_title}</h3>
+            <div
+              className="digest-body"
+              style={{ padding: 0, overflow: "visible" }}
+              dangerouslySetInnerHTML={{
+                __html: markdownToFullHtml(
+                  escapeHtml(analysis.result.summary_content),
+                ),
+              }}
+            />
+            <p className="v3-card-desc">{t.guest.unlockText}</p>
             <button
-              className="v3-button-secondary"
-              onClick={cancelAnalysis}
-              style={{ marginTop: 12 }}
-              aria-label="Annuler l'analyse"
+              className="v3-button-primary"
+              onClick={() => Browser.tabs.create({ url: REGISTER_URL })}
+              style={{ marginBottom: 8 }}
             >
-              {language === "fr" ? "Annuler" : "Cancel"}
+              {t.common.createAccount} {"↗"}
+            </button>
+            <button className="v3-button-secondary" onClick={onLoginRedirect}>
+              {t.common.login}
             </button>
           </div>
         )}
@@ -766,16 +947,37 @@ export const MainView: React.FC<MainViewProps> = ({
         {/* ── Error state ────────────────────────────────────────── */}
         {analysis.phase === "error" && (
           <div className="v3-card">
-            <div className="v3-card-eyebrow">Erreur</div>
+            <div className="v3-card-eyebrow">{t.common.error}</div>
             <h3 className="v3-card-title" style={{ color: "#fca5a5" }}>
               {analysis.message}
             </h3>
-            <button
-              className="v3-button-primary"
-              onClick={() => setAnalysis({ phase: "idle" })}
-            >
-              {t.common.retry}
-            </button>
+            {analysis.code === "auth_required" ||
+            analysis.code === "guest_quota_exhausted" ? (
+              <>
+                <button
+                  className="v3-button-primary"
+                  onClick={onLoginRedirect}
+                  style={{ marginBottom: 8 }}
+                >
+                  {t.common.login}
+                </button>
+                <button
+                  className="v3-button-secondary"
+                  onClick={() =>
+                    Browser.tabs.create({ url: REGISTER_URL })
+                  }
+                >
+                  {t.common.createAccount} {"↗"}
+                </button>
+              </>
+            ) : (
+              <button
+                className="v3-button-primary"
+                onClick={() => setAnalysis({ phase: "idle" })}
+              >
+                {t.common.retry}
+              </button>
+            )}
           </div>
         )}
 
@@ -835,7 +1037,7 @@ export const MainView: React.FC<MainViewProps> = ({
                 <button
                   className="v3-button-primary"
                   onClick={() =>
-                    Browser.tabs.create({ url: `${WEBAPP_URL}/register` })
+                    Browser.tabs.create({ url: REGISTER_URL })
                   }
                 >
                   {t.common.createAccount} {"↗"}
@@ -853,7 +1055,7 @@ export const MainView: React.FC<MainViewProps> = ({
               {recentAnalyses.slice(0, 5).map((item) => (
                 <li key={item.videoId}>
                   <a
-                    href={`${WEBAPP_URL}/summary/${item.summaryId}`}
+                    href={analysisUrl(item.summaryId)}
                     target="_blank"
                     rel="noreferrer"
                     className="v3-recent-item"

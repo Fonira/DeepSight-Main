@@ -25,6 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.database import get_session, User, Summary
 from auth.dependencies import (
+    enforce_private_mode,
     get_current_user,
     get_verified_user,
     require_plan,
@@ -88,6 +89,7 @@ from voice.companion_context import invalidate_companion_context_cache
 from .service import (
     check_can_analyze,
     deduct_credit,
+    refund_credit,
     save_summary,
     get_summary_by_id,
     get_summary_by_video_id,
@@ -700,6 +702,9 @@ async def analyze_video_guest(
     - Mode accessible, résumé court
     - Aucune sauvegarde en DB
     """
+    # Mode privé : pas d'analyse anonyme (Supadata + Mistral à nos frais)
+    enforce_private_mode(None)
+
     import time
 
     # 1. Rate-limit par IP (3 analyses / 24h)
@@ -931,6 +936,44 @@ async def analyze_video(
     logger.info(f"🎬 Video ID extracted: {video_id}, cost: {credit_cost} credits")
 
     # ═══════════════════════════════════════════════════════════════════════════════
+    # 💾 SYSTÈME DE CACHE v2.0 — Économise les crédits API
+    # ═══════════════════════════════════════════════════════════════════════════════
+    # Vérifier si déjà analysée (même vidéo, même mode) - SAUF si force_refresh.
+    # Placé AVANT le cache global : sinon chaque ré-analyse d'une vidéo déjà
+    # dans l'historique créait une nouvelle ligne Summary (doublons) et un
+    # appel Mistral « extras » inutile.
+    if not request.force_refresh:
+        existing = await get_summary_by_video_id(session, video_id, current_user.id)
+
+        if existing and existing.mode == request.mode:
+            # Vérifier la fraîcheur du cache (7 jours max)
+            from datetime import timedelta
+
+            cache_age = datetime.now() - existing.created_at
+            cache_valid = cache_age < timedelta(days=7)
+
+            if cache_valid:
+                logger.info(f"💾 [CACHE HIT] Using cached analysis: summary_id={existing.id} (age: {cache_age.days}d)")
+                return TaskStatusResponse(
+                    task_id=f"cached_{existing.id}",
+                    status="completed",
+                    progress=100,
+                    message="✅ Analyse retrouvée en cache (gratuit!)",
+                    result={
+                        "summary_id": existing.id,
+                        "cached": True,
+                        "cache_age_days": cache_age.days,
+                        "video_title": existing.video_title,
+                        "category": existing.category,
+                        "cost": 0,  # Gratuit car cache
+                    },
+                )
+            else:
+                logger.info(f"⏰ [CACHE EXPIRED] Cache too old ({cache_age.days} days), re-analyzing...")
+    else:
+        logger.info("🔄 [FORCE REFRESH] Bypassing cache as requested")
+
+    # ═══════════════════════════════════════════════════════════════════════════════
     # 💾 GLOBAL VIDEO CONTENT CACHE — Cross-user L1 Redis / L2 PostgreSQL VPS
     # ═══════════════════════════════════════════════════════════════════════════════
     if not request.force_refresh:
@@ -999,41 +1042,6 @@ async def analyze_video(
                     )
         except Exception as _vcache_err:
             logger.error(f"⚠️ [GLOBAL CACHE] Check failed (continuing): {_vcache_err}")
-
-    # ═══════════════════════════════════════════════════════════════════════════════
-    # 💾 SYSTÈME DE CACHE v2.0 — Économise les crédits API
-    # ═══════════════════════════════════════════════════════════════════════════════
-    # Vérifier si déjà analysée (même vidéo, même mode) - SAUF si force_refresh
-    if not request.force_refresh:
-        existing = await get_summary_by_video_id(session, video_id, current_user.id)
-
-        if existing and existing.mode == request.mode:
-            # Vérifier la fraîcheur du cache (7 jours max)
-            from datetime import timedelta
-
-            cache_age = datetime.now() - existing.created_at
-            cache_valid = cache_age < timedelta(days=7)
-
-            if cache_valid:
-                logger.info(f"💾 [CACHE HIT] Using cached analysis: summary_id={existing.id} (age: {cache_age.days}d)")
-                return TaskStatusResponse(
-                    task_id=f"cached_{existing.id}",
-                    status="completed",
-                    progress=100,
-                    message="✅ Analyse retrouvée en cache (gratuit!)",
-                    result={
-                        "summary_id": existing.id,
-                        "cached": True,
-                        "cache_age_days": cache_age.days,
-                        "video_title": existing.video_title,
-                        "category": existing.category,
-                        "cost": 0,  # Gratuit car cache
-                    },
-                )
-            else:
-                logger.info(f"⏰ [CACHE EXPIRED] Cache too old ({cache_age.days} days), re-analyzing...")
-    else:
-        logger.info("🔄 [FORCE REFRESH] Bypassing cache as requested")
 
     # 🔐 Générer un ID d'opération sécurisé
     if SECURITY_AVAILABLE:
@@ -4188,6 +4196,13 @@ async def get_summary_concepts(
         }
 
 
+# Le Hub rappelle ces deux endpoints à chaque ouverture d'une conversation :
+# sans cache, Mistral (concepts) et les métadonnées vidéo (fiabilité) étaient
+# refacturés à chaque fois.
+ENRICHED_CONCEPTS_CACHE_TTL = 7 * 24 * 3600  # 7 j (clé liée au contenu du résumé)
+RELIABILITY_CACHE_TTL = 24 * 3600  # 24 h (la fraîcheur évolue lentement)
+
+
 @router.get("/concepts/{summary_id}/enriched")
 async def get_enriched_concepts(
     summary_id: int, current_user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)
@@ -4235,6 +4250,17 @@ async def get_enriched_concepts(
 
     # Déterminer si on utilise Perplexity (Pro only)
     use_perplexity = current_user.plan in ["pro"]
+    provider = "perplexity+mistral" if use_perplexity else "mistral"
+
+    # 💾 Cache : la clé change avec le contenu du résumé, la langue et le provider
+    from core.cache import cache_service, hash_query, make_cache_key
+
+    cache_key = make_cache_key(
+        "concepts_enriched", str(summary_id), provider, summary.lang or "fr", hash_query(summary.summary_content)
+    )
+    cached = await cache_service.get(cache_key)
+    if isinstance(cached, dict):
+        return cached
 
     try:
         # Obtenir les définitions enrichies
@@ -4260,12 +4286,11 @@ async def get_enriched_concepts(
                 }
             )
 
-        provider = "perplexity+mistral" if use_perplexity else "mistral"
         logger.info(
             f"📚 [Enriched] Got {len(concepts_list)} enriched definitions for summary {summary_id} ({provider})"
         )
 
-        return {
+        response = {
             "summary_id": summary_id,
             "video_title": summary.video_title,
             "concepts": concepts_list,
@@ -4280,6 +4305,10 @@ async def get_enriched_concepts(
                 for cat_id, cat_data in CATEGORIES.items()
             },
         }
+        # Ne pas figer un résultat dégradé (LLM en échec → définitions vides)
+        if any(c["definition"] for c in concepts_list):
+            await cache_service.set(cache_key, response, ttl=ENRICHED_CONCEPTS_CACHE_TTL)
+        return response
 
     except Exception as e:
         logger.error(f"❌ [Enriched] Error: {e}")
@@ -4502,8 +4531,8 @@ async def create_study_card(
     if current_user.credits < 1:
         raise HTTPException(status_code=402, detail="Crédits insuffisants")
 
-    # Déduire 1 crédit
-    await deduct_credit(session, current_user.id, 1, "study_card")
+    # Déduire 1 crédit (rendu si la génération échoue)
+    deducted = await deduct_credit(session, current_user.id, 1, "study_card")
 
     # Générer la fiche
     try:
@@ -4520,6 +4549,8 @@ async def create_study_card(
 
     except Exception as e:
         logger.error(f"❌ [STUDY_CARD] Erreur: {e}")
+        if deducted:
+            await refund_credit(session, current_user.id, 1, "study_card")
         raise HTTPException(status_code=500, detail=f"Erreur génération: {str(e)}")
 
 
@@ -4545,8 +4576,8 @@ async def create_concept_map(
     if current_user.credits < 1:
         raise HTTPException(status_code=402, detail="Crédits insuffisants")
 
-    # Déduire 1 crédit
-    await deduct_credit(session, current_user.id, 1, "concept_map")
+    # Déduire 1 crédit (rendu si la génération échoue)
+    deducted = await deduct_credit(session, current_user.id, 1, "concept_map")
 
     # Générer le mindmap
     try:
@@ -4562,6 +4593,8 @@ async def create_concept_map(
 
     except Exception as e:
         logger.error(f"❌ [CONCEPT_MAP] Erreur: {e}")
+        if deducted:
+            await refund_credit(session, current_user.id, 1, "concept_map")
         raise HTTPException(status_code=500, detail=f"Erreur génération: {str(e)}")
 
 
@@ -4588,8 +4621,8 @@ async def create_all_study_materials(
     if current_user.credits < 2:
         raise HTTPException(status_code=402, detail="Crédits insuffisants (2 requis)")
 
-    # Déduire 2 crédits
-    await deduct_credit(session, current_user.id, 2, "study_all")
+    # Déduire 2 crédits (1 par partie : rendu pour chaque partie en échec)
+    deducted = await deduct_credit(session, current_user.id, 2, "study_all")
 
     # Générer tout
     try:
@@ -4604,10 +4637,20 @@ async def create_all_study_materials(
             include_map=True,
         )
 
+        # generate_study_materials capture l'erreur de chaque partie : rendre
+        # 1 crédit par partie absente, et répondre en erreur si tout a échoué.
+        failed_parts = sum(1 for key in ("study_card", "concept_map") if not materials.get(key))
+        if failed_parts == 2:
+            raise ValueError("Aucun outil d'étude généré")
+        if failed_parts and deducted:
+            await refund_credit(session, current_user.id, failed_parts, "study_all (partiel)")
+
         return {"success": True, "summary_id": summary_id, "materials": materials}
 
     except Exception as e:
         logger.error(f"❌ [STUDY_ALL] Erreur: {e}")
+        if deducted:
+            await refund_credit(session, current_user.id, 2, "study_all")
         raise HTTPException(status_code=500, detail=f"Erreur génération: {str(e)}")
 
 
@@ -5310,6 +5353,20 @@ async def get_content_reliability(
     if not summary:
         raise HTTPException(status_code=404, detail="Analyse non trouvée")
 
+    # 💾 Cache : évite un appel de métadonnées vidéo (Supadata) et une
+    # notification « fact-check terminé » à chaque ouverture du Hub.
+    from core.cache import cache_service, make_cache_key
+
+    cache_key = make_cache_key("reliability", str(summary_id))
+    cached = await cache_service.get(cache_key)
+    if isinstance(cached, dict):
+        # Copie : les champs propres à l'utilisateur ne sont pas mis en cache
+        return {
+            **cached,
+            "user_plan": current_user.plan or "free",
+            "full_factcheck_available": current_user.plan in ["pro"],
+        }
+
     # Récupérer la date de publication depuis video_url ou utiliser created_at
     video_date = None
 
@@ -5340,6 +5397,7 @@ async def get_content_reliability(
     result["summary_id"] = summary_id
     result["video_title"] = summary.video_title
     result["video_channel"] = summary.video_channel
+    await cache_service.set(cache_key, dict(result), ttl=RELIABILITY_CACHE_TTL)
     result["user_plan"] = current_user.plan or "free"
 
     # Indiquer si l'utilisateur peut avoir un fact-check complet

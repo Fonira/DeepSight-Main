@@ -13,6 +13,8 @@
 import os
 import io
 import re
+import unicodedata
+from urllib.parse import quote
 import csv
 from datetime import datetime
 from typing import Optional, Dict, Any, List, Tuple
@@ -190,10 +192,22 @@ def format_duration(duration: int) -> str:
 
 
 def clean_filename(title: str, timestamp: str) -> str:
-    """Génère un nom de fichier sûr"""
-    safe_title = re.sub(r"[^\w\s-]", "", title)[:50].strip()
+    """Génère un nom de fichier sûr (Unicode conservé, cf. content_disposition)."""
+    safe_title = re.sub(r"[^\w\s-]", "", title or "")[:50].strip()
     safe_title = re.sub(r"[-\s]+", "_", safe_title)
     return f"deepsight_{safe_title}_{timestamp}"
+
+
+def content_disposition(filename: str, disposition: str = "attachment") -> str:
+    """En-tête Content-Disposition valide pour tout titre (RFC 6266 / 5987).
+
+    Les en-têtes HTTP sont encodés en Latin-1 : un titre avec « œ », du
+    cyrillique ou du CJK faisait planter la réponse (500). On envoie un nom
+    ASCII de repli dans `filename` et le nom exact dans `filename*`.
+    """
+    ascii_name = unicodedata.normalize("NFKD", filename).encode("ascii", "ignore").decode("ascii")
+    ascii_name = re.sub(r"[^A-Za-z0-9._-]+", "_", ascii_name).strip("_") or "deepsight_export"
+    return f"{disposition}; filename=\"{ascii_name}\"; filename*=UTF-8''{quote(filename, safe='')}"
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

@@ -91,6 +91,7 @@ import { AnalysisHub } from "../components/AnalysisHub";
 import { AudioPlayer } from "../components/analysis/AudioPlayer";
 import { AnalysisActionBar } from "../components/analysis/AnalysisActionBar";
 import { sanitizeTitle } from "../utils/sanitize";
+import { takePendingSmartInput } from "../utils/pendingSmartInput";
 // 🎙️ Voice Chat
 import { VoiceModal } from "../components/voice/VoiceModal";
 import { useVoiceChat } from "../components/voice/useVoiceChat";
@@ -286,6 +287,23 @@ export const DashboardPage: React.FC = () => {
     null,
   );
   useEffect(() => {
+    // Saisie transmise par le dashboard minimal (recherche, texte, images,
+    // bibliothèque). La recherche est relancée automatiquement ; les autres
+    // modes sont seulement pré-remplis (pas de dépense de crédits implicite).
+    const pending = takePendingSmartInput();
+    if (pending) {
+      setSmartInput((prev) => ({
+        ...prev,
+        ...pending,
+        searchLanguages:
+          pending.searchLanguages || prev.searchLanguages || ["fr", "en"],
+      }));
+      if (pending.mode === "search" && pending.searchQuery?.trim()) {
+        setPendingAutoSearch(pending.searchQuery);
+      }
+      return;
+    }
+
     const params = new URLSearchParams(window.location.search);
     const q = params.get("q");
     if (q && q.trim().length > 0) {
@@ -652,12 +670,18 @@ export const DashboardPage: React.FC = () => {
               description: r.text_preview,
             }),
           );
-          setDiscoveryResult({
-            query: smartInput.libraryQuery!,
-            videos: candidates,
-            total_found: searchResult.total_results,
-            search_metadata: { source: "library", languages: [] },
-          } as unknown as DiscoveryResponse);
+          // `candidates` (et non `videos`) : c'est le champ que lit la modale
+          // de découverte, sinon elle s'ouvrait toujours vide.
+          const libraryResult: DiscoveryResponse = {
+            query: smartInput.libraryQuery ?? "",
+            reformulated_queries: [],
+            candidates,
+            total_searched: searchResult.total_results,
+            languages_searched: [],
+            search_duration_ms: 0,
+            tournesol_available: false,
+          };
+          setDiscoveryResult(libraryResult);
           setShowDiscoveryModal(true);
         } else {
           setError(

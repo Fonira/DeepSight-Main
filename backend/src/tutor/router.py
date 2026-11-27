@@ -2,7 +2,7 @@
 Router /api/tutor/* — Le Tuteur conversationnel (sessions Redis TTL 1h).
 
 V1.0 : POST /session/start uniquement.
-LLM = Magistral via llm_complete (auto-fallback). Voix V1.1 (audio_url=None).
+LLM = Mistral (medium/large selon plan) via llm_complete (auto-fallback). Voix V1.1 (audio_url=None).
 """
 
 import logging
@@ -65,11 +65,19 @@ def _check_plan_access(user: User) -> None:
         )
 
 
-def _select_magistral_model(user_plan: str) -> str:
-    """Modèle Magistral selon plan. V1 : medium pour tous (large pas en config)."""
-    # V1 simple : magistral-medium-2509 pour tous (Pro et Expert).
-    # V2 : si magistral-large-* devient disponible, le router pour Expert.
-    return "magistral-medium-2509"
+# Modèles classiques (pas de raisonnement) : le Tuteur répond en 300 tokens max,
+# un modèle Magistral dépenserait ce budget en "thinking" et renverrait un
+# contenu en blocs que la couche llm_provider ne savait pas lire (502).
+_TUTOR_MODEL_DEFAULT = "mistral-medium-2508"
+_TUTOR_MODEL_BY_PLAN = {
+    "expert": "mistral-large-2512",
+    "unlimited": "mistral-large-2512",
+}
+
+
+def _select_tutor_model(user_plan: str | None) -> str:
+    """Modèle du Tuteur selon le plan : large pour Expert/admin, medium sinon."""
+    return _TUTOR_MODEL_BY_PLAN.get((user_plan or "").lower(), _TUTOR_MODEL_DEFAULT)
 
 
 def _extract_llm_content(llm_result) -> str:
@@ -92,7 +100,7 @@ async def session_start(
     body: SessionStartRequest,
     user: User = Depends(get_current_user),
 ):
-    """Démarre une session Tutor : crée Redis + génère 1er prompt Magistral."""
+    """Démarre une session Tutor : crée Redis + génère le 1er prompt."""
     _check_plan_access(user)
 
     redis = _get_redis()
@@ -113,14 +121,14 @@ async def session_start(
     )
     await create_session(redis, state)
 
-    # Générer 1er prompt Magistral via llm_complete
+    # Générer le 1er prompt via llm_complete
     system_prompt = build_tutor_system_prompt(
         concept_term=body.concept_term,
         concept_def=body.concept_def,
         source_video_title=body.source_video_title,
         lang=body.lang,
     )
-    model = _select_magistral_model(user.plan)
+    model = _select_tutor_model(user.plan)
     try:
         llm_result = await llm_complete(
             messages=[
@@ -215,7 +223,7 @@ async def session_turn(
     messages = [{"role": "system", "content": system_prompt}] + [
         {"role": t.role, "content": t.content} for t in state.turns
     ]
-    model = _select_magistral_model(user.plan)
+    model = _select_tutor_model(user.plan)
 
     try:
         llm_result = await llm_complete(

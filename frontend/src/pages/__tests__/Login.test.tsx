@@ -49,11 +49,14 @@ const defaultAuthState = {
 beforeEach(() => {
   localStorage.clear();
   mockUseAuth.mockReturnValue({ ...defaultAuthState });
+  // Le bouton Google n'est rendu que si VITE_GOOGLE_CLIENT_ID est défini.
+  vi.stubEnv("VITE_GOOGLE_CLIENT_ID", "test-client.apps.googleusercontent.com");
 });
 
 afterEach(() => {
   localStorage.clear();
   vi.clearAllMocks();
+  vi.unstubAllEnvs();
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -393,6 +396,16 @@ describe("Login Page - Google OAuth", () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🔗 NAVIGATION & REDIRECTS
 // ═══════════════════════════════════════════════════════════════════════════════
+
+describe("Login Page - OAuth not configured", () => {
+  it("hides the Google button when VITE_GOOGLE_CLIENT_ID is empty", () => {
+    vi.stubEnv("VITE_GOOGLE_CLIENT_ID", "");
+    renderWithProviders(<Login />);
+    expect(
+      screen.queryByRole("button", { name: /Continuer avec Google/i }),
+    ).not.toBeInTheDocument();
+  });
+});
 
 describe("Login Page - Navigation", () => {
   it("should show register link toggle", () => {

@@ -38,7 +38,7 @@ def get_database_url() -> str:
     2. alembic.ini sqlalchemy.url (local dev fallback)
 
     Converts async drivers to sync for Alembic compatibility:
-    - postgresql+asyncpg:// → postgresql://
+    - postgresql+asyncpg:// → postgresql+psycopg2://
     """
     url = os.environ.get("DATABASE_URL", "")
 
@@ -54,9 +54,13 @@ def get_database_url() -> str:
         )
         url = base + ("?" + params if params else "")
 
-    # Convert to sync driver for Alembic
-    url = url.replace("postgresql+asyncpg://", "postgresql://")
-    url = url.replace("postgres://", "postgresql://")
+    # Convert to sync driver for Alembic. Le driver est explicite : depuis
+    # SQLAlchemy 2.1, « postgresql:// » charge psycopg (v3), absent de l'image
+    # (seul psycopg2-binary est dans requirements.txt) et create_engine échoue.
+    url = url.replace("postgresql+asyncpg://", "postgresql+psycopg2://")
+    url = url.replace("postgres://", "postgresql+psycopg2://")
+    if url.startswith("postgresql://"):
+        url = url.replace("postgresql://", "postgresql+psycopg2://", 1)
     # SQLite async (aiosqlite) → sync driver for Alembic
     url = url.replace("sqlite+aiosqlite://", "sqlite://")
 
@@ -97,6 +101,18 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
+        if connection.dialect.name == "postgresql":
+            # Par défaut alembic crée version_num en VARCHAR(32), trop court pour
+            # certains IDs (006, 016, 023 > 32 caractères) : l'upgrade échouait
+            # sur une base neuve. On fixe la taille AVANT que alembic ne crée la table.
+            connection.exec_driver_sql(
+                "CREATE TABLE IF NOT EXISTS alembic_version ("
+                "version_num VARCHAR(255) NOT NULL, "
+                "CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num))"
+            )
+            connection.exec_driver_sql("ALTER TABLE alembic_version ALTER COLUMN version_num TYPE VARCHAR(255)")
+            connection.commit()
+
         context.configure(
             connection=connection,
             target_metadata=target_metadata,

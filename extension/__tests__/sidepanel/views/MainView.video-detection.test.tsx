@@ -15,78 +15,10 @@ import { MainView } from "../../../src/sidepanel/views/MainView";
 
 // ── Mock i18n (évite la dépendance à chrome.storage.sync) ──
 jest.mock("../../../src/i18n/useTranslation", () => ({
+  // Vraies traductions FR : un dictionnaire partiel faisait planter le rendu
+  // dès qu'un composant enfant lisait une clé absente (voiceCall.callActive…).
   useTranslation: () => ({
-    t: {
-      common: {
-        login: "Se connecter",
-        logout: "Déconnexion",
-        retry: "Réessayer",
-        createAccount: "Créer un compte",
-        viewPlans: "Voir les plans",
-        unlock: "Débloquer",
-        analyses: "analyses",
-        credits: "crédits",
-      },
-      plans: {
-        free: "Gratuit",
-        pro: "Pro",
-        starter: "Standard",
-        student: "Starter",
-      },
-      upsell: {
-        free: { label: "Starter", feature: "Flashcards", price: "2,99€" },
-        pro: { label: "Expert", feature: "Tout", price: "14,99€" },
-      },
-      promos: {
-        free: [
-          { text: "Flashcards IA", cta: "Débloquer Starter" },
-          { text: "Cartes mentales", cta: "Voir les plans" },
-        ],
-        starter: [{ text: "Recherche web IA", cta: "Débloquer" }],
-        standard: [{ text: "Playlists", cta: "Débloquer Pro" }],
-        pro: [{ text: "Mobile", cta: "Télécharger" }],
-      },
-      analysis: {
-        noVideo: "Ouvre une vidéo YouTube ou TikTok",
-        analyzeButton: "Analyser cette vidéo",
-        starting: "Démarrage...",
-        processing: "Traitement...",
-        failed: "Échec",
-        startFailed: "Impossible de démarrer",
-        recent: "Récents",
-        quotaExceeded: "Quota atteint",
-        quotaExceededText: "Upgrade",
-        quickChatButton: "Quick Chat",
-        quickChatPreparing: "Préparation...",
-        mode: "Mode",
-        language: "Langue",
-        modes: { standard: "Standard", accessible: "Accessible" },
-        languages: { fr: "FR", en: "EN", es: "ES", de: "DE" },
-      },
-      guest: { banner: "Mode découverte", exhaustedText: "Créer un compte" },
-      credits: {
-        critical: "Plus que {count}",
-        recharge: "Recharger",
-        remaining: "{count} crédits",
-        low: "cr.",
-      },
-      ytRecommend: {
-        title: "Astuce",
-        subtitle: "Ouvre une vidéo",
-        dismiss: "Fermer",
-      },
-      mistral: { badge: "Propulsé par Mistral AI" },
-      voiceCall: {
-        buttonLabel: "Appel rapide",
-        buttonAriaLabel: "Voice call",
-        buttonLabelFloating: "🎙️",
-        trialBadge: "1 essai gratuit",
-        trialUsed: "Essai utilisé",
-        trialUsedTitle: "Essai utilisé",
-        minutesRemaining: "{count} min restantes",
-        upgradeBadge: "Passer en Expert",
-      },
-    },
+    t: jest.requireActual("../../../src/i18n/fr.json"),
     language: "fr",
     setLanguage: jest.fn(),
   }),
@@ -256,7 +188,7 @@ describe("MainView — video detection in side panel context", () => {
 
     // L'empty state ne doit PAS être affiché
     expect(
-      screen.queryByText("Ouvre une vidéo YouTube ou TikTok"),
+      screen.queryByText(/Ouvre une vidéo YouTube ou TikTok/),
     ).not.toBeInTheDocument();
   });
 
@@ -320,7 +252,7 @@ describe("MainView — video detection in side panel context", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("Ouvre une vidéo YouTube ou TikTok"),
+        screen.getByText(/Ouvre une vidéo YouTube ou TikTok/),
       ).toBeInTheDocument();
     });
 
@@ -422,6 +354,45 @@ describe("MainView — video detection in side panel context", () => {
     });
 
     expect(screen.queryByText("Vidéo Foo")).not.toBeInTheDocument();
+  });
+
+  it("clears the video card when the tab leaves YouTube for a site without host access", async () => {
+    // Sans la permission "tabs", Chrome masque url/title des sites hors
+    // host_permissions : onUpdated n'a que `status`, et tab.url est absent.
+    const tabsApi = installTabsMock({
+      id: 1,
+      url: "https://www.youtube.com/watch?v=foo111",
+      title: "Vidéo Foo",
+    });
+
+    render(<MainView {...baseProps} />);
+    await waitFor(() => {
+      expect(screen.getByText("Vidéo Foo")).toBeInTheDocument();
+    });
+
+    (tabsApi as unknown as { __setTab: (tab: MockTab) => void }).__setTab({
+      id: 1,
+    });
+    await act(async () => {
+      for (const listener of tabsApi.onUpdated.listeners) {
+        listener(1, { status: "loading" }, { id: 1 });
+      }
+    });
+    // "loading" seul ne déclenche rien (pas de flood).
+    expect(screen.getByText("Vidéo Foo")).toBeInTheDocument();
+
+    await act(async () => {
+      for (const listener of tabsApi.onUpdated.listeners) {
+        listener(1, { status: "complete" }, { id: 1 });
+      }
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByText("Vidéo Foo")).not.toBeInTheDocument();
+    });
+    expect(
+      screen.getByText(/Ouvre une vidéo YouTube ou TikTok/),
+    ).toBeInTheDocument();
   });
 
   it("removes onActivated and onUpdated listeners on unmount (no leak)", async () => {

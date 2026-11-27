@@ -126,6 +126,54 @@ describe("useVoiceChat", () => {
     );
   });
 
+  it("crée la session avant de demander le micro", async () => {
+    const order: string[] = [];
+    mockFetch.mockImplementation(async () => {
+      order.push("session");
+      return {
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve({
+            session_id: "sess-123",
+            signed_url: "wss://test.elevenlabs.io/signed",
+            quota_remaining_minutes: 10,
+            max_session_minutes: 10,
+          }),
+      };
+    });
+    mockGetUserMedia.mockImplementation(async () => {
+      order.push("micro");
+      return mockMediaStream;
+    });
+
+    const { result } = renderHook(() => useVoiceChat({ summaryId: 42 }));
+    await act(async () => {
+      await result.current.start();
+    });
+
+    expect(order).toEqual(["session", "micro"]);
+  });
+
+  it.each([403, 429, 503])(
+    "ne demande pas le micro quand la session est refusée (%i)",
+    async (status) => {
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status,
+        json: () => Promise.resolve({}),
+      });
+
+      const { result } = renderHook(() => useVoiceChat({ summaryId: 42 }));
+      await act(async () => {
+        await result.current.start();
+      });
+
+      expect(mockGetUserMedia).not.toHaveBeenCalled();
+      expect(result.current.status).not.toBe("connecting");
+    },
+  );
+
   it("gère le refus du microphone", async () => {
     const onError = vi.fn();
     mockGetUserMedia.mockRejectedValue(

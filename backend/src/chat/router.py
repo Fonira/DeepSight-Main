@@ -9,6 +9,7 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
+import json
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -410,7 +411,9 @@ async def ask_question_stream(
             history_text=history_text,
         ):
             full_response += chunk
-            yield f"data: {chunk}\n\n"
+            # JSON : un saut de ligne dans un token cassait le cadrage SSE
+            # (« data: … » sur plusieurs lignes). Le client mobile lit `content`.
+            yield f"data: {json.dumps({'content': chunk}, ensure_ascii=False)}\n\n"
 
         yield "data: [DONE]\n\n"
 

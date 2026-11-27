@@ -216,12 +216,12 @@ const PrivacyPolicy: React.FC = () => {
                 certifie Privacy Shield) : traitement des paiements
               </li>
               <li>
-                <strong className="text-white">Vercel Inc.</strong> (USA) :
-                hebergement frontend
+                <strong className="text-white">netcup GmbH</strong> (Allemagne)
+                : hebergement du site, de l'API et de la base de donnees
               </li>
               <li>
-                <strong className="text-white">Railway Corp.</strong> (USA) :
-                hebergement backend et base de donnees
+                <strong className="text-white">Cloudflare R2</strong> (UE) :
+                stockage des sauvegardes chiffrees
               </li>
               <li>
                 <strong className="text-white">Resend</strong> : envoi d'emails

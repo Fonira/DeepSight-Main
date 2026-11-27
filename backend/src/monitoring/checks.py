@@ -16,6 +16,9 @@ import httpx
 # Type alias
 # ---------------------------------------------------------------------------
 
+# status : "operational" | "degraded" | "down" | "disabled".
+# "disabled" = service volontairement non configuré (clé absente) : ni alerte
+# email, ni impact sur le statut global.
 ServiceStatus = Dict[str, Any]
 
 
@@ -65,7 +68,7 @@ async def check_stripe() -> ServiceStatus:
         if not init_stripe():
             return {
                 "name": "stripe",
-                "status": "degraded",
+                "status": "disabled",
                 "latency_ms": None,
                 "message": "Stripe API key not configured",
                 "last_checked": _now_iso(),
@@ -147,7 +150,7 @@ async def check_web_search() -> ServiceStatus:
         if not BRAVE_SEARCH_API_KEY:
             return {
                 "name": "web_search",
-                "status": "degraded",
+                "status": "disabled",
                 "latency_ms": None,
                 "message": "BRAVE_SEARCH_API_KEY not configured",
                 "last_checked": _now_iso(),
@@ -204,7 +207,7 @@ async def check_resend() -> ServiceStatus:
         if not api_key:
             return {
                 "name": "resend",
-                "status": "degraded",
+                "status": "disabled",
                 "latency_ms": None,
                 "message": "API key not configured",
                 "last_checked": _now_iso(),

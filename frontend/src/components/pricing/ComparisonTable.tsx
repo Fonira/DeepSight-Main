@@ -72,8 +72,8 @@ function buildRows(): FeatureRow[] {
       label: "Playlists",
       values: {
         free: false,
-        pro: false,
-        expert: `${PLAN_LIMITS.expert.maxPlaylists} max`,
+        pro: `${PLAN_LIMITS.pro.maxPlaylists}/mois`,
+        expert: `${PLAN_LIMITS.expert.maxPlaylists}/mois`,
       },
     },
     {

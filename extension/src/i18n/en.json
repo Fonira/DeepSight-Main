@@ -59,6 +59,7 @@
     "processing": "Processing...",
     "failed": "Analysis failed",
     "startFailed": "Could not start analysis",
+    "timeout": "The analysis is taking longer than expected. Find it later in the web app.",
     "recent": "Recent analyses",
     "quotaExceeded": "Quota reached",
     "quotaExceededText": "Upgrade to a higher plan",
@@ -78,9 +79,15 @@
       "de": "Deutsch"
     }
   },
+  "suggestions": {
+    "flashcards": "Create flashcards",
+    "history": "My analyses",
+    "openApp": "Open in the app"
+  },
   "guest": {
     "banner": "Discovery mode — 3 free analyses without an account",
-    "exhaustedText": "Create a free account to save your analyses and do more"
+    "exhaustedText": "Create a free account to save your analyses and do more",
+    "unlockText": "Create a free account to chat with the video, keep your history and analyse longer videos."
   },
   "credits": {
     "critical": "Only {count} credits left —",
@@ -351,5 +358,21 @@
     "upgradeDescription": "Mini Mistral summary for each link cited in the description",
     "upgradeCta": "Upgrade",
     "openExternalAriaLabel": "Open {host} in a new tab"
+  },
+  "errors": {
+    "privateMode": "DeepSight is temporarily in private access (maintenance). Access is restricted to the administrator.",
+    "paymentsUnavailable": "Payments are temporarily unavailable. Please try again later.",
+    "rateLimited": "Too many requests. Try again in {seconds} s.",
+    "rateLimitedShort": "Too many requests. Try again in a moment.",
+    "sessionExpired": "Your session has expired. Please sign in again.",
+    "network": "Cannot reach the DeepSight server. Check your connection and try again.",
+    "authRequired": "Sign in or create an account to use this feature.",
+    "googleUnavailable": "Google sign-in is not available right now. Use your email and password.",
+    "voiceUnavailable": "Voice calls are not available right now.",
+    "emailNotVerified": "Email address not verified. Confirm it on the DeepSight website, then sign in again.",
+    "userNotRegistered": "No DeepSight account is linked to this Google account. Create an account on the website.",
+    "invalidUrl": "This page is not a recognised YouTube or TikTok video.",
+    "guestQuota": "You have used your free analyses. Create an account to continue.",
+    "generic": "Something went wrong. Please try again."
   }
 }

@@ -19,9 +19,13 @@ Invidious, Piped) qui fournissent de vrais timestamps.
 Le contrat vérifié ici :
 1. Endpoint unifié (200 OK) avec `content` = string → return (text, None, lang)
 2. Endpoint async (202 → polling 200) avec `content` = string → return (text, None, lang)
-3. Endpoint unifié avec `content` = liste de segments dict → toujours plain text → (text, None, lang)
+3. Segments horodatés (`content` = liste de `{text, offset(ms), duration}`, format
+   actuel de l'API, y compris sur l'endpoint YT-specific) → vrais timestamps
+   `[MM:SS]` (mise à jour 2026-11-27 : auparavant le YT-specific ignorait `content`
+   et l'unifié aplatissait la liste en texte brut).
 4. Caller `_get_transcript_with_timestamps_inner` rejette correctement
-   (`if simple and timestamped` est falsy) pour forcer le fallback Phase 1.
+   (`if simple and timestamped` est falsy) pour forcer le fallback Phase 1,
+   mais garde le texte Supadata en réserve si Phase 1 ne trouve rien.
 """
 
 from __future__ import annotations
@@ -336,3 +340,111 @@ async def test_supadata_caller_rejects_plain_text_only_result():
         "Without this guard, plain-text-only Supadata results would be cached "
         "and downstream visual analysis would lose timestamps."
     )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 2026-11-27 — format actuel de l'API : `content` = segments avec offset en ms
+# ═══════════════════════════════════════════════════════════════════════════════
+
+_CONTENT_SEGMENTS = [
+    {"lang": "fr", "text": "depuis le début de la crise", "offset": 7440, "duration": 2990},
+    {"lang": "fr", "text": "et en fait", "offset": 9050, "duration": 2200},
+    {"lang": "fr", "text": "une minute plus tard on parle d'autre chose", "offset": 65000, "duration": 3000},
+]
+
+
+def _fake_ctx_for(fake_get):
+    fake_client = MagicMock()
+    fake_client.get = AsyncMock(side_effect=fake_get)
+    fake_ctx = MagicMock()
+    fake_ctx.__aenter__ = AsyncMock(return_value=fake_client)
+    fake_ctx.__aexit__ = AsyncMock(return_value=None)
+    return fake_ctx, fake_client
+
+
+def test_segments_helper_converts_offset_milliseconds_to_seconds():
+    yt = _get_youtube_module()
+    simple, timestamped = yt._supadata_segments_to_texts(_CONTENT_SEGMENTS)
+
+    assert simple.startswith("depuis le début de la crise et en fait")
+    # offset 7440 ms → [00:07], 65000 ms → [01:05] (et non 2 h 04 si lu en secondes)
+    assert "[00:07] depuis le début de la crise" in timestamped
+    assert "[01:05] une minute plus tard" in timestamped
+    assert "[2:04" not in timestamped
+
+
+def test_segments_helper_keeps_legacy_start_in_seconds():
+    yt = _get_youtube_module()
+    _, timestamped = yt._supadata_segments_to_texts([{"text": "legacy", "start": 95, "dur": 2}])
+    assert "[01:35] legacy" in timestamped
+
+
+def test_segments_helper_plain_strings_have_no_timestamps():
+    yt = _get_youtube_module()
+    simple, timestamped = yt._supadata_segments_to_texts(["un", "deux"])
+    assert simple == "un deux"
+    assert timestamped is None
+
+
+@pytest.mark.asyncio
+async def test_yt_specific_endpoint_reads_content_key_with_timestamps():
+    """Le YT-specific renvoie désormais `content` (et non `segments`) : il doit être
+    lu au premier appel, avec de vrais timestamps — avant le correctif, chaque langue
+    était retentée (1 crédit par appel) puis l'unifié perdait les timestamps."""
+    yt = _get_youtube_module()
+
+    ok = MagicMock()
+    ok.status_code = 200
+    ok.json = MagicMock(return_value={"lang": "fr", "availableLangs": ["fr"], "content": _CONTENT_SEGMENTS})
+
+    async def fake_get(url, params=None, headers=None, timeout=None):
+        return ok
+
+    fake_ctx, fake_client = _fake_ctx_for(fake_get)
+    with patch.object(yt, "shared_http_client", return_value=fake_ctx):
+        simple, timestamped, lang = await yt.get_transcript_supadata(video_id="testvideo04", api_key="fake_key")
+
+    assert fake_client.get.await_count == 1, "un seul appel Supadata (un seul crédit)"
+    assert simple and "depuis le début de la crise" in simple
+    assert timestamped and "[00:07]" in timestamped and "[01:05]" in timestamped
+    assert lang == "fr"
+
+
+@pytest.mark.asyncio
+async def test_unified_endpoint_with_timed_segments_returns_timestamps():
+    yt = _get_youtube_module()
+
+    not_found = MagicMock()
+    not_found.status_code = 404
+    unified = MagicMock()
+    unified.status_code = 200
+    unified.json = MagicMock(return_value={"lang": "fr", "content": _CONTENT_SEGMENTS})
+
+    async def fake_get(url, params=None, headers=None, timeout=None):
+        if "youtube/transcript" in url:
+            return not_found
+        return unified
+
+    fake_ctx, _ = _fake_ctx_for(fake_get)
+    with patch.object(yt, "shared_http_client", return_value=fake_ctx):
+        simple, timestamped, lang = await yt.get_transcript_supadata(video_id="testvideo05", api_key="fake_key")
+
+    assert simple and "une minute plus tard" in simple
+    assert timestamped and "[01:05]" in timestamped
+    assert lang == "fr"
+
+
+def test_phase0_keeps_plain_supadata_text_as_fallback_after_phase1():
+    """Le texte Supadata sans timestamps ne doit plus être jeté : il est gardé en
+    réserve et utilisé si Phase 1 ne trouve pas de timestamps, avant yt-dlp/STT."""
+    yt = _get_youtube_module()
+    src = inspect.getsource(yt)
+
+    phase0 = src.find("🥇 PHASE 0: Supadata API (PRIORITY)")
+    phase15 = src.find("# PHASE 1.5: VOXTRAL SHORT-CIRCUIT")
+    assert 0 < phase0 < phase15
+    block = src[phase0:phase15]
+    assert "supadata_plain = (simple, lang or \"fr\")" in block
+    assert "if supadata_plain is not None:" in block
+    # La réserve est utilisée APRÈS la course Phase 1 et AVANT Phase 1.5 / 2 / 3.
+    assert block.find("PHASE 1: Text methods") < block.rfind("if supadata_plain is not None:")

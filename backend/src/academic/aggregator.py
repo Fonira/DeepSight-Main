@@ -15,6 +15,8 @@ from difflib import SequenceMatcher
 from datetime import datetime
 import math
 
+from billing.plan_config import normalize_plan_id
+
 from .schemas import AcademicPaper, AcademicSearchRequest, AcademicSearchResponse
 from .semantic_scholar import semantic_scholar_client
 from .openalex import openalex_client
@@ -306,7 +308,8 @@ class AcademicAggregator:
         should_use_scholar = (
             SCHOLAR_ENABLED
             and getattr(request, "deep_search", False)
-            and user_plan in ("pro", "expert")
+            # normalize_plan_id : "unlimited" (admin) → expert, alias legacy inclus
+            and normalize_plan_id(user_plan) in ("pro", "expert")
             and len(all_papers) < SCHOLAR_PHASE_THRESHOLD
         )
         if should_use_scholar:

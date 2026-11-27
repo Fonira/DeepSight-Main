@@ -134,6 +134,8 @@ export interface User {
   // Bag JSON merge non-destructivement par PUT /api/auth/preferences
   // (has_completed_onboarding, persona, etc.)
   preferences?: Record<string, unknown>;
+  // Couche visuelle activée sur le serveur (VISUAL_ANALYSIS_ENABLED)
+  visual_analysis_available?: boolean;
 }
 
 export interface TokenResponse {
@@ -756,7 +758,9 @@ interface RequestOptions {
   _retried?: boolean;
 }
 
-async function request<T>(
+// Exporté pour les appels encore hors des modules *Api (Historique, admin…) :
+// passer par ici donne le renouvellement du jeton sur 401.
+export async function request<T>(
   endpoint: string,
   options: RequestOptions = {},
 ): Promise<T> {
@@ -1745,7 +1749,8 @@ export const videoApi = {
     total: number;
   }> {
     const queryParams = new URLSearchParams();
-    if (params?.limit) queryParams.set("limit", String(params.limit));
+    // Le backend attend per_page (limit était ignoré → toujours 20 éléments)
+    if (params?.limit) queryParams.set("per_page", String(params.limit));
     if (params?.page) queryParams.set("page", String(params.page));
     const query = queryParams.toString();
     try {
@@ -2764,16 +2769,48 @@ export const exportsApi = {
 // 📊 USAGE API
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export const usageApi = {
-  async getStats(): Promise<{
-    total_analyses: number;
-    total_chats: number;
-    analyses_this_month: number;
+export interface UsageStats {
+  plan: string;
+  plan_name: string;
+  plan_color: string;
+  credits_remaining: number;
+  credits_monthly: number;
+  credits_used_this_month: number;
+  credits_percent_used: number;
+  analyses_this_month: number;
+  analyses_total: number;
+  chat_daily_limit: number;
+  chat_used_today: number;
+  chat_remaining_today: number;
+  web_search_enabled: boolean;
+  member_since?: string;
+}
+
+export interface DetailedUsage {
+  period_days: number;
+  totals: {
+    analyses: number;
+    duration_seconds: number;
+    duration_formatted: string;
+    words_generated: number;
     credits_used: number;
-    by_day: Array<{ date: string; count: number }>;
-    by_type: Array<{ type: string; count: number }>;
-  }> {
+  };
+  daily_analyses: { date: string; count: number }[];
+  categories: Record<string, number>;
+  models_used: Record<string, number>;
+  averages: {
+    analyses_per_day: number;
+    credits_per_day: number;
+  };
+}
+
+export const usageApi = {
+  async getStats(): Promise<UsageStats> {
     return request("/api/usage/stats");
+  },
+
+  async getDetailed(days = 30): Promise<DetailedUsage> {
+    return request(`/api/usage/detailed?days=${days}`);
   },
 };
 
@@ -2994,15 +3031,6 @@ export interface DeepSystemStatus extends SystemStatus {
 export const statusApi = {
   async getStatus(): Promise<SystemStatus> {
     return request("/api/health/status", { skipAuth: true });
-  },
-
-  async getDeepStatus(): Promise<DeepSystemStatus> {
-    // Call the Vercel serverless function which proxies to backend with secret
-    const resp = await fetch("/api/status");
-    if (!resp.ok) {
-      throw new Error(`Status check failed: ${resp.status}`);
-    }
-    return resp.json();
   },
 
   async ping(): Promise<{ status: string }> {

@@ -26,6 +26,7 @@ from auth.dependencies import get_current_user
 from videos.service import get_summary_by_id
 
 from .service import (
+    content_disposition,
     export_summary,
     get_available_formats,
     get_pdf_export_options,
@@ -183,11 +184,15 @@ async def export_analysis(
         content = content.encode("utf-8")
 
     return Response(
-        content=content, media_type=mimetype, headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+        content=content,
+        media_type=mimetype,
+        headers={"Content-Disposition": content_disposition(filename)},
     )
 
 
-@router.get("/{summary_id}/{format}")
+# `:int` : sans convertisseur, GET /audio/{file_id} (déclaré plus bas) était
+# capturé par cette route et répondait 422.
+@router.get("/{summary_id:int}/{format}")
 async def export_analysis_get(
     summary_id: int,
     format: str,

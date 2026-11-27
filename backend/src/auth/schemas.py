@@ -341,6 +341,18 @@ class UserResponse(BaseModel):
         """Alias pour compatibilité frontend"""
         return self.credits
 
+    @computed_field
+    @property
+    def visual_analysis_available(self) -> bool:
+        """Couche visuelle activée sur le serveur (VISUAL_ANALYSIS_ENABLED).
+
+        Sans elle, une ré-analyse « avec le visuel » coûte un crédit et
+        produit un doublon sans visuel : le frontend masque alors le bouton.
+        """
+        from core.config import is_visual_analysis_enabled
+
+        return is_visual_analysis_enabled()
+
     class Config:
         from_attributes = True
 

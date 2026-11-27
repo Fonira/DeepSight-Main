@@ -22,6 +22,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { DeepSightSpinner } from "../ui/DeepSightSpinner";
+import { isEditableTarget } from "../../utils/keyboard";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📦 TYPES
@@ -123,7 +124,7 @@ export const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isCompleted) return;
+      if (isCompleted || isEditableTarget(e.target)) return;
 
       switch (e.key) {
         case " ":

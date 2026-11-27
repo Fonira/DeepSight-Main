@@ -109,6 +109,12 @@ export const Login: React.FC = () => {
   // `auth_session_expiry`. Le hook useAuth force logout dès la deadline.
   const [staySignedIn, setStaySignedIn] = useState(true);
 
+  // Boutons OAuth affichés seulement si le fournisseur est configuré au build
+  // (sinon un clic renvoie sur /login?error=oauth_disabled).
+  const googleOAuthEnabled = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID);
+  const appleOAuthEnabled = Boolean(import.meta.env.VITE_APPLE_CLIENT_ID);
+  const oauthAvailable = googleOAuthEnabled || appleOAuthEnabled;
+
   // Support ?tab=register from landing page CTA
   useEffect(() => {
     if (searchParams.get("tab") === "register") {
@@ -138,8 +144,21 @@ export const Login: React.FC = () => {
           language === "fr" ? "Échec de la connexion." : "Login failed.",
         no_code:
           language === "fr" ? "Paramètres manquants." : "Missing parameters.",
+        oauth_disabled:
+          language === "fr"
+            ? "La connexion avec Google n'est pas disponible pour le moment."
+            : "Google sign-in is not available right now.",
+        private_mode:
+          language === "fr"
+            ? "DeepSight est temporairement en accès privé (maintenance)."
+            : "DeepSight is temporarily private (maintenance).",
       };
-      setError(errorMessages[oauthError] || `Error: ${oauthError}`);
+      setError(
+        errorMessages[oauthError] ||
+          (language === "fr"
+            ? "La connexion a échoué. Réessayez."
+            : "Sign-in failed. Please try again."),
+      );
       navigate(location.pathname, { replace: true });
     }
   }, [searchParams, language, navigate, location.pathname]);
@@ -489,23 +508,26 @@ export const Login: React.FC = () => {
             </p>
           </div>
 
-          {/* Google + Apple OAuth */}
-          {!showVerification && (
+          {/* Google + Apple OAuth — masqués tant que leur client ID n'est pas
+              configuré (sinon clic → redirection « oauth_disabled »). */}
+          {!showVerification && oauthAvailable && (
             <>
-              <motion.button
-                onClick={handleGoogleLogin}
-                disabled={loading}
-                className="w-full flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-md border border-border-default bg-bg-secondary text-text-primary text-sm font-medium hover:bg-bg-hover hover:border-border-strong transition-all disabled:opacity-40"
-                whileTap={{ scale: 0.98 }}
-              >
-                <GoogleIcon className="w-4.5 h-4.5" />
-                {t.auth.loginWithGoogle}
-              </motion.button>
+              {googleOAuthEnabled && (
+                <motion.button
+                  onClick={handleGoogleLogin}
+                  disabled={loading}
+                  className="w-full flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-md border border-border-default bg-bg-secondary text-text-primary text-sm font-medium hover:bg-bg-hover hover:border-border-strong transition-all disabled:opacity-40"
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <GoogleIcon className="w-4.5 h-4.5" />
+                  {t.auth.loginWithGoogle}
+                </motion.button>
+              )}
 
               {/* Bouton Apple masque tant que VITE_APPLE_CLIENT_ID n'est pas
                   configure cote Vercel — evite d'afficher un bouton casse en
                   prod le temps que la config Apple Developer Console soit faite. */}
-              {import.meta.env.VITE_APPLE_CLIENT_ID && (
+              {appleOAuthEnabled && (
                 <motion.button
                   onClick={handleAppleLogin}
                   disabled={loading}

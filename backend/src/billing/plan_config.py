@@ -241,9 +241,10 @@ PLANS: dict[str, dict[str, Any]] = {
             "deep_research_enabled": False,
             "web_search_enabled": True,
             "web_search_monthly": 20,
-            "playlists_enabled": False,
-            "max_playlists": 0,
-            "max_playlist_videos": 0,
+            # Grille tarifaire v2 : 3 analyses de playlist par mois (Expert : 10)
+            "playlists_enabled": True,
+            "max_playlists": 3,
+            "max_playlist_videos": 10,
             "export_formats": ["txt", "md", "pdf"],
             "export_markdown": True,
             "export_pdf": True,
@@ -305,7 +306,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "web_search": True,
                 "export_md": True,
                 "export_pdf": True,
-                "playlists": False,
+                "playlists": True,
                 "history": True,
                 "semantic_search_tooltip": True,  # V1 — tooltip IA "pourquoi ce passage matche"
                 "voice_chat": False,
@@ -326,7 +327,7 @@ PLANS: dict[str, dict[str, Any]] = {
                 "web_search": False,
                 "export_md": False,
                 "export_pdf": False,
-                "playlists": False,
+                "playlists": True,  # comme Expert : accès API depuis le mobile
                 "history": True,
                 "semantic_search_tooltip": True,  # V1 — tooltip IA "pourquoi ce passage matche"
                 "voice_chat": False,

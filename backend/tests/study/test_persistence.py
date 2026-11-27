@@ -176,12 +176,15 @@ async def test_generate_flashcards_persists_in_db(
 
 
 @pytest.mark.asyncio
-async def test_generate_flashcards_replaces_existing(
+async def test_generate_flashcards_reuses_persisted_cards(
     async_session: AsyncSession, summary_factory, mock_generate_study_card
 ):
-    """Une 2e génération doit DELETE les anciennes et INSERT les nouvelles."""
+    """Un 2e appel renvoie les cartes enregistrées sans régénérer.
+
+    La révision espacée (FSRS) indexe l'historique par position de carte :
+    régénérer un autre jeu rattacherait la progression à d'autres questions.
+    """
     summary = await summary_factory()
-    # 1ère génération : 2 cartes
     mock_generate_study_card.return_value = {
         "flashcards": [{"front": "Q1", "back": "A1"}, {"front": "Q2", "back": "A2"}]
     }
@@ -189,24 +192,42 @@ async def test_generate_flashcards_replaces_existing(
 
     await generate_flashcards(summary.id, summary.user, async_session)
 
-    # 2e génération : 3 cartes différentes
+    # Le LLM proposerait un autre jeu : il ne doit plus être appelé
     mock_generate_study_card.return_value = {
-        "flashcards": [
-            {"front": "X1", "back": "Y1"},
-            {"front": "X2", "back": "Y2"},
-            {"front": "X3", "back": "Y3"},
-        ]
+        "flashcards": [{"front": "X1", "back": "Y1"}, {"front": "X2", "back": "Y2"}, {"front": "X3", "back": "Y3"}]
     }
-    await generate_flashcards(summary.id, summary.user, async_session)
+    response = await generate_flashcards(summary.id, summary.user, async_session)
+
+    assert [fc.front for fc in response.flashcards] == ["Q1", "Q2"]
+    assert mock_generate_study_card.await_count == 1
 
     rows = (
         await async_session.execute(
             select(Flashcard).where(Flashcard.summary_id == summary.id).order_by(Flashcard.position)
         )
     ).scalars().all()
-    assert len(rows) == 3
-    assert [r.front for r in rows] == ["X1", "X2", "X3"]
-    assert [r.position for r in rows] == [0, 1, 2]
+    assert [r.front for r in rows] == ["Q1", "Q2"]
+    assert [r.position for r in rows] == [0, 1]
+
+
+@pytest.mark.asyncio
+async def test_review_due_uses_persisted_flashcards(async_session: AsyncSession, summary_factory, monkeypatch):
+    """La révision lit la table flashcards (pas de génération si des cartes existent)."""
+    from study.flashcard_store import persist_flashcards
+    from study.review_router import _get_flashcards_for_summary
+
+    summary = await summary_factory()
+    await persist_flashcards(
+        async_session, summary.id, summary.user_id, [{"front": "Q1", "back": "A1", "category": "c"}]
+    )
+
+    generator = AsyncMock(side_effect=AssertionError("ne doit pas générer"))
+    monkeypatch.setattr("videos.study_tools.generate_study_card", generator)
+
+    cards = await _get_flashcards_for_summary(async_session, summary, summary.user)
+
+    assert cards == [{"front": "Q1", "back": "A1", "category": "c"}]
+    generator.assert_not_awaited()
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

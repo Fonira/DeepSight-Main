@@ -11,9 +11,19 @@ import {
   clearStoredAuth,
   getStoredUser,
   addRecentAnalysis,
-  getTokenRefreshedAt,
 } from "./utils/storage";
-import { extractVideoId } from "./utils/video";
+import { extractVideoId, toApiVideoUrl } from "./utils/video";
+import {
+  ApiError,
+  ERROR_CODES,
+  LEGACY_ERROR_MESSAGES,
+  apiErrorFromResponse,
+  networkError,
+  toErrorResponse,
+} from "./utils/apiError";
+import { expiresWithin } from "./utils/jwt";
+import { normalizePlanInfo } from "./utils/plan";
+import { EXTENSION_WELCOME_URL } from "./utils/webappLinks";
 import { drainCrashes } from "./utils/crash-logger";
 import { reportCrashes } from "./utils/sentry-reporter";
 import type {
@@ -30,6 +40,7 @@ import type {
   ChatMessage,
   PlanInfo,
   QuickChatResponse,
+  GuestAnalyzeResponse,
 } from "./types";
 import type {
   GlobalSearchOptions,
@@ -85,11 +96,72 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
  */
 type RefreshResult = "ok" | "invalid_token" | "transient";
 
+// ── Rate limiting (429) ──
+//
+// L'API limite à 300 req/min par IP (5/min sur /auth/login, 10/min sur
+// /videos/analyze) et renvoie `Retry-After`. Après une 429, on n'appelle plus
+// le même endpoint avant l'échéance : l'appelant reçoit immédiatement la même
+// erreur `rate_limited` (avec le délai restant) au lieu de relancer une
+// requête — sinon le polling du side panel enchaînait les 429 en boucle.
+// Mémoire du SW uniquement : s'il est tué, on refait au pire une requête.
+const DEFAULT_RATE_LIMIT_S = 60;
+const rateLimitedUntil = new Map<string, number>();
+
+/** `/videos/status/abc?x=1` → `/videos/status` (granularité du cooldown). */
+export function rateLimitKey(endpoint: string): string {
+  return endpoint.split("?")[0].split("/").slice(0, 3).join("/");
+}
+
+function rateLimitedMessage(seconds: number): string {
+  // Même formulation que le backend (messages API en français) ; l'UI
+  // traduit via errorCode = rate_limited.
+  return `Trop de requêtes. Réessayez dans ${seconds} secondes.`;
+}
+
+function assertNotRateLimited(endpoint: string): void {
+  const key = rateLimitKey(endpoint);
+  const until = rateLimitedUntil.get(key);
+  if (until === undefined) return;
+  const remainingMs = until - Date.now();
+  if (remainingMs <= 0) {
+    rateLimitedUntil.delete(key);
+    return;
+  }
+  const seconds = Math.ceil(remainingMs / 1000);
+  throw new ApiError({
+    status: 429,
+    code: ERROR_CODES.RATE_LIMITED,
+    message: rateLimitedMessage(seconds),
+    retryAfter: seconds,
+  });
+}
+
+/** Enregistre le cooldown d'une 429 ; renvoie l'erreur à lever. */
+function noteRateLimit(endpoint: string, error: ApiError): ApiError {
+  if (error.status !== 429) return error;
+  const seconds = error.retryAfter ?? DEFAULT_RATE_LIMIT_S;
+  rateLimitedUntil.set(rateLimitKey(endpoint), Date.now() + seconds * 1000);
+  if (error.retryAfter !== undefined) return error;
+  return new ApiError({
+    status: 429,
+    code: ERROR_CODES.RATE_LIMITED,
+    message: error.message,
+    retryAfter: seconds,
+    detail: error.detail,
+  });
+}
+
+/** Réservé aux tests : vide les cooldowns 429. */
+export function resetRateLimitsForTests(): void {
+  rateLimitedUntil.clear();
+}
+
 async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {},
 ): Promise<T> {
-  const { accessToken } = await getStoredTokens();
+  assertNotRateLimited(endpoint);
+  const accessToken = await getFreshAccessToken();
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -100,62 +172,92 @@ async function apiRequest<T>(
     headers["Authorization"] = `Bearer ${accessToken}`;
   }
 
-  // Proactive refresh : access_token vit 7j côté backend mais on rafraîchit
-  // bien avant pour limiter les 401 mid-request sur les longs pollings.
-  // 24h = grosse marge ; pas besoin de hammer le /refresh toutes les 20min.
-  const refreshedAt = await getTokenRefreshedAt();
-  if (
-    accessToken &&
-    refreshedAt &&
-    Date.now() - refreshedAt > 24 * 60 * 60 * 1000
-  ) {
-    await tryRefreshToken();
-    const fresh = await getStoredTokens();
-    if (fresh.accessToken)
-      headers["Authorization"] = `Bearer ${fresh.accessToken}`;
-  }
-
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  const response = await fetchApi(endpoint, { ...options, headers });
 
   if (response.status === 401) {
+    if (!accessToken) {
+      // Aucun compte connecté (mode découverte) : ce n'est pas une session
+      // expirée, il faut se connecter. Rien à rafraîchir ni à effacer.
+      throw new ApiError({
+        status: 401,
+        code: ERROR_CODES.AUTH_REQUIRED,
+        message: LEGACY_ERROR_MESSAGES.AUTH_REQUIRED,
+      });
+    }
     const refreshed = await tryRefreshToken();
     if (refreshed === "ok") {
       const { accessToken: newToken } = await getStoredTokens();
       headers["Authorization"] = `Bearer ${newToken}`;
-      const retryResponse = await fetch(`${API_BASE_URL}${endpoint}`, {
-        ...options,
-        headers,
-      });
+      const retryResponse = await fetchApi(endpoint, { ...options, headers });
       if (!retryResponse.ok) {
-        throw new Error(`API Error: ${retryResponse.status}`);
+        throw noteRateLimit(endpoint, await apiErrorFromResponse(retryResponse));
       }
-      return retryResponse.json();
+      return parseJsonBody<T>(retryResponse);
     }
     if (refreshed === "transient") {
       // Backend down / réseau coupé / 5xx — on ne clear PAS l'auth, l'user
       // peut retry plus tard sans avoir à se relogguer.
       console.warn("[DeepSight] Refresh transiently failed — keeping tokens.");
-      throw new Error("NETWORK_ERROR");
+      throw networkError();
     }
     // refreshed === "invalid_token" → vraie expiration / révocation explicite.
     await clearStoredAuth();
     console.warn(
       "[DeepSight] Session expired, refresh failed. User needs to re-login.",
     );
-    throw new Error("SESSION_EXPIRED");
+    throw new ApiError({
+      status: 401,
+      code: ERROR_CODES.SESSION_EXPIRED,
+      message: LEGACY_ERROR_MESSAGES.SESSION_EXPIRED,
+    });
   }
 
   if (!response.ok) {
-    const errorBody = await response
-      .json()
-      .catch(() => ({ detail: "Unknown error" }));
-    throw new Error(errorBody.detail || `API Error: ${response.status}`);
+    throw noteRateLimit(endpoint, await apiErrorFromResponse(response));
   }
 
-  return response.json();
+  return parseJsonBody<T>(response);
+}
+
+/**
+ * L'access token vit 60 min (Sprint C, refresh token 30 j). On le rafraîchit
+ * quand il expire dans moins d'une minute, avant d'envoyer la requête,
+ * plutôt que d'attendre le 401 (l'ancienne logique supposait 7 jours et ne
+ * rafraîchissait qu'au bout de 24 h). Utile aussi pour GET_AUTH_TOKEN, dont
+ * le token part dans l'URL d'un EventSource sans passer par apiRequest.
+ */
+const ACCESS_TOKEN_REFRESH_MARGIN_MS = 60_000;
+
+async function getFreshAccessToken(): Promise<string | null> {
+  const { accessToken } = await getStoredTokens();
+  if (!accessToken || !expiresWithin(accessToken, ACCESS_TOKEN_REFRESH_MARGIN_MS)) {
+    return accessToken;
+  }
+  const refreshed = await tryRefreshToken();
+  if (refreshed !== "ok") {
+    // invalid_token / transient : on garde le token courant, le 401 éventuel
+    // suivra le chemin habituel (refresh → SESSION_EXPIRED ou NETWORK_ERROR).
+    return accessToken;
+  }
+  const fresh = await getStoredTokens();
+  return fresh.accessToken ?? accessToken;
+}
+
+/** `fetch` vers l'API ; un rejet réseau devient une `ApiError` typée. */
+async function fetchApi(
+  endpoint: string,
+  init: RequestInit,
+): Promise<Response> {
+  try {
+    return await fetch(`${API_BASE_URL}${endpoint}`, init);
+  } catch {
+    throw networkError();
+  }
+}
+
+async function parseJsonBody<T>(response: Response): Promise<T> {
+  if (response.status === 204) return undefined as T;
+  return response.json() as Promise<T>;
 }
 
 // ── Auth API ──
@@ -280,17 +382,20 @@ async function doRefreshToken(): Promise<RefreshResult> {
 }
 
 async function login(email: string, password: string): Promise<User> {
-  const response = await fetch(`${API_BASE_URL}/auth/login`, {
+  assertNotRateLimited("/auth/login");
+  const response = await fetchApi("/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
   });
 
   if (!response.ok) {
-    const errorBody = await response
-      .json()
-      .catch(() => ({ detail: "Login failed" }));
-    throw new Error(errorBody.detail || "Login failed");
+    // 401 identifiants, 403 EMAIL_NOT_VERIFIED ou {code:"private_mode"},
+    // 429 (5 tentatives/min) : toujours un message lisible.
+    throw noteRateLimit(
+      "/auth/login",
+      await apiErrorFromResponse(response, "Login failed"),
+    );
   }
 
   const data: LoginResponse = await response.json();
@@ -310,11 +415,43 @@ function generateOidcNonce(): string {
   return Array.from(arr, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+/**
+ * La connexion Google est-elle configurée côté serveur ?
+ *
+ * `GET /auth/google/login` répond 400 (« Google OAuth non activé ») ou 500
+ * (client ID absent) tant que GOOGLE_CLIENT_ID n'est pas renseigné. Sans
+ * cette vérification, l'utilisateur passait par la popup Google pour finir
+ * sur « Invalid Google ID token ».
+ *
+ * `null` = inconnu (réseau, 429, 5xx transitoire) : on laisse tenter.
+ */
+async function isGoogleAuthAvailable(): Promise<boolean | null> {
+  if (!GOOGLE_CLIENT_ID) return false;
+  let response: Response;
+  try {
+    response = await fetchApi("/auth/google/login", { method: "GET" });
+  } catch {
+    return null;
+  }
+  if (response.ok) return true;
+  if ([400, 404, 500, 501].includes(response.status)) return false;
+  return null;
+}
+
+function googleUnavailableError(): ApiError {
+  return new ApiError({
+    status: 503,
+    code: ERROR_CODES.GOOGLE_UNAVAILABLE,
+    message: "Google sign-in is not configured. Use email/password login.",
+  });
+}
+
 async function loginWithGoogle(): Promise<User> {
-  if (!GOOGLE_CLIENT_ID) {
-    throw new Error("Google OAuth not configured. Use email/password login.");
+  if ((await isGoogleAuthAvailable()) === false) {
+    throw googleUnavailableError();
   }
 
+  assertNotRateLimited("/auth/google/token");
   const redirectUrl = Browser.identity.getRedirectURL();
   const nonce = generateOidcNonce();
 
@@ -343,7 +480,7 @@ async function loginWithGoogle(): Promise<User> {
 
   if (!idToken) throw new Error("No ID token received from Google");
 
-  const response = await fetch(`${API_BASE_URL}/auth/google/token`, {
+  const response = await fetchApi("/auth/google/token", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -353,10 +490,10 @@ async function loginWithGoogle(): Promise<User> {
   });
 
   if (!response.ok) {
-    const errorBody = await response
-      .json()
-      .catch(() => ({ detail: "Google login failed" }));
-    throw new Error(errorBody.detail || "Google login failed on server");
+    throw noteRateLimit(
+      "/auth/google/token",
+      await apiErrorFromResponse(response, "Google login failed on server"),
+    );
   }
 
   const data: LoginResponse = await response.json();
@@ -403,10 +540,24 @@ async function getCurrentUser(): Promise<User> {
 // ── Plan API ──
 
 async function fetchPlan(): Promise<PlanInfo> {
-  return apiRequest<PlanInfo>("/billing/my-plan?platform=extension");
+  const raw = await apiRequest<unknown>("/billing/my-plan?platform=extension");
+  return normalizePlanInfo(raw, await getStoredUser());
 }
 
 // ── Video API ──
+
+/** URL canonique de la vidéo (ID seul) ou erreur `invalid_url`. */
+function requireApiVideoUrl(url: string): string {
+  const videoUrl = toApiVideoUrl(url);
+  if (!videoUrl) {
+    throw new ApiError({
+      status: 400,
+      code: "invalid_url",
+      message: "Invalid YouTube or TikTok URL",
+    });
+  }
+  return videoUrl;
+}
 
 async function analyzeVideo(
   url: string,
@@ -415,7 +566,7 @@ async function analyzeVideo(
   return apiRequest<AnalyzeResponse>("/videos/analyze", {
     method: "POST",
     body: JSON.stringify({
-      url,
+      url: requireApiVideoUrl(url),
       mode: options.mode || "standard",
       lang: options.lang || "fr",
       category: options.category || "auto",
@@ -423,6 +574,36 @@ async function analyzeVideo(
       force_refresh: options.force_refresh || false,
     }),
   });
+}
+
+/**
+ * Mode découverte (sans compte) : POST /videos/analyze/guest, la route prévue
+ * pour les visiteurs (vidéos < 5 min, 3 analyses / 24 h par IP, résultat non
+ * sauvegardé). Le mode invité appelait /videos/analyze, qui exige un compte :
+ * il ne pouvait jamais aboutir.
+ */
+async function analyzeVideoAsGuest(url: string): Promise<GuestAnalyzeResponse> {
+  const endpoint = "/videos/analyze/guest";
+  assertNotRateLimited(endpoint);
+  const response = await fetchApi(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url: requireApiVideoUrl(url) }),
+  });
+  if (!response.ok) {
+    const error = await apiErrorFromResponse(response);
+    if (error.status === 429 && error.retryAfter === undefined) {
+      // 429 sans Retry-After = quota invité de 24 h épuisé, pas un
+      // rate-limit court : on invite à créer un compte.
+      throw new ApiError({
+        status: 429,
+        code: "guest_quota_exhausted",
+        message: error.message,
+      });
+    }
+    throw noteRateLimit(endpoint, error);
+  }
+  return parseJsonBody<GuestAnalyzeResponse>(response);
 }
 
 async function getTaskStatus(taskId: string): Promise<TaskStatus> {
@@ -495,7 +676,7 @@ async function quickChat(
 ): Promise<QuickChatResponse> {
   return apiRequest<QuickChatResponse>("/videos/quick-chat", {
     method: "POST",
-    body: JSON.stringify({ url, lang }),
+    body: JSON.stringify({ url: requireApiVideoUrl(url), lang }),
   });
 }
 
@@ -1096,7 +1277,7 @@ export async function handleMessage(
       await sidePanel.open({ tabId });
       return { success: true };
     } catch (e) {
-      return { success: false, error: (e as Error).message };
+      return toErrorResponse(e);
     }
   }
 
@@ -1117,17 +1298,31 @@ export async function handleMessage(
       if (visualMsg.plan) {
         params.set("from_plan", visualMsg.plan);
       }
-      const pricingUrl = `${WEBAPP_URL}/pricing?${params.toString()}`;
+      // /upgrade directement : l'alias /pricing redirige sans la query
+      // string, ce qui perdait les UTM du funnel.
+      const pricingUrl = `${WEBAPP_URL}/upgrade?${params.toString()}`;
       await Browser.tabs.create({ url: pricingUrl });
       return { success: true };
     } catch (e) {
-      return { success: false, error: (e as Error).message };
+      return toErrorResponse(e);
     }
   }
 
   // Narrow vers le shape ExtensionMessage classique pour la suite du switch
   // (les `case` historiques utilisent `message.data`).
   return handleExtensionMessage(message as ExtensionMessage, sender);
+}
+
+/** Message émis par un content script du site web DeepSight ? */
+function isFromWebApp(sender?: chrome.runtime.MessageSender | number): boolean {
+  if (!sender || typeof sender === "number") return false;
+  const source = sender.origin ?? sender.url ?? sender.tab?.url;
+  if (!source) return false;
+  try {
+    return new URL(source).origin === new URL(WEBAPP_URL).origin;
+  } catch {
+    return false;
+  }
 }
 
 async function handleExtensionMessage(
@@ -1158,7 +1353,7 @@ async function handleExtensionMessage(
         const user = await getCurrentUser();
         return { success: true, user };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
     }
 
@@ -1171,7 +1366,7 @@ async function handleExtensionMessage(
         const user = await login(email, password);
         return { success: true, user };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
     }
 
@@ -1180,8 +1375,17 @@ async function handleExtensionMessage(
         const user = await loginWithGoogle();
         return { success: true, user };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
+    }
+
+    case "GET_AUTH_PROVIDERS": {
+      // L'écran de connexion masque le bouton Google si le serveur ne le
+      // propose pas (même logique que le site, cf. Login.tsx).
+      return {
+        success: true,
+        result: { google: await isGoogleAuthAvailable() },
+      };
     }
 
     case "START_ANALYSIS": {
@@ -1193,7 +1397,17 @@ async function handleExtensionMessage(
         const { task_id } = await analyzeVideo(url, options);
         return { success: true, result: { task_id } };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
+      }
+    }
+
+    case "START_GUEST_ANALYSIS": {
+      const { url } = message.data as { url: string };
+      try {
+        const result = await analyzeVideoAsGuest(url);
+        return { success: true, result };
+      } catch (e) {
+        return toErrorResponse(e);
       }
     }
 
@@ -1222,7 +1436,7 @@ async function handleExtensionMessage(
 
         return { success: true, result };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
     }
 
@@ -1232,7 +1446,7 @@ async function handleExtensionMessage(
         const status = await getTaskStatus(taskId);
         return { success: true, status };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
     }
 
@@ -1242,7 +1456,7 @@ async function handleExtensionMessage(
         const result = await cancelTask(taskId);
         return { success: true, result };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
     }
 
@@ -1252,7 +1466,7 @@ async function handleExtensionMessage(
         const summary = await getSummary(summaryId);
         return { success: true, summary };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
     }
 
@@ -1266,7 +1480,7 @@ async function handleExtensionMessage(
         const result = await askQuestion(summaryId, question, options);
         return { success: true, result };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
     }
 
@@ -1276,7 +1490,7 @@ async function handleExtensionMessage(
         const messages = await getChatHistory(summaryId);
         return { success: true, result: messages };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
     }
 
@@ -1289,7 +1503,7 @@ async function handleExtensionMessage(
         const result = await clearChatHistory(summaryId, { includeVoice });
         return { success: true, result };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
     }
 
@@ -1298,7 +1512,7 @@ async function handleExtensionMessage(
         const plan = await fetchPlan();
         return { success: true, plan };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
     }
 
@@ -1308,7 +1522,7 @@ async function handleExtensionMessage(
         const searchResults = await searchGlobal(opts);
         return { success: true, searchResults };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
     }
 
@@ -1317,7 +1531,7 @@ async function handleExtensionMessage(
         const result = await getRecentQueries();
         return { success: true, recentQueries: result.queries };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
     }
 
@@ -1339,7 +1553,11 @@ async function handleExtensionMessage(
       }
       const planId = stored.plan;
       const voicePlan: "free" | "pro" | "expert" =
-        planId === "expert" ? "expert" : planId === "pro" ? "pro" : "free";
+        planId === "expert" || planId === "unlimited"
+          ? "expert"
+          : planId === "pro"
+            ? "pro"
+            : "free";
       let trialUsed = false;
       let monthlyMinutesUsed = 0;
       try {
@@ -1368,7 +1586,7 @@ async function handleExtensionMessage(
         const result = await shareAnalysis(videoId);
         return { success: true, share_url: result.share_url };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
     }
 
@@ -1378,7 +1596,7 @@ async function handleExtensionMessage(
         const result = await quickChat(url, lang || "fr");
         return { success: true, result };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
     }
 
@@ -1392,7 +1610,7 @@ async function handleExtensionMessage(
         const result = await revokeAllOtherSessions();
         return { success: true, result };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
     }
 
@@ -1413,7 +1631,7 @@ async function handleExtensionMessage(
         });
         return { success: true };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
     }
 
@@ -1423,7 +1641,7 @@ async function handleExtensionMessage(
         const result = await createVoiceSession(payload);
         return { success: true, result };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
     }
 
@@ -1433,7 +1651,7 @@ async function handleExtensionMessage(
         const result = await appendVoiceTranscript(payload);
         return { success: true, result };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
     }
 
@@ -1442,7 +1660,7 @@ async function handleExtensionMessage(
         const result = await getVoicePreferences();
         return { success: true, result };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
     }
 
@@ -1452,7 +1670,7 @@ async function handleExtensionMessage(
         const result = await updateVoicePreferences(payload);
         return { success: true, result };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
     }
 
@@ -1461,7 +1679,7 @@ async function handleExtensionMessage(
         const result = await getVoiceCatalog();
         return { success: true, result };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
     }
 
@@ -1472,13 +1690,17 @@ async function handleExtensionMessage(
       // cas où il faut l'attacher à une URL (ex: EventSource SSE qui ne peut
       // pas envoyer de header Authorization).
       try {
-        const { accessToken } = await getStoredTokens();
+        const accessToken = await getFreshAccessToken();
         if (!accessToken) {
-          return { success: false, error: "Not authenticated" };
+          return {
+            success: false,
+            error: LEGACY_ERROR_MESSAGES.AUTH_REQUIRED,
+            errorCode: ERROR_CODES.AUTH_REQUIRED,
+          };
         }
         return { success: true, result: { token: accessToken } };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
     }
 
@@ -1489,6 +1711,11 @@ async function handleExtensionMessage(
     }
 
     case "SYNC_AUTH_FROM_WEBSITE": {
+      // Seul le content script injecté sur le site DeepSight peut pousser
+      // des tokens (pas un autre onglet ni une page de l'extension).
+      if (!isFromWebApp(sender)) {
+        return { success: false, error: "Untrusted sender" };
+      }
       const {
         accessToken,
         refreshToken: rt,
@@ -1515,7 +1742,7 @@ async function handleExtensionMessage(
         Browser.action.setBadgeText({ text: "" });
         return { success: true };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
     }
 
@@ -1553,7 +1780,8 @@ Browser.runtime.onInstalled.addListener(
       /* never block install on telemetry */
     }
     if (details.reason === "install") {
-      Browser.tabs.create({ url: WEBAPP_URL });
+      // Page d'onboarding dédiée du site (frontend /extension-welcome).
+      Browser.tabs.create({ url: EXTENSION_WELCOME_URL });
       Browser.storage.local.set({ showYouTubeRecommendation: true });
     }
   },
@@ -1606,7 +1834,9 @@ try {
 // ── Alarms ──
 
 Browser.alarms.create("keepAlive", { periodInMinutes: 0.5 });
-Browser.alarms.create("refreshToken", { periodInMinutes: 30 }); // Refresh toutes les 30min — grosse marge vs access_token 24h, + proactive refresh in-flight (20min)
+// Refresh toutes les 30 min : l'access token (60 min) reste valide tant que
+// le navigateur tourne ; apiRequest rafraîchit aussi à moins d'1 min de l'exp.
+Browser.alarms.create("refreshToken", { periodInMinutes: 30 });
 
 Browser.alarms.onAlarm.addListener(async (alarm: Alarms.Alarm) => {
   if (alarm.name === "refreshToken" && (await isAuthenticated())) {

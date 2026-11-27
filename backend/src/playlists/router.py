@@ -18,20 +18,22 @@ import httpx
 import re
 import hashlib
 from uuid import uuid4
-from datetime import datetime, timedelta
-from typing import Optional, Dict, Any, List, Tuple
+from datetime import UTC, datetime, timedelta
+from typing import Annotated, Optional, Dict, Any, List, Tuple
 from collections import Counter, OrderedDict
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Query
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, func
 
 from db.database import get_session, User, Summary, PlaylistAnalysis, PlaylistChatMessage, VideoChunk
-from auth.dependencies import get_current_user
+from auth.dependencies import get_current_user, is_admin_user
 from core.config import get_mistral_key
-from billing.plan_config import get_limits
+from core.plan_limits import check_feature_access
+from billing.plan_config import get_limits, normalize_plan_id
 from videos.web_search_provider import web_search_and_synthesize
 from transcripts import extract_playlist_id, get_playlist_videos, get_playlist_info
+from .task_store import playlist_task_store
 
 import logging
 
@@ -47,7 +49,9 @@ router = APIRouter()
 
 class AnalyzePlaylistRequest(BaseModel):
     url: str
-    max_videos: int = Field(default=10, ge=1, le=100)
+    # Le client web envoie `maxVideos` (camelCase) : sans alias, la valeur était
+    # ignorée et chaque analyse retombait sur 10 vidéos.
+    max_videos: int = Field(default=10, ge=1, le=100, validation_alias=AliasChoices("max_videos", "maxVideos"))
     mode: str = Field(default="standard", description="accessible | standard | expert")
     lang: str = "fr"
     model: Optional[str] = None
@@ -69,6 +73,17 @@ class PlaylistTaskStatus(BaseModel):
     current_video: int = 0
     total_videos: int = 0
     result: Optional[Dict[str, Any]] = None
+    # Progression détaillée, déjà calculée par le pipeline v5 mais jusqu'ici
+    # filtrée par le response_model : la page web l'affiche.
+    completed_videos: int = 0
+    current_step: str | None = None
+    current_video_title: str | None = None
+    current_chunk: int = 0
+    total_chunks: int = 0
+    skipped_videos: list[dict[str, Any]] = Field(default_factory=list)
+    playlist_id: str | None = None
+    playlist_title: str | None = None
+    error: str | None = None
 
 
 class ChatCorpusRequest(BaseModel):
@@ -91,7 +106,89 @@ class ChatCorpusResponse(BaseModel):
 # 🗄️ CONFIGURATION
 # ═══════════════════════════════════════════════════════════════════════════════
 
-_playlist_task_store: Dict[str, Dict[str, Any]] = {}
+# Tâches d'analyse : Redis (partagé entre workers), repli en mémoire sans Redis.
+_playlist_task_store = playlist_task_store
+
+CurrentUser = Annotated[User, Depends(get_current_user)]
+
+
+def _check_playlist_access(user: User) -> tuple[str, int]:
+    """Vérifie que le plan donne accès aux playlists.
+
+    Renvoie (plan effectif, nombre max de vidéos). L'admin est traité comme
+    Expert, quel que soit le plan stocké en base ; les autres passent par
+    check_feature_access (SSOT plan_config) et reçoivent un 403 explicite.
+    """
+    if is_admin_user(user):
+        plan = "expert"
+    else:
+        has_access, error_info = check_feature_access(
+            user, "playlists", lang=getattr(user, "default_lang", None) or "fr"
+        )
+        if not has_access:
+            raise HTTPException(status_code=403, detail=error_info)
+        plan = normalize_plan_id(user.plan or "free")
+    return plan, int(get_limits(plan).get("max_playlist_videos", 0) or 0)
+
+
+async def _check_monthly_playlist_quota(session: AsyncSession, user: User, plan: str) -> None:
+    """Applique max_playlists : analyses de playlist/corpus lancées ce mois-ci.
+
+    Les analyses en échec ne comptent pas. L'admin n'a pas de limite, ni un
+    plan dont max_playlists vaut -1.
+    """
+    if is_admin_user(user):
+        return
+    max_per_month = int(get_limits(plan).get("max_playlists", 0) or 0)
+    if max_per_month == -1:
+        return
+
+    # created_at est stocké sans fuseau (func.now() en UTC côté Postgres)
+    month_start = datetime.now(UTC).replace(day=1, hour=0, minute=0, second=0, microsecond=0, tzinfo=None)
+    used = (
+        await session.execute(
+            select(func.count(PlaylistAnalysis.id)).where(
+                PlaylistAnalysis.user_id == user.id,
+                PlaylistAnalysis.created_at >= month_start,
+                PlaylistAnalysis.status != "failed",
+            )
+        )
+    ).scalar() or 0
+
+    if used >= max_per_month:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "playlist_quota_reached",
+                "message": (
+                    f"Vous avez atteint la limite de {max_per_month} analyses de playlist "
+                    f"ce mois-ci avec votre plan. Elle se renouvelle le 1er du mois."
+                ),
+                "limit": max_per_month,
+                "used": used,
+            },
+        )
+
+
+def _task_status_response(task_id: str, task: dict[str, Any]) -> PlaylistTaskStatus:
+    return PlaylistTaskStatus(
+        task_id=task_id,
+        status=task["status"],
+        progress=task.get("progress", 0),
+        message=task.get("message", ""),
+        current_video=task.get("current_video", 0),
+        total_videos=task.get("total_videos", 0),
+        result=task.get("result"),
+        completed_videos=task.get("current_video", 0),
+        current_step=task.get("current_step"),
+        current_video_title=task.get("current_video_title"),
+        current_chunk=task.get("current_chunk") or 0,
+        total_chunks=task.get("total_chunks") or 0,
+        skipped_videos=task.get("skipped_videos") or [],
+        playlist_id=task.get("playlist_id"),
+        playlist_title=task.get("playlist_title"),
+        error=task.get("error"),
+    )
 
 
 PLAN_MODELS = {
@@ -761,11 +858,11 @@ async def analyze_playlist(
     if not playlist_id:
         raise HTTPException(status_code=400, detail="URL de playlist invalide")
 
-    plan = current_user.plan or "free"
-    max_allowed = get_limits(plan).get("max_playlist_videos", 10)
+    plan, max_allowed = _check_playlist_access(current_user)
+    await _check_monthly_playlist_quota(session, current_user, plan)
     max_videos = min(request.max_videos, max_allowed)
 
-    if current_user.credits < max_videos:
+    if not is_admin_user(current_user) and (current_user.credits or 0) < max_videos:
         raise HTTPException(
             status_code=403, detail=f"Crédits insuffisants ({current_user.credits} disponibles, {max_videos} requis)"
         )
@@ -774,12 +871,14 @@ async def analyze_playlist(
     model = request.model or PLAN_MODELS.get(plan, "mistral-small-2603")
 
     _playlist_task_store[task_id] = {
+        "user_id": current_user.id,
         "status": "pending",
         "progress": 0,
         "message": "Initialisation...",
         "current_video": 0,
         "total_videos": 0,
         "result": None,
+        "playlist_id": playlist_id,
     }
 
     background_tasks.add_task(
@@ -799,21 +898,17 @@ async def analyze_playlist(
 
 
 @router.get("/task/{task_id}", response_model=PlaylistTaskStatus)
-async def get_task_status(task_id: str):
-    """Récupère le statut d'une tâche d'analyse."""
-    task = _playlist_task_store.get(task_id)
-    if not task:
+async def get_task_status(task_id: str, current_user: CurrentUser):
+    """Récupère le statut d'une tâche d'analyse (réservé à son propriétaire).
+
+    Lu dans Redis : le poll répond quel que soit le worker qui le reçoit. Une
+    tâche d'un autre utilisateur renvoie 404, comme une tâche inexistante.
+    """
+    task = await _playlist_task_store.aget(task_id)
+    if not task or task.get("user_id") != current_user.id:
         raise HTTPException(status_code=404, detail="Tâche non trouvée")
 
-    return PlaylistTaskStatus(
-        task_id=task_id,
-        status=task["status"],
-        progress=task.get("progress", 0),
-        message=task.get("message", ""),
-        current_video=task.get("current_video", 0),
-        total_videos=task.get("total_videos", 0),
-        result=task.get("result"),
-    )
+    return _task_status_response(task_id, task)
 
 
 @router.post("/corpus/analyze", response_model=PlaylistTaskStatus)
@@ -835,25 +930,27 @@ async def analyze_corpus(
     print(f"   Name: {request.name}", flush=True)
     print(f"   Videos: {len(request.urls)}", flush=True)
 
-    plan = current_user.plan or "free"
-    max_allowed = get_limits(plan).get("max_playlist_videos", 10)
+    plan, max_allowed = _check_playlist_access(current_user)
+    await _check_monthly_playlist_quota(session, current_user, plan)
 
     if len(request.urls) > max_allowed:
         raise HTTPException(status_code=403, detail=f"Maximum {max_allowed} vidéos pour le plan {plan}")
 
-    if current_user.credits < len(request.urls):
+    if not is_admin_user(current_user) and (current_user.credits or 0) < len(request.urls):
         raise HTTPException(status_code=403, detail=f"Crédits insuffisants ({current_user.credits} disponibles)")
 
     task_id = str(uuid4())
     model = request.model or PLAN_MODELS.get(plan, "mistral-small-2603")
 
     _playlist_task_store[task_id] = {
+        "user_id": current_user.id,
         "status": "pending",
         "progress": 0,
         "message": "Initialisation du corpus...",
         "current_video": 0,
         "total_videos": len(request.urls),
         "result": None,
+        "playlist_title": request.name,
     }
 
     background_tasks.add_task(
@@ -1524,7 +1621,11 @@ async def _execute_corpus_chat(
     categories = [v["category"] for v in videos_data if v.get("category")]
     dominant_category = Counter(categories).most_common(1)[0][0] if categories else None
 
-    cache_key = _chat_cache._make_key(playlist_id, request.message, request.mode, web_search_enabled)
+    # L'ID d'une playlist YouTube est partagé entre utilisateurs : la clé inclut
+    # l'utilisateur pour ne jamais servir la réponse (et le corpus) d'un autre.
+    cache_key = _chat_cache._make_key(
+        current_user.id, playlist_id, request.message, request.mode, web_search_enabled, request.lang
+    )
     cached_response = _chat_cache.get(cache_key)
     if cached_response:
         print("   ✅ Cache HIT!", flush=True)
@@ -2376,6 +2477,7 @@ async def _analyze_playlist_background(
 
         playlist_title = playlist_info.get("title", "Playlist")
         logger.info(f"playlist_info: title={playlist_title}")
+        _playlist_task_store[task_id]["playlist_title"] = playlist_title
 
         videos = await get_playlist_videos(playlist_id, max_videos)
         if not videos:
@@ -2443,8 +2545,7 @@ async def _analyze_playlist_background(
 
     except Exception as e:
         logger.error(f"playlist_failed_v5: task={task_id} error={e}")
-        _playlist_task_store[task_id]["status"] = "failed"
-        _playlist_task_store[task_id]["message"] = str(e)[:500]
+        _playlist_task_store[task_id].update({"status": "failed", "message": str(e)[:500], "error": str(e)[:500]})
 
 
 async def _analyze_corpus_background(
@@ -2519,8 +2620,7 @@ async def _analyze_corpus_background(
 
     except Exception as e:
         logger.error(f"corpus_failed_v5: task={task_id} error={e}")
-        _playlist_task_store[task_id]["status"] = "failed"
-        _playlist_task_store[task_id]["message"] = str(e)[:500]
+        _playlist_task_store[task_id].update({"status": "failed", "message": str(e)[:500], "error": str(e)[:500]})
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

@@ -15,8 +15,9 @@ from typing import Optional, List, Dict, Any
 from core.logging import logger
 from db.database import get_session, User
 from auth.dependencies import get_current_user
-from videos.service import get_summary_by_id, deduct_credit
+from videos.service import get_summary_by_id, deduct_credit, refund_credit
 from videos.study_tools import generate_study_card, generate_concept_map, generate_study_materials
+from study.flashcard_store import flashcard_generation_lock, load_persisted_flashcards, persist_flashcards
 
 router = APIRouter()
 
@@ -118,8 +119,8 @@ async def generate_quiz(
     if current_user.credits < 1:
         raise HTTPException(status_code=402, detail="Crédits insuffisants")
 
-    # Déduire 1 crédit
-    await deduct_credit(session, current_user.id, 1, "quiz")
+    # Déduire 1 crédit (rendu si la génération échoue)
+    deducted = await deduct_credit(session, current_user.id, 1, "quiz")
 
     try:
         # Générer la fiche complète puis extraire le quiz
@@ -158,6 +159,9 @@ async def generate_quiz(
                             explanation=q.get("explanation", ""),
                         )
                     )
+
+        if not quiz_questions:
+            raise ValueError("Quiz vide")
 
         # 💾 Cache the generated quiz
         if quiz_questions and _s_vid:
@@ -237,6 +241,8 @@ async def generate_quiz(
 
     except Exception as e:
         print(f"❌ [QUIZ] Erreur: {e}", flush=True)
+        if deducted:
+            await refund_credit(session, current_user.id, 1, "quiz")
         raise HTTPException(status_code=500, detail=f"Erreur génération: {str(e)}")
 
 
@@ -287,8 +293,8 @@ async def generate_mindmap(
     if current_user.credits < 1:
         raise HTTPException(status_code=402, detail="Crédits insuffisants")
 
-    # Déduire 1 crédit
-    await deduct_credit(session, current_user.id, 1, "mindmap")
+    # Déduire 1 crédit (rendu si la génération échoue)
+    deducted = await deduct_credit(session, current_user.id, 1, "mindmap")
 
     try:
         concept_map = await generate_concept_map(
@@ -303,8 +309,15 @@ async def generate_mindmap(
         concepts = []
 
         if concept_map:
-            mermaid_code = concept_map.get("mermaid", concept_map.get("code", ""))
+            # generate_concept_map renvoie "mermaid_code" : lire seulement
+            # "mermaid"/"code" donnait toujours une carte vide (crédit débité).
+            mermaid_code = (
+                concept_map.get("mermaid_code") or concept_map.get("mermaid") or concept_map.get("code") or ""
+            )
             concepts = concept_map.get("concepts", [])
+
+        if not mermaid_code:
+            raise ValueError("Carte mentale vide")
 
         # 💾 Cache the generated mindmap
         if mermaid_code and _s_vid:
@@ -334,6 +347,8 @@ async def generate_mindmap(
 
     except Exception as e:
         print(f"❌ [MINDMAP] Erreur: {e}", flush=True)
+        if deducted:
+            await refund_credit(session, current_user.id, 1, "mindmap")
         raise HTTPException(status_code=500, detail=f"Erreur génération: {str(e)}")
 
 
@@ -347,15 +362,31 @@ async def generate_flashcards(
     summary_id: int, current_user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)
 ):
     """
-    📇 Génère des flashcards de révision pour une vidéo analysée.
+    📇 Flashcards de révision d'une vidéo analysée.
 
-    Extrait les définitions et concepts clés pour créer des cartes de révision.
+    Renvoie les cartes déjà enregistrées si elles existent (gratuit, stable pour
+    la révision espacée) ; sinon les génère une seule fois et les enregistre.
     Mobile-compatible endpoint.
     """
+    async with flashcard_generation_lock(summary_id):
+        return await _generate_flashcards_locked(summary_id, current_user, session)
+
+
+async def _generate_flashcards_locked(summary_id: int, current_user: User, session: AsyncSession) -> FlashcardsResponse:
     # Récupérer le résumé
     summary = await get_summary_by_id(session, summary_id, current_user.id)
     if not summary:
         raise HTTPException(status_code=404, detail="Résumé non trouvé")
+
+    # 🗄️ Cartes déjà enregistrées : source de vérité (révision FSRS par position)
+    persisted = await load_persisted_flashcards(session, summary_id)
+    if persisted:
+        return FlashcardsResponse(
+            success=True,
+            summary_id=summary_id,
+            flashcards=[FlashcardItem(**fc) for fc in persisted],
+            title=summary.video_title or "Flashcards",
+        )
 
     # 💾 Check global video content cache
     _s_platform = getattr(summary, "platform", "youtube") or "youtube"
@@ -370,21 +401,24 @@ async def generate_flashcards(
             _cached = await _vcache.get_studio_content(_s_platform, _s_vid, "flashcards", _s_lang)
             if _cached and _cached.get("flashcards"):
                 print(f"💾 [STUDIO CACHE HIT] flashcards for {_s_platform}/{_s_vid}", flush=True)
+                cached_cards = [FlashcardItem(**fc) for fc in _cached["flashcards"]]
+                # Fige ce jeu de cartes pour ce résumé (révision espacée stable)
+                await persist_flashcards(session, summary_id, current_user.id, cached_cards)
                 return FlashcardsResponse(
                     success=True,
                     summary_id=summary_id,
-                    flashcards=[FlashcardItem(**fc) for fc in _cached["flashcards"]],
+                    flashcards=cached_cards,
                     title=_cached.get("title", summary.video_title or "Flashcards"),
                 )
     except Exception:
-        pass
+        await session.rollback()
 
     # Vérifier les crédits
     if current_user.credits < 1:
         raise HTTPException(status_code=402, detail="Crédits insuffisants")
 
-    # Déduire 1 crédit
-    await deduct_credit(session, current_user.id, 1, "flashcards")
+    # Déduire 1 crédit (rendu si la génération échoue)
+    deducted = await deduct_credit(session, current_user.id, 1, "flashcards")
 
     try:
         # Générer la fiche complète puis extraire les flashcards
@@ -434,6 +468,9 @@ async def generate_flashcards(
                             FlashcardItem(front=f"Qu'est-ce que {term} ?", back=definition, category="Définitions")
                         )
 
+        if not flashcards:
+            raise ValueError("Aucune flashcard générée")
+
         # 💾 Cache the generated flashcards
         if flashcards and _s_vid:
             try:
@@ -451,26 +488,8 @@ async def generate_flashcards(
             except Exception:
                 pass
 
-        # ─── V1 Semantic Search : matérialisation des flashcards ────────────────
-        from db.database import Flashcard as DBFlashcard
-        from sqlalchemy import delete as sa_delete
-
-        # 1. Delete existantes pour ce summary
-        await session.execute(sa_delete(DBFlashcard).where(DBFlashcard.summary_id == summary_id))
-
-        # 2. Insert nouvelles
-        for idx, card in enumerate(flashcards):
-            db_card = DBFlashcard(
-                summary_id=summary_id,
-                user_id=current_user.id,
-                position=idx,
-                front=card.front if hasattr(card, "front") else card["front"],
-                back=card.back if hasattr(card, "back") else card["back"],
-                category=getattr(card, "category", None) if hasattr(card, "category") else card.get("category"),
-            )
-            session.add(db_card)
-
-        await session.commit()
+        # ─── Matérialisation des flashcards (source de vérité + recherche V1) ───
+        await persist_flashcards(session, summary_id, current_user.id, flashcards)
 
         # ─── Semantic Search V1 trigger ─────────────────────────────────────
         try:
@@ -490,6 +509,8 @@ async def generate_flashcards(
 
     except Exception as e:
         print(f"❌ [FLASHCARDS] Erreur: {e}", flush=True)
+        if deducted:
+            await refund_credit(session, current_user.id, 1, "flashcards")
         raise HTTPException(status_code=500, detail=f"Erreur génération: {str(e)}")
 
 
@@ -517,8 +538,8 @@ async def generate_all_materials(
     if current_user.credits < 2:
         raise HTTPException(status_code=402, detail="Crédits insuffisants (2 requis)")
 
-    # Déduire 2 crédits
-    await deduct_credit(session, current_user.id, 2, "study_all")
+    # Déduire 2 crédits (1 par partie : rendu pour chaque partie en échec)
+    deducted = await deduct_credit(session, current_user.id, 2, "study_all")
 
     try:
         materials = await generate_study_materials(
@@ -532,8 +553,18 @@ async def generate_all_materials(
             include_map=True,
         )
 
+        # generate_study_materials capture l'erreur de chaque partie : rendre
+        # 1 crédit par partie absente, et répondre en erreur si tout a échoué.
+        failed_parts = sum(1 for key in ("study_card", "concept_map") if not materials.get(key))
+        if failed_parts == 2:
+            raise ValueError("Aucun outil d'étude généré")
+        if failed_parts and deducted:
+            await refund_credit(session, current_user.id, failed_parts, "study_all (partiel)")
+
         return {"success": True, "summary_id": summary_id, "materials": materials}
 
     except Exception as e:
         print(f"❌ [STUDY_ALL] Erreur: {e}", flush=True)
+        if deducted:
+            await refund_credit(session, current_user.id, 2, "study_all")
         raise HTTPException(status_code=500, detail=f"Erreur génération: {str(e)}")

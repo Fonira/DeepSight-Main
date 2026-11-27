@@ -47,6 +47,13 @@ stripe.max_network_retries = 2
 
 router = APIRouter()
 
+# Paiements désactivés (STRIPE_ENABLED=false ou clé absente) : 503 + message
+# lisible côté UI, au lieu d'un 400/500 en anglais brut.
+PAYMENTS_UNAVAILABLE_DETAIL = {
+    "code": "payments_unavailable",
+    "message": "Les paiements sont temporairement indisponibles. Réessayez plus tard.",
+}
+
 # ---------------------------------------------------------------------------
 # Idempotency — track processed webhook event IDs to prevent double-processing
 # ---------------------------------------------------------------------------
@@ -443,10 +450,10 @@ async def start_trial(
         )
 
     if not STRIPE_CONFIG.get("ENABLED"):
-        raise HTTPException(status_code=400, detail="Stripe not enabled")
+        raise HTTPException(status_code=503, detail=PAYMENTS_UNAVAILABLE_DETAIL)
 
     if not init_stripe():
-        raise HTTPException(status_code=500, detail="Stripe not configured")
+        raise HTTPException(status_code=503, detail=PAYMENTS_UNAVAILABLE_DETAIL)
 
     price_id = get_price_id(plan, cycle)
     if not price_id:
@@ -719,10 +726,10 @@ async def create_checkout_session(
     Ajoute trial_period_days=7 pour les nouveaux abonnés (jamais eu de trial).
     """
     if not STRIPE_CONFIG.get("ENABLED"):
-        raise HTTPException(status_code=400, detail="Stripe not enabled")
+        raise HTTPException(status_code=503, detail=PAYMENTS_UNAVAILABLE_DETAIL)
 
     if not init_stripe():
-        raise HTTPException(status_code=500, detail="Stripe not configured")
+        raise HTTPException(status_code=503, detail=PAYMENTS_UNAVAILABLE_DETAIL)
 
     # Valider le plan (doit être un plan payant dans la hiérarchie)
     paid_plans = [p for p in PLAN_HIERARCHY if p != "free"]
@@ -828,10 +835,10 @@ async def create_checkout_by_plan_id(
     Compat rétro : accepte aussi {"plan_id": "..."} (legacy frontend).
     """
     if not STRIPE_CONFIG.get("ENABLED"):
-        raise HTTPException(status_code=400, detail="Stripe not enabled")
+        raise HTTPException(status_code=503, detail=PAYMENTS_UNAVAILABLE_DETAIL)
 
     if not init_stripe():
-        raise HTTPException(status_code=500, detail="Stripe not configured")
+        raise HTTPException(status_code=503, detail=PAYMENTS_UNAVAILABLE_DETAIL)
 
     # Resolve plan : prefer 'plan', fallback to legacy 'plan_id'
     plan = request.plan or request.plan_id
@@ -919,7 +926,7 @@ async def create_portal_session(current_user: User = Depends(get_current_user)):
     Permet à l'utilisateur de gérer son abonnement.
     """
     if not init_stripe():
-        raise HTTPException(status_code=500, detail="Stripe not configured")
+        raise HTTPException(status_code=503, detail=PAYMENTS_UNAVAILABLE_DETAIL)
 
     if not current_user.stripe_customer_id:
         raise HTTPException(status_code=400, detail="No Stripe customer")
@@ -972,10 +979,10 @@ async def change_subscription_plan(
     - Si downgrade → effectif à la fin de la période actuelle
     """
     if not STRIPE_CONFIG.get("ENABLED"):
-        raise HTTPException(status_code=400, detail="Stripe not enabled")
+        raise HTTPException(status_code=503, detail=PAYMENTS_UNAVAILABLE_DETAIL)
 
     if not init_stripe():
-        raise HTTPException(status_code=500, detail="Stripe not configured")
+        raise HTTPException(status_code=503, detail=PAYMENTS_UNAVAILABLE_DETAIL)
 
     new_plan = request.new_plan.lower()
     current_plan = current_user.plan or "free"
@@ -1162,9 +1169,9 @@ async def upgrade_subscription(
     Utilise stripe.Subscription.modify() avec proration immédiate.
     """
     if not STRIPE_CONFIG.get("ENABLED"):
-        raise HTTPException(status_code=400, detail="Stripe not enabled")
+        raise HTTPException(status_code=503, detail=PAYMENTS_UNAVAILABLE_DETAIL)
     if not init_stripe():
-        raise HTTPException(status_code=500, detail="Stripe not configured")
+        raise HTTPException(status_code=503, detail=PAYMENTS_UNAVAILABLE_DETAIL)
 
     current_plan = current_user.plan or "free"
     target = request.target_plan.lower()
@@ -1271,9 +1278,9 @@ async def downgrade_subscription(
     Le changement est programmé à la fin de la période de facturation (pas de prorata inverse).
     """
     if not STRIPE_CONFIG.get("ENABLED"):
-        raise HTTPException(status_code=400, detail="Stripe not enabled")
+        raise HTTPException(status_code=503, detail=PAYMENTS_UNAVAILABLE_DETAIL)
     if not init_stripe():
-        raise HTTPException(status_code=500, detail="Stripe not configured")
+        raise HTTPException(status_code=503, detail=PAYMENTS_UNAVAILABLE_DETAIL)
 
     current_plan = current_user.plan or "free"
     target = request.target_plan.lower()
@@ -1364,7 +1371,7 @@ async def confirm_checkout(
     Vérifie la session Stripe et met à jour le plan si le paiement est complet.
     """
     if not init_stripe():
-        raise HTTPException(status_code=500, detail="Stripe not configured")
+        raise HTTPException(status_code=503, detail=PAYMENTS_UNAVAILABLE_DETAIL)
 
     try:
         # Récupérer la session Stripe
@@ -1469,7 +1476,7 @@ async def cancel_subscription(
     - immediate=True : annulation immédiate, accès coupé tout de suite
     """
     if not init_stripe():
-        raise HTTPException(status_code=500, detail="Stripe not configured")
+        raise HTTPException(status_code=503, detail=PAYMENTS_UNAVAILABLE_DETAIL)
 
     if not current_user.stripe_subscription_id:
         raise HTTPException(status_code=400, detail="No active subscription")
@@ -1523,7 +1530,7 @@ async def reactivate_subscription(
     🔄 Réactive un abonnement annulé (avant la fin de période).
     """
     if not init_stripe():
-        raise HTTPException(status_code=500, detail="Stripe not configured")
+        raise HTTPException(status_code=503, detail=PAYMENTS_UNAVAILABLE_DETAIL)
 
     if not current_user.stripe_subscription_id:
         raise HTTPException(status_code=400, detail="No subscription found")
@@ -1561,7 +1568,7 @@ async def request_refund(
     Crée un Stripe Refund complet + annule l'abonnement + log admin.
     """
     if not init_stripe():
-        raise HTTPException(status_code=500, detail="Stripe not configured")
+        raise HTTPException(status_code=503, detail=PAYMENTS_UNAVAILABLE_DETAIL)
 
     if not current_user.stripe_subscription_id:
         raise HTTPException(status_code=400, detail="No active subscription")
@@ -1678,8 +1685,7 @@ async def get_subscription_status(current_user: User = Depends(get_current_user)
     """
     📊 Retourne le statut détaillé de l'abonnement.
     """
-    if not init_stripe():
-        raise HTTPException(status_code=500, detail="Stripe not configured")
+    stripe_ready = init_stripe()
 
     result = {
         "plan": current_user.plan or "free",
@@ -1690,7 +1696,9 @@ async def get_subscription_status(current_user: User = Depends(get_current_user)
         "next_plan": None,
     }
 
-    if current_user.stripe_subscription_id:
+    # Sans Stripe (paiements désactivés) : statut "none" au lieu d'une 500,
+    # la page /upgrade s'affiche normalement.
+    if current_user.stripe_subscription_id and stripe_ready:
         try:
             subscription = stripe.Subscription.retrieve(current_user.stripe_subscription_id)
             result["status"] = subscription.status
@@ -1760,7 +1768,7 @@ async def stripe_webhook(request: Request, session: AsyncSession = Depends(get_s
 
     if not init_stripe():
         logger.error("Stripe not initialized")
-        raise HTTPException(status_code=500, detail="Stripe not configured")
+        raise HTTPException(status_code=503, detail=PAYMENTS_UNAVAILABLE_DETAIL)
 
     webhook_secret = STRIPE_CONFIG.get("WEBHOOK_SECRET")
     if not webhook_secret:
@@ -2468,7 +2476,7 @@ async def create_credit_pack_checkout(
 
     stripe_key = get_stripe_key()
     if not stripe_key:
-        raise HTTPException(503, "Stripe not configured")
+        raise HTTPException(status_code=503, detail=PAYMENTS_UNAVAILABLE_DETAIL)
 
     stripe.api_key = stripe_key
 

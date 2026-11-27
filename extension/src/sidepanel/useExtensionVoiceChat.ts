@@ -36,6 +36,9 @@ interface CreateSessionResponse {
 interface BackgroundResponse<T = unknown> {
   success?: boolean;
   error?: string;
+  errorCode?: string;
+  httpStatus?: number;
+  errorDetail?: Record<string, unknown>;
   result?: T;
 }
 
@@ -318,11 +321,10 @@ export function useExtensionVoiceChat(
         throw new Error("aborted");
       }
       if (!response.success || !response.result) {
-        // Backend renvoie {success:false, error:"…", status?:402, detail?:{}}
-        const status = (response as unknown as { status?: number }).status;
-        const detail =
-          (response as unknown as { detail?: Record<string, unknown> })
-            .detail ?? {};
+        // Le SW renvoie {success:false, error, errorCode, httpStatus,
+        // errorDetail} (cf. utils/apiError.ts::toErrorResponse).
+        const status = response.httpStatus;
+        const detail = response.errorDetail ?? {};
         if (status === 402) {
           setStatus("error");
           throw new VoiceQuotaError(

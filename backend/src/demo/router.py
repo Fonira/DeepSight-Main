@@ -15,6 +15,8 @@ from typing import Dict, List
 
 from fastapi import APIRouter, HTTPException, Request
 
+from auth.dependencies import enforce_private_mode
+
 from .schemas import (
     DemoAnalyzeRequest,
     DemoAnalyzeResponse,
@@ -105,6 +107,9 @@ async def demo_analyze(request: DemoAnalyzeRequest, raw_request: Request):
     - Resume ultra-court (3-5 points cles + conclusion)
     - Retourne un demo_session_id pour le chat
     """
+    # Mode privé : pas de démo anonyme (elle consomme Supadata + Mistral)
+    enforce_private_mode(None)
+
     # 1. Rate limit
     client_ip = _get_client_ip(raw_request)
     remaining = _check_rate_limit(client_ip)
@@ -260,6 +265,7 @@ async def demo_chat(request: DemoChatRequest):
     - Reponses concises (3-5 phrases)
     - Pas d'auth requise
     """
+    enforce_private_mode(None)
     # 1. Get session
     session_data = await get_demo_session(request.demo_session_id)
     if not session_data:

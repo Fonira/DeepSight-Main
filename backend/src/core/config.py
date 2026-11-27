@@ -60,6 +60,7 @@ class _DeepSightSettings(BaseSettings):
     FAL_API_KEY: str = ""
     TOGETHER_API_KEY: str = ""
     MISTRAL_IMAGE_AGENT_ID: str = ""  # Mistral Agents API — DeepSight Art Director
+    MISTRAL_ANALYST_AGENT_ID: str = ""  # Mistral Agents API — DeepSight Analyst (web search)
     GEMINI_API_KEY: str = ""  # Google AI Studio — Gemini 3 Pro Image (Nano Banana Pro) pour doodles Tuteur
     TUTOR_DOODLE_DAILY_CAP: int = (
         300  # Cap global quotidien images doodle Tuteur (Redis counter, anti-abuse + plafond coût)
@@ -259,6 +260,9 @@ class _DeepSightSettings(BaseSettings):
     BACKUP_CRON_HOUR: int = 3
     BACKUP_CRON_MINUTE: int = 0
     BACKUP_RETENTION_DAYS: int = 30
+    # Sauvegarde intégrée à l'app (pg_dump en RAM par worker). À désactiver
+    # quand l'hôte fait déjà ses propres sauvegardes (VPS : backup.sh à 03:17).
+    APP_BACKUP_ENABLED: bool = True
 
     # -- R2 Thumbnail Storage --
     R2_ACCOUNT_ID: str = ""
@@ -428,6 +432,7 @@ DEEPSEEK_API_KEY = _settings.DEEPSEEK_API_KEY
 FAL_API_KEY = _settings.FAL_API_KEY
 TOGETHER_API_KEY = _settings.TOGETHER_API_KEY
 MISTRAL_IMAGE_AGENT_ID = _settings.MISTRAL_IMAGE_AGENT_ID
+MISTRAL_ANALYST_AGENT_ID = _settings.MISTRAL_ANALYST_AGENT_ID
 GEMINI_API_KEY = _settings.GEMINI_API_KEY
 TUTOR_DOODLE_DAILY_CAP = _settings.TUTOR_DOODLE_DAILY_CAP
 YOUTUBE_PROXY = _settings.YOUTUBE_PROXY
@@ -462,6 +467,14 @@ def get_together_key() -> Optional[str]:
 def get_mistral_image_agent_id() -> Optional[str]:
     """Get the Mistral Agent ID for DeepSight Art Director (image generation)."""
     return MISTRAL_IMAGE_AGENT_ID or None
+
+
+def get_mistral_analyst_agent_id() -> str | None:
+    """ID de l'agent Mistral « DeepSight Analyst » (web search), s'il est fixé.
+
+    Renseigné → réutilisé tel quel, sans appel à l'API Agents au démarrage.
+    """
+    return MISTRAL_ANALYST_AGENT_ID or None
 
 
 # =============================================================================
@@ -655,6 +668,7 @@ BACKUP_CONFIG = {
     "CRON_HOUR": _settings.BACKUP_CRON_HOUR,
     "CRON_MINUTE": _settings.BACKUP_CRON_MINUTE,
     "RETENTION_DAYS": _settings.BACKUP_RETENTION_DAYS,
+    "ENABLED": _settings.APP_BACKUP_ENABLED,
 }
 
 # =============================================================================
@@ -1007,6 +1021,14 @@ def is_web_search_available() -> bool:
 def is_mistral_agent_available() -> bool:
     """Check if Mistral Agent web search is enabled and configured."""
     return bool(MISTRAL_AGENT_ENABLED and MISTRAL_API_KEY)
+
+
+def is_visual_analysis_enabled() -> bool:
+    """Couche visuelle (frames + Mistral Vision) activée sur ce serveur.
+
+    Lu à chaque appel, comme le pipeline d'analyse (VISUAL_ANALYSIS_ENABLED).
+    """
+    return os.getenv("VISUAL_ANALYSIS_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
 
 
 def is_semantic_search_v1_enabled() -> bool:

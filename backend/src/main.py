@@ -706,16 +706,19 @@ async def lifespan(app: FastAPI):
                 logger.error(f"Scheduled backup failed: {e}")
 
         scheduler = AsyncIOScheduler()
-        scheduler.add_job(
-            _scheduled_backup,
-            CronTrigger(
-                hour=BACKUP_CONFIG["CRON_HOUR"],
-                minute=BACKUP_CONFIG["CRON_MINUTE"],
-            ),
-            id="daily_backup",
-            name="Daily database backup",
-            replace_existing=True,
-        )
+        if BACKUP_CONFIG.get("ENABLED", True):
+            scheduler.add_job(
+                _scheduled_backup,
+                CronTrigger(
+                    hour=BACKUP_CONFIG["CRON_HOUR"],
+                    minute=BACKUP_CONFIG["CRON_MINUTE"],
+                ),
+                id="daily_backup",
+                name="Daily database backup",
+                replace_existing=True,
+            )
+        else:
+            logger.info("App daily backup disabled (APP_BACKUP_ENABLED=false) — host backups in charge")
         # 🩺 Health monitoring job (every 5 minutes)
         if MONITORING_AVAILABLE:
             from apscheduler.triggers.interval import IntervalTrigger

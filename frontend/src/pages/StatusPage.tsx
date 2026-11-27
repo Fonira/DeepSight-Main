@@ -1,7 +1,6 @@
 /**
  * Page de statut interne — accessible aux utilisateurs connectés.
- * Appelle le proxy Vercel /api/status (deep health check) toutes les 60s.
- * Fallback public /api/health/status si le proxy échoue.
+ * Appelle l'endpoint public /api/health/status de l'API toutes les 60s.
  *
  * Section "Live status (Instatus)" en bas : fetch le summary.json public
  * de la status page externe https://status.deepsightsynthesis.com et
@@ -164,6 +163,8 @@ const SERVICE_META: Record<
 function statusColor(status: string) {
   if (status === "operational") return "var(--status-success, #10b981)";
   if (status === "degraded") return "var(--status-warning, #f59e0b)";
+  // "disabled" : service volontairement non configuré (clé absente)
+  if (status === "disabled") return "var(--text-tertiary, #6b7280)";
   return "var(--status-error, #ef4444)";
 }
 
@@ -171,7 +172,7 @@ function StatusDot({ status }: { status: string }) {
   const color = statusColor(status);
   return (
     <span className="relative flex h-3 w-3" aria-label={status}>
-      {status !== "operational" && (
+      {status !== "operational" && status !== "disabled" && (
         <span
           className="absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping"
           style={{ backgroundColor: color }}
@@ -188,7 +189,7 @@ function StatusDot({ status }: { status: string }) {
 function StatusIcon({ status }: { status: string }) {
   if (status === "operational")
     return <CheckCircle2 size={18} style={{ color: statusColor(status) }} />;
-  if (status === "degraded")
+  if (status === "degraded" || status === "disabled")
     return <AlertTriangle size={18} style={{ color: statusColor(status) }} />;
   return <XCircle size={18} style={{ color: statusColor(status) }} />;
 }
@@ -213,6 +214,7 @@ function formatLatency(ms: number | null): string {
 function statusLabel(status: string): string {
   if (status === "operational") return "Op\u00e9rationnel";
   if (status === "degraded") return "D\u00e9grad\u00e9";
+  if (status === "disabled") return "Non configur\u00e9";
   return "Hors service";
 }
 
@@ -440,13 +442,9 @@ export default function StatusPage() {
   const fetchStatus = useCallback(async (manual = false) => {
     if (manual) setRefreshing(true);
     try {
-      // Try deep check first (via Vercel proxy), fallback to public endpoint
-      let result: DeepSystemStatus;
-      try {
-        result = await statusApi.getDeepStatus();
-      } catch {
-        result = await statusApi.getStatus();
-      }
+      // Endpoint public du backend. Le « deep check » passait par une
+      // fonction Vercel (/api/status) qui n'existe plus depuis le VPS.
+      const result: DeepSystemStatus = await statusApi.getStatus();
       setData(result);
       setError(null);
     } catch {

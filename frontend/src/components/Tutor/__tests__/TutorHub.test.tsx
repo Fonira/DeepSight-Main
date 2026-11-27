@@ -331,4 +331,16 @@ describe("TutorHub", () => {
       transcript.querySelectorAll('svg[aria-label="voice"]').length,
     ).toBeGreaterThanOrEqual(2);
   });
+  it("shows an error and keeps the typed text when the Tutor fails", async () => {
+    tutorApiMock.sessionStart.mockRejectedValueOnce(new Error("502"));
+    render(<TutorHub isOpen onClose={vi.fn()} />);
+    const input = screen.getByTestId("tutor-hub-text-input") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "L'excès de confiance" } });
+    fireEvent.submit(screen.getByTestId("tutor-hub-text-form"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("tutor-hub-error")).toBeInTheDocument();
+    });
+    expect(input.value).toBe("L'excès de confiance");
+  });
 });

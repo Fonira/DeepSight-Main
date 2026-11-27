@@ -20,6 +20,7 @@ import asyncio
 
 from core.logging import logger
 from db.database import get_session, User
+from auth.dependencies import enforce_private_mode, get_current_user
 from exports.markdown_builder import build_markdown_export, slug_for_summary
 
 # Optional imports - these features may not be available in all deployments
@@ -149,6 +150,9 @@ async def get_api_user(
         raise HTTPException(
             status_code=401, detail={"error": "invalid_api_key", "message": "Invalid or revoked API key"}
         )
+
+    # Mode privé : la clé API ne doit pas contourner le blocage appliqué au JWT.
+    enforce_private_mode(user)
 
     # Pro ET Expert ont accès à l'API publique. Admin bypass.
     if not (user.is_admin or user.plan in ("pro", "expert")):
@@ -784,13 +788,14 @@ async def get_public_summary(
 async def update_summary_visibility(
     summary_id: int,
     body: VisibilityUpdate,
-    user: User = Depends(get_api_user),
+    user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ):
     """
     🔓 Active/désactive la page publique `/a/{slug}` d'une analyse (opt-in).
 
-    **Auth** : X-API-Key Pro/Expert (admin bypass via `get_api_user`).
+    **Auth** : session utilisateur (JWT), car le toggle est appelé par l'app web.
+    Avant, la route exigeait une clé API `ds_live_` : le toggle échouait toujours.
     **Owner check** : 404 si l'analyse appartient à un autre user (anti-leak).
 
     **Réponse** :

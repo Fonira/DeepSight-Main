@@ -21,18 +21,11 @@ interface SubProcessor {
 
 const SUB_PROCESSORS: SubProcessor[] = [
   {
-    name: "Hetzner",
-    purposeFr: "Hébergement VPS principal (backend, DB, Redis)",
-    purposeEn: "Primary VPS hosting (backend, DB, Redis)",
+    name: "netcup",
+    purposeFr: "Hébergement VPS (site web, API, base de données, Redis)",
+    purposeEn: "VPS hosting (website, API, database, Redis)",
     region: "Allemagne 🇩🇪",
-    dpaUrl: "https://www.hetzner.com/legal/privacy-policy",
-  },
-  {
-    name: "Vercel",
-    purposeFr: "Hébergement frontend web (CDN edge)",
-    purposeEn: "Web frontend hosting (edge CDN)",
-    region: "USA 🇺🇸",
-    dpaUrl: "https://vercel.com/legal/dpa",
+    dpaUrl: "https://www.netcup.com/",
   },
   {
     name: "Stripe",
@@ -92,17 +85,10 @@ const SUB_PROCESSORS: SubProcessor[] = [
   },
   {
     name: "Cloudflare R2",
-    purposeFr: "Sauvegardes redondantes (DB + thumbnails)",
-    purposeEn: "Redundant backups (DB + thumbnails)",
-    region: "USA 🇺🇸",
+    purposeFr: "Sauvegardes chiffrées de la base de données",
+    purposeEn: "Encrypted database backups",
+    region: "UE 🇪🇺",
     dpaUrl: "https://www.cloudflare.com/cloudflare-customer-dpa/",
-  },
-  {
-    name: "AWS S3",
-    purposeFr: "Sauvegardes primaires de la base de données",
-    purposeEn: "Primary database backups",
-    region: "EU (eu-west-3) 🇪🇺",
-    dpaUrl: "https://aws.amazon.com/service-terms/",
   },
   {
     name: "Sentry",
@@ -152,7 +138,7 @@ export default function LegalSubProcessors() {
             </p>
             <p className="mt-2 text-sm text-text-tertiary">
               {t("Dernière mise à jour : ", "Last updated: ")}
-              <time dateTime="2026-05-05">2026-05-05</time>
+              <time dateTime="2026-11-27">2026-11-27</time>
             </p>
           </header>
 
@@ -214,8 +200,8 @@ export default function LegalSubProcessors() {
             </h2>
             <p>
               {t(
-                "Les données utilisateur (compte, analyses, conversations) sont stockées sur un VPS Hetzner en Allemagne. Les sauvegardes sont répliquées sur AWS S3 (UE) et Cloudflare R2 (USA, en redondance).",
-                "User data (account, analyses, conversations) is stored on a Hetzner VPS in Germany. Backups are replicated to AWS S3 (EU) and Cloudflare R2 (USA, for redundancy).",
+                "Les données utilisateur (compte, analyses, conversations) sont stockées sur un VPS netcup en Allemagne (centre de données de Nuremberg). Les sauvegardes sont chiffrées avant d'être copiées chez Cloudflare R2, dans l'Union européenne.",
+                "User data (account, analyses, conversations) is stored on a netcup VPS in Germany (Nuremberg data centre). Backups are encrypted before being copied to Cloudflare R2, within the European Union.",
               )}
             </p>
 

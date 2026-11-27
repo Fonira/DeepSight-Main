@@ -455,7 +455,10 @@ const RoutePrefetcher = () => {
  *   - localStorage : `ds_hub_legacy_home=1`
  */
 const DashboardRoute: React.FC = () => {
-  const params = new URLSearchParams(window.location.search);
+  // useLocation : re-évalué quand on passe de /dashboard à /dashboard?legacy=1
+  // depuis le dashboard minimal (même route, seule la query change).
+  const { search } = useLocation();
+  const params = new URLSearchParams(search);
   const useLegacy =
     params.get("legacy") === "1" ||
     (typeof window !== "undefined" &&
@@ -827,6 +830,17 @@ const AppRoutes = () => {
                         }
                       />
 
+                      {/* Alias utilisés par des CTA (démo, upgrade) qui
+                          menaient à la page 404. */}
+                      <Route
+                        path="/pricing"
+                        element={<Navigate to="/upgrade" replace />}
+                      />
+                      <Route
+                        path="/register"
+                        element={<Navigate to="/login?tab=register" replace />}
+                      />
+
                       {/* /upgrade — public pricing page (indexable) */}
                       <Route
                         path="/upgrade"
@@ -904,7 +918,13 @@ const AppRoutes = () => {
 
                         <Route
                           path="/playlists"
-                          element={<Navigate to="/debate" replace />}
+                          element={
+                            <Suspense
+                              fallback={<PageSkeleton variant="dashboard" />}
+                            >
+                              <PlaylistPage />
+                            </Suspense>
+                          }
                         />
 
                         <Route

@@ -4,7 +4,7 @@
 ╠════════════════════════════════════════════════════════════════════════════════════╣
 ║  Endpoints couverts :                                                              ║
 ║    • GET   /api/v1/public/summaries/{slug}    — public, no auth, opt-in is_public  ║
-║    • PATCH /api/v1/summaries/{id}/visibility   — auth Pro/Expert, owner only       ║
+║    • PATCH /api/v1/summaries/{id}/visibility   — auth JWT, owner only              ║
 ║                                                                                    ║
 ║  Spec : Vault/01-Projects/DeepSight/Specs/2026-05-07-deepsight-export-to-ai-geo-   ║
 ║  design.md (§ 4.3 routing, § 4.4 Schema.org, § 5.4 critères Phase 3)               ║
@@ -137,6 +137,8 @@ def app_authed(mock_session):
 
     fastapi_app.dependency_overrides[get_session] = override_session
     fastapi_app.dependency_overrides[_api_public_router.get_api_user] = override_api_user
+    # PATCH visibility passe par la session JWT (appelé par l'app web)
+    fastapi_app.dependency_overrides[_api_public_router.get_current_user] = override_api_user
 
     yield fastapi_app
     fastapi_app.dependency_overrides.clear()
@@ -260,7 +262,7 @@ class TestPublicSummaryEndpoint:
 
 @pytest.mark.unit
 class TestVisibilityPatchEndpoint:
-    """Tests de l'endpoint PATCH visibility — auth API key + owner only."""
+    """Tests de l'endpoint PATCH visibility — auth JWT + owner only."""
 
     @pytest.mark.asyncio
     async def test_visibility_patch_sets_public_true(

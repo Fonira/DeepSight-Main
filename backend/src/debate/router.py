@@ -782,7 +782,9 @@ async def _run_debate_pipeline(
                         logger.warning("Invalid opposing video URL: %s", opposing.get("url"))
 
             if not actual_video_b_id:
-                # Auto-search failed — complete with only video A analysis
+                # Auto-search failed — complete with only video A analysis.
+                # Aucun crédit débité : sans vidéo B il n'y a pas de débat (cas
+                # systématique sans clé Brave). Seul un débat complet coûte 5 crédits.
                 debate.status = "completed"
                 debate.debate_summary = (
                     f"Analyse partielle : seule la vidéo A a pu être analysée.\n\n"
@@ -792,7 +794,7 @@ async def _run_debate_pipeline(
                     f"Essayez le mode manuel en fournissant deux URLs."
                 )
                 debate.model_used = model
-                debate.credits_used = 5
+                debate.credits_used = 0
                 await session.commit()
 
                 # 🎨 Fire-and-forget avatar gen (partial debate — topic is known)
@@ -803,7 +805,6 @@ async def _run_debate_pipeline(
                 except Exception as _avatar_err:
                     logger.warning("Debate avatar kickoff failed: %s", _avatar_err)
 
-                await deduct_credits(session, user_id, 5, "debate", f"Débat partiel: {detected_topic[:50]}")
                 _debate_task_store[debate_id] = {"status": "completed", "message": "Analyse partielle terminée"}
                 return
 

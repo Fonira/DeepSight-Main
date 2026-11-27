@@ -2,7 +2,7 @@ import React from "react";
 import type { Summary } from "../../types";
 import { escapeHtml, markdownToFullHtml } from "../../utils/sanitize";
 import Browser from "../../utils/browser-polyfill";
-import { WEBAPP_URL } from "../../utils/config";
+import { analysisUrl } from "../../utils/webappLinks";
 import { BackIcon, ChatIcon, ExternalLinkIcon } from "./Icons";
 import { useTranslation } from "../../i18n/useTranslation";
 
@@ -67,13 +67,13 @@ export const SynthesisFull: React.FC<Props> = ({
       />
 
       <a
-        href={`${WEBAPP_URL}/summary/${summaryId}`}
+        href={analysisUrl(summaryId)}
         target="_blank"
         rel="noreferrer"
         className="digest-web-cta"
         onClick={(e) => {
           e.preventDefault();
-          Browser.tabs.create({ url: `${WEBAPP_URL}/summary/${summaryId}` });
+          Browser.tabs.create({ url: analysisUrl(summaryId) });
         }}
       >
         <ExternalLinkIcon size={14} />

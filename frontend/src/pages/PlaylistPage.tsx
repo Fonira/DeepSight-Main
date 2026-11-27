@@ -8,7 +8,7 @@
  * - Messages d'encouragement pour les longues analyses
  */
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { useTranslation } from "../hooks/useTranslation";
@@ -18,6 +18,7 @@ import {
   PLANS_INFO,
   CONVERSION_TRIGGERS,
   hasFeature,
+  getLimit,
 } from "../config/planPrivileges";
 import { Sidebar } from "../components/layout/Sidebar";
 import DoodleBackground from "../components/DoodleBackground";
@@ -227,8 +228,19 @@ const MODES = [
   },
 ] as const;
 
-// 🆕 Options de nombre de vidéos (jusqu'à 50)
+// Options de nombre de vidéos, filtrées par la limite du plan (maxPlaylistVideos)
 const MAX_VIDEOS_OPTIONS = [5, 10, 15, 20, 30, 40, 50];
+
+// Polling : 1,5 s entre deux appels, abandon côté page après 2 h (l'analyse
+// continue côté serveur et apparaîtra dans l'historique).
+const POLL_INTERVAL_MS = 1500;
+const POLL_MAX_ATTEMPTS = (2 * 60 * 60 * 1000) / POLL_INTERVAL_MS;
+
+function getVideoCountOptions(maxAllowed: number): number[] {
+  const options = MAX_VIDEOS_OPTIONS.filter((n) => n <= maxAllowed);
+  if (maxAllowed > 0 && !options.includes(maxAllowed)) options.push(maxAllowed);
+  return options;
+}
 
 // ═══════════════════════════════════════════════════════════════════
 // COMPONENT
@@ -281,6 +293,19 @@ export const PlaylistPage: React.FC = () => {
   // User info
   const userCredits = user?.credits || 0;
   const normalizedPlan = normalizePlanId(user?.plan);
+  // L'admin est traité comme Expert, quel que soit le plan stocké (cf. backend).
+  const isAdmin = Boolean(user?.is_admin);
+  const effectivePlan = isAdmin ? "expert" : normalizedPlan;
+  const maxVideosAllowed = getLimit(effectivePlan, "maxPlaylistVideos");
+  const videoCountOptions = getVideoCountOptions(maxVideosAllowed);
+  // Arrête le polling si l'utilisateur quitte la page.
+  const unmountedRef = useRef(false);
+  useEffect(() => {
+    unmountedRef.current = false;
+    return () => {
+      unmountedRef.current = true;
+    };
+  }, []);
   // Plan-gate: vérifie accès playlists via planPrivileges (source unique de vérité)
   const minPlanForPlaylists = getMinPlanForFeature("playlistsEnabled");
   const minPlanName = PLANS_INFO[minPlanForPlaylists].name;
@@ -384,7 +409,7 @@ export const PlaylistPage: React.FC = () => {
   }, []);
 
   // Plan gate AFTER all hooks (rules-of-hooks compliance)
-  if (!hasFeature(normalizedPlan, "playlistsEnabled")) {
+  if (!hasFeature(effectivePlan, "playlistsEnabled")) {
     return (
       <div className="flex min-h-screen bg-bg-primary">
         <DoodleBackground variant="video" />
@@ -502,7 +527,7 @@ export const PlaylistPage: React.FC = () => {
 
     try {
       const task = await playlistApi.analyze(url, {
-        maxVideos, // 🆕 Peut maintenant aller jusqu'à 50
+        maxVideos: Math.min(maxVideos, maxVideosAllowed),
         mode,
         lang: language,
       });
@@ -510,7 +535,7 @@ export const PlaylistPage: React.FC = () => {
       await pollPlaylistTask(task.task_id);
     } catch (err) {
       const message =
-        err instanceof ApiError
+        err instanceof Error && err.message
           ? err.message
           : language === "fr"
             ? "Erreur lors de l'analyse"
@@ -561,7 +586,7 @@ export const PlaylistPage: React.FC = () => {
       );
     } catch (err) {
       const message =
-        err instanceof ApiError
+        err instanceof Error && err.message
           ? err.message
           : language === "fr"
             ? "Erreur lors de l'analyse du corpus"
@@ -572,15 +597,24 @@ export const PlaylistPage: React.FC = () => {
     }
   };
 
-  // 🆕 Polling plus fréquent (1.5s) pour des mises à jour plus fluides
   const pollPlaylistTask = async (taskId: string) => {
-    const maxAttempts = 300; // 🆕 Augmenté pour supporter 50 vidéos (7.5 min max)
     let attempts = 0;
 
-    while (attempts < maxAttempts) {
+    while (attempts < POLL_MAX_ATTEMPTS && !unmountedRef.current) {
       const status = (await playlistApi.getStatus(
         taskId,
       )) as ExtendedPlaylistTaskStatus;
+      if (unmountedRef.current) return;
+
+      if (status.status === "failed") {
+        setProgress(null);
+        throw new Error(
+          status.error ||
+            status.message ||
+            (language === "fr" ? "L'analyse a échoué" : "Analysis failed"),
+        );
+      }
+
       setProgress(status);
 
       if (status.status === "completed") {
@@ -589,15 +623,16 @@ export const PlaylistPage: React.FC = () => {
         return;
       }
 
-      if (status.status === "failed") {
-        throw new Error(status.error || "Analysis failed");
-      }
-
-      await new Promise((r) => setTimeout(r, 1500)); // 🆕 1.5s au lieu de 2s
+      await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
       attempts++;
     }
 
-    throw new Error("Timeout");
+    if (unmountedRef.current) return;
+    throw new Error(
+      language === "fr"
+        ? "L'analyse prend plus de temps que prévu : elle continue en arrière-plan et apparaîtra dans vos playlists."
+        : "The analysis is taking longer than expected: it keeps running and will appear in your playlists.",
+    );
   };
 
   // ═══════════════════════════════════════════════════════════════════
@@ -685,8 +720,7 @@ export const PlaylistPage: React.FC = () => {
                     onChange={(e) => setMaxVideos(Number(e.target.value))}
                     className="bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-sm"
                   >
-                    {/* 🆕 Options jusqu'à 50 vidéos */}
-                    {MAX_VIDEOS_OPTIONS.map((n) => (
+                    {videoCountOptions.map((n) => (
                       <option key={n} value={n}>
                         {n}
                       </option>
@@ -1006,7 +1040,7 @@ export const PlaylistPage: React.FC = () => {
                   <div className="divide-y divide-border-subtle">
                     {history.map((item) => (
                       <div
-                        key={item.playlist_id}
+                        key={item.id}
                         className="p-4 hover:bg-bg-secondary/50 transition-colors cursor-pointer group"
                         onClick={() =>
                           navigate(`/playlist/${item.playlist_id}`)

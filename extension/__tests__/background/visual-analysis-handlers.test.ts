@@ -13,7 +13,7 @@
 //  - OPEN_SIDEPANEL_VISUAL : stocke le contexte dans
 //    `chrome.storage.session.visualPanelContext` et ouvre le side panel
 //    sur le tab d'origine.
-//  - OPEN_BILLING_UPSELL : ouvre `${WEBAPP_URL}/pricing?...` dans un
+//  - OPEN_BILLING_UPSELL : ouvre `${WEBAPP_URL}/upgrade?...` dans un
 //    nouvel onglet avec UTM tracking (utm_source=extension,
 //    utm_medium=visual_badge, utm_campaign=visual_analysis_upsell, …).
 //
@@ -112,7 +112,8 @@ describe("OPEN_BILLING_UPSELL handler", () => {
     const calledUrl = (chrome.tabs.create as jest.Mock).mock.calls[0][0]
       .url as string;
     expect(calledUrl).toMatch(
-      /^https:\/\/www\.deepsightsynthesis\.com\/pricing\?/,
+      // /upgrade directement : l'alias /pricing perdait la query string (UTM).
+      /^https:\/\/www\.deepsightsynthesis\.com\/upgrade\?/,
     );
     const url = new URL(calledUrl);
     expect(url.searchParams.get("utm_source")).toBe("extension");
@@ -143,3 +144,4 @@ describe("OPEN_BILLING_UPSELL handler", () => {
     expect(url.searchParams.has("from_plan")).toBe(false);
   });
 });
+

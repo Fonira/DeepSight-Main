@@ -81,6 +81,8 @@ vi.mock("../../services/api", () => ({
   authApi: mockAuthApi,
   getAccessToken: vi.fn(() => localStorage.getItem("access_token")),
   getRefreshToken: vi.fn(() => localStorage.getItem("refresh_token")),
+  // Auth V2 : hard cap « Rester connecté » — session jamais expirée ici
+  isSessionExpired: vi.fn(() => false),
   setTokens: vi.fn((access: string, refresh: string) => {
     localStorage.setItem("access_token", access);
     localStorage.setItem("refresh_token", refresh);
