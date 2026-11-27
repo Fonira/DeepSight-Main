@@ -19,7 +19,7 @@ import re
 import hashlib
 from uuid import uuid4
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any, List, Tuple
+from typing import Annotated, Optional, Dict, Any, List, Tuple
 from collections import Counter, OrderedDict
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Query
 from pydantic import BaseModel, Field
@@ -32,6 +32,7 @@ from core.config import get_mistral_key
 from billing.plan_config import get_limits
 from videos.web_search_provider import web_search_and_synthesize
 from transcripts import extract_playlist_id, get_playlist_videos, get_playlist_info
+from .task_store import playlist_task_store
 
 import logging
 
@@ -69,6 +70,17 @@ class PlaylistTaskStatus(BaseModel):
     current_video: int = 0
     total_videos: int = 0
     result: Optional[Dict[str, Any]] = None
+    # Progression détaillée, déjà calculée par le pipeline v5 mais jusqu'ici
+    # filtrée par le response_model : la page web l'affiche.
+    completed_videos: int = 0
+    current_step: str | None = None
+    current_video_title: str | None = None
+    current_chunk: int = 0
+    total_chunks: int = 0
+    skipped_videos: list[dict[str, Any]] = Field(default_factory=list)
+    playlist_id: str | None = None
+    playlist_title: str | None = None
+    error: str | None = None
 
 
 class ChatCorpusRequest(BaseModel):
@@ -91,7 +103,31 @@ class ChatCorpusResponse(BaseModel):
 # 🗄️ CONFIGURATION
 # ═══════════════════════════════════════════════════════════════════════════════
 
-_playlist_task_store: Dict[str, Dict[str, Any]] = {}
+# Tâches d'analyse : Redis (partagé entre workers), repli en mémoire sans Redis.
+_playlist_task_store = playlist_task_store
+
+CurrentUser = Annotated[User, Depends(get_current_user)]
+
+
+def _task_status_response(task_id: str, task: dict[str, Any]) -> PlaylistTaskStatus:
+    return PlaylistTaskStatus(
+        task_id=task_id,
+        status=task["status"],
+        progress=task.get("progress", 0),
+        message=task.get("message", ""),
+        current_video=task.get("current_video", 0),
+        total_videos=task.get("total_videos", 0),
+        result=task.get("result"),
+        completed_videos=task.get("current_video", 0),
+        current_step=task.get("current_step"),
+        current_video_title=task.get("current_video_title"),
+        current_chunk=task.get("current_chunk") or 0,
+        total_chunks=task.get("total_chunks") or 0,
+        skipped_videos=task.get("skipped_videos") or [],
+        playlist_id=task.get("playlist_id"),
+        playlist_title=task.get("playlist_title"),
+        error=task.get("error"),
+    )
 
 
 PLAN_MODELS = {
@@ -774,12 +810,14 @@ async def analyze_playlist(
     model = request.model or PLAN_MODELS.get(plan, "mistral-small-2603")
 
     _playlist_task_store[task_id] = {
+        "user_id": current_user.id,
         "status": "pending",
         "progress": 0,
         "message": "Initialisation...",
         "current_video": 0,
         "total_videos": 0,
         "result": None,
+        "playlist_id": playlist_id,
     }
 
     background_tasks.add_task(
@@ -799,21 +837,17 @@ async def analyze_playlist(
 
 
 @router.get("/task/{task_id}", response_model=PlaylistTaskStatus)
-async def get_task_status(task_id: str):
-    """Récupère le statut d'une tâche d'analyse."""
-    task = _playlist_task_store.get(task_id)
-    if not task:
+async def get_task_status(task_id: str, current_user: CurrentUser):
+    """Récupère le statut d'une tâche d'analyse (réservé à son propriétaire).
+
+    Lu dans Redis : le poll répond quel que soit le worker qui le reçoit. Une
+    tâche d'un autre utilisateur renvoie 404, comme une tâche inexistante.
+    """
+    task = await _playlist_task_store.aget(task_id)
+    if not task or task.get("user_id") != current_user.id:
         raise HTTPException(status_code=404, detail="Tâche non trouvée")
 
-    return PlaylistTaskStatus(
-        task_id=task_id,
-        status=task["status"],
-        progress=task.get("progress", 0),
-        message=task.get("message", ""),
-        current_video=task.get("current_video", 0),
-        total_videos=task.get("total_videos", 0),
-        result=task.get("result"),
-    )
+    return _task_status_response(task_id, task)
 
 
 @router.post("/corpus/analyze", response_model=PlaylistTaskStatus)
@@ -848,12 +882,14 @@ async def analyze_corpus(
     model = request.model or PLAN_MODELS.get(plan, "mistral-small-2603")
 
     _playlist_task_store[task_id] = {
+        "user_id": current_user.id,
         "status": "pending",
         "progress": 0,
         "message": "Initialisation du corpus...",
         "current_video": 0,
         "total_videos": len(request.urls),
         "result": None,
+        "playlist_title": request.name,
     }
 
     background_tasks.add_task(
@@ -2376,6 +2412,7 @@ async def _analyze_playlist_background(
 
         playlist_title = playlist_info.get("title", "Playlist")
         logger.info(f"playlist_info: title={playlist_title}")
+        _playlist_task_store[task_id]["playlist_title"] = playlist_title
 
         videos = await get_playlist_videos(playlist_id, max_videos)
         if not videos:
@@ -2443,8 +2480,7 @@ async def _analyze_playlist_background(
 
     except Exception as e:
         logger.error(f"playlist_failed_v5: task={task_id} error={e}")
-        _playlist_task_store[task_id]["status"] = "failed"
-        _playlist_task_store[task_id]["message"] = str(e)[:500]
+        _playlist_task_store[task_id].update({"status": "failed", "message": str(e)[:500], "error": str(e)[:500]})
 
 
 async def _analyze_corpus_background(
@@ -2519,8 +2555,7 @@ async def _analyze_corpus_background(
 
     except Exception as e:
         logger.error(f"corpus_failed_v5: task={task_id} error={e}")
-        _playlist_task_store[task_id]["status"] = "failed"
-        _playlist_task_store[task_id]["message"] = str(e)[:500]
+        _playlist_task_store[task_id].update({"status": "failed", "message": str(e)[:500], "error": str(e)[:500]})
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
