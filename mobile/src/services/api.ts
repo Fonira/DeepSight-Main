@@ -54,37 +54,87 @@ export { ApiError };
 
 // Token refresh lock — shared promise prevents race conditions when multiple
 // requests get 401 simultaneously: all await the same refresh attempt.
-let refreshPromise: Promise<string | null> | null = null;
+// Résultat d'un refresh. Seul un refus explicite du serveur purge les jetons :
+// un 429 ou un 5xx (redéploiement, limite de requêtes) ne doit pas déconnecter.
+type RefreshResult =
+  | { kind: "refreshed"; accessToken: string }
+  | { kind: "rejected" }
+  | { kind: "unavailable"; error: ApiError };
+
+const REFRESH_REJECTED_STATUSES: ReadonlyArray<number> = [400, 401, 403, 422];
+
+let refreshPromise: Promise<RefreshResult> | null = null;
 
 // Refresh token function
-const refreshAccessToken = async (): Promise<string | null> => {
+const refreshAccessToken = async (): Promise<RefreshResult> => {
   const refreshToken = await tokenStorage.getRefreshToken();
-  if (!refreshToken) return null;
+  if (!refreshToken) return { kind: "rejected" };
 
+  let response: Response;
   try {
-    const response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+    response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refresh_token: refreshToken }),
     });
-
-    if (!response.ok) {
-      // Server explicitly rejected the refresh token - clear tokens
-      await tokenStorage.clearTokens();
-      return null;
-    }
-
-    const data = await response.json();
-    await tokenStorage.setTokens(data.access_token, data.refresh_token);
-    return data.access_token;
   } catch (error) {
     // Network error during refresh - do NOT clear tokens
     // The tokens may still be valid, just a temporary connectivity issue
     if (__DEV__) {
       console.warn("[Auth] Network error during token refresh:", error);
     }
-    return null;
+    return {
+      kind: "unavailable",
+      error: new ApiError(
+        error instanceof Error ? error.message : "Network request failed",
+        0,
+        "NETWORK_ERROR",
+      ),
+    };
   }
+
+  if (!response.ok) {
+    if (REFRESH_REJECTED_STATUSES.includes(response.status)) {
+      // Server explicitly rejected the refresh token - clear tokens
+      await tokenStorage.clearTokens();
+      return { kind: "rejected" };
+    }
+    // 429 / 5xx : la session reste valide, on remonte l'erreur passagère
+    return { kind: "unavailable", error: await apiErrorFromResponse(response) };
+  }
+
+  try {
+    const data = await response.json();
+    await tokenStorage.setTokens(data.access_token, data.refresh_token);
+    return { kind: "refreshed", accessToken: data.access_token };
+  } catch (error) {
+    if (__DEV__) {
+      console.warn("[Auth] Invalid token refresh response:", error);
+    }
+    return {
+      kind: "unavailable",
+      error: new ApiError("Invalid refresh response", 0, "NETWORK_ERROR"),
+    };
+  }
+};
+
+/**
+ * Jeton rafraîchi (un seul refresh partagé par toutes les requêtes en 401).
+ * Lève SESSION_EXPIRED (401) si le serveur refuse le refresh token, sinon
+ * l'erreur passagère (429, 5xx, réseau) — qui ne doit pas déconnecter.
+ */
+const getRefreshedAccessToken = async (): Promise<string> => {
+  if (!refreshPromise) {
+    refreshPromise = refreshAccessToken().finally(() => {
+      refreshPromise = null;
+    });
+  }
+  const result = await refreshPromise;
+  if (result.kind === "refreshed") return result.accessToken;
+  if (result.kind === "rejected") {
+    throw new ApiError("Session expired", 401, "SESSION_EXPIRED");
+  }
+  throw result.error;
 };
 
 // Base request function with offline detection and token refresh (no retry — see requestWithRetry)
@@ -143,31 +193,22 @@ const _requestRaw = async <T>(
     clearTimeout(timeoutId);
 
     // Handle 401 - token expired
-    // All concurrent requests share the same refreshPromise to avoid parallel refresh calls.
+    // All concurrent requests share the same refresh to avoid parallel refresh calls.
     if (response.status === 401 && requiresAuth) {
-      if (!refreshPromise) {
-        refreshPromise = refreshAccessToken().finally(() => {
-          refreshPromise = null;
-        });
+      const newToken = await getRefreshedAccessToken();
+
+      // Retry the original request with new token
+      requestHeaders["Authorization"] = `Bearer ${newToken}`;
+      const retryResponse = await fetch(`${API_BASE_URL}${endpoint}`, {
+        ...requestOptions,
+        headers: requestHeaders,
+      });
+
+      if (!retryResponse.ok) {
+        throw await apiErrorFromResponse(retryResponse);
       }
-      const newToken = await refreshPromise;
 
-      if (newToken) {
-        // Retry the original request with new token
-        requestHeaders["Authorization"] = `Bearer ${newToken}`;
-        const retryResponse = await fetch(`${API_BASE_URL}${endpoint}`, {
-          ...requestOptions,
-          headers: requestHeaders,
-        });
-
-        if (!retryResponse.ok) {
-          throw await apiErrorFromResponse(retryResponse);
-        }
-
-        return await retryResponse.json();
-      } else {
-        throw new ApiError("Session expired", 401, "SESSION_EXPIRED");
-      }
+      return await retryResponse.json();
     }
 
     // Handle other errors — `detail` peut être une chaîne, un objet
@@ -519,14 +560,7 @@ export const userApi = {
 
         if (response.status === 401) {
           // Token expired during upload — refresh and retry once
-          if (!refreshPromise) {
-            refreshPromise = refreshAccessToken().finally(() => {
-              refreshPromise = null;
-            });
-          }
-          const newToken = await refreshPromise;
-          if (!newToken)
-            throw new ApiError("Session expired", 401, "SESSION_EXPIRED");
+          const newToken = await getRefreshedAccessToken();
 
           const retryResponse = await fetch(
             `${API_BASE_URL}/api/profile/avatar`,
