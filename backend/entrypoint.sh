@@ -32,10 +32,17 @@ if python alembic/baseline.py; then
     alembic stamp $BASELINE_REVS || echo "[entrypoint] WARNING: alembic stamp failed"
 fi
 
-if alembic upgrade heads; then
+ALEMBIC_LOG=/tmp/alembic-upgrade.log
+if alembic upgrade heads >"$ALEMBIC_LOG" 2>&1; then
+    cat "$ALEMBIC_LOG"
     echo "[entrypoint] alembic upgrade heads: OK"
 else
-    echo "[entrypoint] WARNING: alembic upgrade failed (exit $?)."
+    rc=$?
+    cat "$ALEMBIC_LOG"
+    echo "[entrypoint] WARNING: alembic upgrade failed (exit $rc)."
+    # Dernières lignes (le message d'erreur) préfixées : visibles dans les
+    # logs filtrés du déploiement GitHub Actions.
+    tail -n 3 "$ALEMBIC_LOG" | sed 's/^/[entrypoint] alembic: /'
     echo "[entrypoint] Likely cause: Base.metadata.create_all() pre-created tables on a previous boot,"
     echo "[entrypoint] OR alembic_version.version_num column trop courte (32 chars default — voir incident 023)."
     echo "[entrypoint] Container will start anyway. Run 'docker exec repo-backend-1 alembic stamp heads' to resync."

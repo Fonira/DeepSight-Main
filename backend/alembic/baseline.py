@@ -28,18 +28,30 @@ from sqlalchemy import create_engine, text
 BASELINE_REVISIONS = ("033_decodo_scraping_usage", "033_user_sessions")
 
 
-def _sync_url() -> str:
-    url = os.environ.get("DATABASE_URL", "")
+SYNC_DRIVER_PREFIX = "postgresql+psycopg2://"
+
+
+def _sync_url(url: str | None = None) -> str:
+    """URL synchrone pour psycopg2, comme alembic/env.py.
+
+    Le driver est explicite : depuis SQLAlchemy 2.1, « postgresql:// » charge
+    psycopg (v3), qui n'est pas installé (seul psycopg2-binary l'est).
+    """
+    if url is None:
+        url = os.environ.get("DATABASE_URL", "")
     if "?" in url:
         base, params = url.split("?", 1)
         params = "&".join(p for p in params.split("&") if not p.startswith(("sslmode=", "ssl=")))
         url = base + ("?" + params if params else "")
-    return url.replace("postgresql+asyncpg://", "postgresql://").replace("postgres://", "postgresql://")
+    for prefix in ("postgresql+asyncpg://", "postgres://", "postgresql://"):
+        if url.startswith(prefix):
+            return SYNC_DRIVER_PREFIX + url[len(prefix) :]
+    return url
 
 
 def needs_baseline() -> bool:
     url = _sync_url()
-    if not url.startswith("postgresql://"):
+    if not url.startswith(SYNC_DRIVER_PREFIX):
         return False
     engine = create_engine(url)
     try:
@@ -63,5 +75,7 @@ if __name__ == "__main__":
     try:
         sys.exit(0 if needs_baseline() else 1)
     except Exception as exc:  # pragma: no cover — diagnostic au démarrage
-        print(f"[baseline] check failed: {exc}", file=sys.stderr)
+        # « alembic » dans la ligne : le script de déploiement filtre les logs
+        # du conteneur sur ce mot (deploy/vps/scripts/ci-deploy.sh).
+        print(f"[baseline] alembic baseline check failed: {exc}", file=sys.stderr)
         sys.exit(2)

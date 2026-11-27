@@ -38,7 +38,7 @@ def get_database_url() -> str:
     2. alembic.ini sqlalchemy.url (local dev fallback)
 
     Converts async drivers to sync for Alembic compatibility:
-    - postgresql+asyncpg:// → postgresql://
+    - postgresql+asyncpg:// → postgresql+psycopg2://
     """
     url = os.environ.get("DATABASE_URL", "")
 
@@ -54,9 +54,13 @@ def get_database_url() -> str:
         )
         url = base + ("?" + params if params else "")
 
-    # Convert to sync driver for Alembic
-    url = url.replace("postgresql+asyncpg://", "postgresql://")
-    url = url.replace("postgres://", "postgresql://")
+    # Convert to sync driver for Alembic. Le driver est explicite : depuis
+    # SQLAlchemy 2.1, « postgresql:// » charge psycopg (v3), absent de l'image
+    # (seul psycopg2-binary est dans requirements.txt) et create_engine échoue.
+    url = url.replace("postgresql+asyncpg://", "postgresql+psycopg2://")
+    url = url.replace("postgres://", "postgresql+psycopg2://")
+    if url.startswith("postgresql://"):
+        url = url.replace("postgresql://", "postgresql+psycopg2://", 1)
     # SQLite async (aiosqlite) → sync driver for Alembic
     url = url.replace("sqlite+aiosqlite://", "sqlite://")
 
