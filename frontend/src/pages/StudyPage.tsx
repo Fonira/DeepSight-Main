@@ -34,6 +34,7 @@ import {
   DeepSightSpinner,
   DeepSightSpinnerMicro,
 } from "../components/ui/DeepSightSpinner";
+import { isEditableTarget } from "../utils/keyboard";
 import {
   FlashcardDeck,
   QuizQuestion,
@@ -353,6 +354,7 @@ export const StudyPage: React.FC = () => {
     if (!isSessionMode || sessionEndResult) return;
 
     const handler = (e: KeyboardEvent) => {
+      if (isEditableTarget(e.target)) return;
       if (e.code === "Space") {
         e.preventDefault();
         setIsFlipped((prev) => !prev);

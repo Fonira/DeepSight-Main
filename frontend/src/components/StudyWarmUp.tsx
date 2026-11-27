@@ -9,6 +9,7 @@ import { Lightbulb, ArrowRight } from "lucide-react";
 import { useLoadingWord } from "../contexts/LoadingWordContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import type { LoadingWord } from "../contexts/LoadingWordContext";
+import { isEditableTarget } from "../utils/keyboard";
 
 const CAT_ICONS: Record<string, string> = {
   cognitive_bias: "🧠",
@@ -60,6 +61,7 @@ export const StudyWarmUp: React.FC<StudyWarmUpProps> = ({
   // Skip on any keypress
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
+      if (isEditableTarget(e.target)) return;
       if (e.key === "Enter" || e.key === " " || e.key === "Escape") {
         onStart();
       }
