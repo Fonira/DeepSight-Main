@@ -16,8 +16,15 @@
  * Spec : `docs/superpowers/specs/2026-05-04-mobile-hub-tab-unified-design.md` §4.2
  */
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import {
+  Alert,
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
@@ -26,7 +33,12 @@ import {
 import * as Haptics from "expo-haptics";
 import type BottomSheet from "@gorhom/bottom-sheet";
 import { useConversation } from "../../hooks/useConversation";
+import LanguageContext from "../../contexts/LanguageContext";
 import { historyApi } from "../../services/api";
+import {
+  voiceErrorMessage,
+  voiceErrorTitle,
+} from "../voice/voiceErrorMessages";
 import { VoiceSettings } from "../voice/VoiceSettings";
 import VoiceAddonModal from "../voice/VoiceAddonModal";
 import { HubAnalysisSheet } from "../hub/HubAnalysisSheet";
@@ -96,12 +108,19 @@ export const ConversationContent: React.FC<ConversationContentProps> = ({
     }
   }, [prefillQuery, onPrefillConsumed]);
 
+  // Contexte lu sans exiger le provider (repli en français, ex. dans les tests)
+  const language = useContext(LanguageContext);
+  const tr = language?.tr ?? ((frText: string) => frText);
+
   const conv = useConversation({
     summaryId,
     videoUrl,
     initialMode,
-    onError: (msg) => {
+    // Les erreurs de l'appel vocal n'étaient affichées nulle part (console seulement) :
+    // micro refusé, quota, et surtout service vocal indisponible (503) restaient muets.
+    onError: (msg, code) => {
       if (__DEV__) console.warn("[ConversationContent] error:", msg);
+      Alert.alert(voiceErrorTitle(code, tr), voiceErrorMessage(code, msg, tr));
     },
   });
 

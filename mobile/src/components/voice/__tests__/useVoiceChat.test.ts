@@ -88,7 +88,7 @@ jest.spyOn(AppState, "addEventListener").mockImplementation(((
   >;
 }) as any);
 
-import { useVoiceChat } from "../useVoiceChat";
+import { useVoiceChat, resetVoiceAvailabilityMemo } from "../useVoiceChat";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -109,6 +109,7 @@ describe("useVoiceChat", () => {
     jest.clearAllMocks();
     jest.useFakeTimers();
     capturedCallbacks = {};
+    resetVoiceAvailabilityMemo();
 
     // Default: permissions granted
     mockRequestPermissions.mockResolvedValue({ granted: true });
@@ -347,7 +348,87 @@ describe("useVoiceChat", () => {
       await result.current.start();
     });
 
-    expect(onError).toHaveBeenCalledWith(expect.stringContaining("micro"));
+    expect(onError).toHaveBeenCalledWith(
+      expect.stringContaining("micro"),
+      "MICROPHONE_DENIED",
+    );
+  });
+
+  // ── Service vocal indisponible (ElevenLabs non configuré → 503) ──
+
+  it("crée la session AVANT de demander le micro", async () => {
+    const { result } = renderHook(() => useVoiceChat({ summaryId: "42" }));
+
+    await act(async () => {
+      await result.current.start();
+    });
+
+    expect(mockCreateSession).toHaveBeenCalledTimes(1);
+    expect(mockRequestPermissions).toHaveBeenCalledTimes(1);
+    expect(mockCreateSession.mock.invocationCallOrder[0]).toBeLessThan(
+      mockRequestPermissions.mock.invocationCallOrder[0],
+    );
+  });
+
+  it("503 voice_service_unavailable : état unavailable, ni micro ni mode audio", async () => {
+    mockCreateSession.mockRejectedValue({
+      status: 503,
+      code: "voice_service_unavailable",
+      message: "Le service vocal est indisponible.",
+    });
+    const onError = jest.fn();
+
+    const { result } = renderHook(() =>
+      useVoiceChat({ summaryId: "42", onError }),
+    );
+
+    await act(async () => {
+      await result.current.start();
+    });
+
+    expect(result.current.status).toBe("unavailable");
+    expect(result.current.error).toContain("indisponible");
+    expect(mockRequestPermissions).not.toHaveBeenCalled();
+    expect(mockSetAudioMode).not.toHaveBeenCalled();
+    expect(mockStartSession).not.toHaveBeenCalled();
+    expect(onError).toHaveBeenCalledWith(
+      expect.stringContaining("indisponible"),
+      "SERVICE_UNAVAILABLE",
+    );
+  });
+
+  it("mémorise l'indisponibilité : un second appel ne relance pas l'API", async () => {
+    mockCreateSession.mockRejectedValue({ status: 503, code: "voice_service_unavailable" });
+
+    const { result } = renderHook(() => useVoiceChat({ summaryId: "42" }));
+
+    await act(async () => {
+      await result.current.start();
+    });
+    await act(async () => {
+      await result.current.start();
+    });
+
+    expect(mockCreateSession).toHaveBeenCalledTimes(1);
+    expect(mockRequestPermissions).not.toHaveBeenCalled();
+    expect(result.current.status).toBe("unavailable");
+  });
+
+  it("erreur réseau remontée par api.ts (ApiError status 0) → message réseau", async () => {
+    mockCreateSession.mockRejectedValue({
+      status: 0,
+      code: "NETWORK_ERROR",
+      message: "Network request failed",
+    });
+
+    const { result } = renderHook(() => useVoiceChat({ summaryId: "42" }));
+
+    await act(async () => {
+      await result.current.start();
+    });
+
+    expect(result.current.status).toBe("error");
+    expect(result.current.error).toContain("connexion internet");
   });
 
   // ── SDK callbacks ──

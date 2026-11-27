@@ -11,7 +11,10 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Alert } from "react-native";
 import { useChat } from "./useChat";
-import { useVoiceChat } from "../components/voice/useVoiceChat";
+import {
+  useVoiceChat,
+  type VoiceErrorCode,
+} from "../components/voice/useVoiceChat";
 import { useStreamingVideoContext } from "../components/voice/useStreamingVideoContext";
 import { useResolvedSummaryId } from "./useResolvedSummaryId";
 import type { ChatMessage } from "../types";
@@ -44,7 +47,7 @@ interface ConversationInput {
   /** Mode initial : 'chat' (mic gris) ou 'call' (auto-start mic). */
   initialMode: "chat" | "call";
   /** Callback erreur (ex: pour afficher un toast). */
-  onError?: (msg: string) => void;
+  onError?: (msg: string, code?: VoiceErrorCode) => void;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -152,7 +155,7 @@ export function useConversation(input: ConversationInput) {
     } else if (status === "quota_exceeded") {
       setVoiceMode("quota_exceeded");
       previousVoiceModeRef.current = "quota_exceeded";
-    } else if (status === "error") {
+    } else if (status === "error" || status === "unavailable") {
       setVoiceMode("off");
       previousVoiceModeRef.current = "off";
     } else if (status === "idle") {
