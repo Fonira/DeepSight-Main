@@ -44,7 +44,9 @@ CLEANUP_INTERVAL = 300  # 5 minutes
 
 # Limites par défaut (requests/window_seconds)
 DEFAULT_LIMITS = {
-    "global": (100, 60),  # 100 req/min par IP (global)
+    # Une page du site déclenche ~30 appels API au chargement, plus le polling
+    # des analyses : 300/min laisse de la marge à un usage normal.
+    "global": (300, 60),  # 300 req/min par IP (global)
     "auth_login": (5, 60),  # 5 tentatives de login/min par IP
     "auth_register": (3, 60),  # 3 inscriptions/min par IP (anti-spam)
     "analysis": (10, 60),  # 10 analyses/min par user
@@ -394,10 +396,24 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             "/static",
         ]
 
+    def _is_excluded(self, path: str) -> bool:
+        """Préfixe pour les chemins exclus, sauf "/" qui ne vaut que pour la racine.
+
+        Sans ce cas particulier, "/" (préfixe de toutes les URLs) exemptait
+        toutes les routes, y compris login/register, du rate limiting.
+        """
+        for excluded in self.exclude_paths:
+            if excluded == "/":
+                if path == "/":
+                    return True
+            elif path == excluded or path.startswith(excluded.rstrip("/") + "/"):
+                return True
+        return False
+
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         # Skip excluded paths
         path = request.url.path
-        if any(path.startswith(excluded) for excluded in self.exclude_paths):
+        if self._is_excluded(path):
             return await call_next(request)
 
         # Skip whitelisted IPs
