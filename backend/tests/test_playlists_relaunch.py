@@ -258,7 +258,7 @@ async def test_poll_unknown_task_returns_404(api, worker_a):
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("plan", ["free", "pro"])
+@pytest.mark.parametrize("plan", ["free"])
 async def test_analyze_blocked_without_playlist_feature(api, current, worker_a, plan):
     current["user"] = _user(3, plan=plan)
     with patch.object(router_mod, "_analyze_playlist_background", AsyncMock()) as background:
@@ -315,7 +315,7 @@ async def test_corpus_analysis_gated_and_tracked(api, current, worker_a):
     urls = [f"https://www.youtube.com/watch?v={c * 11}" for c in "abc"]
     with patch.object(router_mod, "_analyze_corpus_background", AsyncMock()) as background:
         resp = await api.post("/api/playlists/analyze-corpus", json={"urls": urls, "name": "Mon corpus"})
-        current["user"] = _user(5, plan="pro")
+        current["user"] = _user(5, plan="free")
         blocked = await api.post("/api/playlists/corpus/analyze", json={"urls": urls})
 
     assert resp.status_code == 200, resp.text
@@ -408,3 +408,68 @@ async def test_corpus_chat_answers_and_never_shares_cache(api, current, db_sessi
     async with db_sessionmaker() as session:
         rows = (await session.execute(select(PlaylistChatMessage).where(PlaylistChatMessage.user_id == 1))).scalars()
         assert [m.role for m in rows] == ["user", "assistant"]
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Grille tarifaire v2 : Pro = 3 analyses de playlist / mois, Expert = 10
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+async def _seed_playlist_runs(sessionmaker, user_id: int, count: int, status: str = "completed") -> None:
+    from db.database import PlaylistAnalysis, User
+
+    async with sessionmaker() as session:
+        if await session.get(User, user_id) is None:
+            session.add(User(id=user_id, username=f"u{user_id}", email=f"u{user_id}@example.com", password_hash="x"))
+        for i in range(count):
+            session.add(PlaylistAnalysis(user_id=user_id, playlist_id=f"PL{i}", status=status))
+        await session.commit()
+
+
+@pytest.mark.unit
+async def test_pro_can_analyze_playlists_with_pro_limits(api, current, worker_a):
+    current["user"] = _user(20, plan="pro")
+    with patch.object(router_mod, "_analyze_playlist_background", AsyncMock()) as background:
+        resp = await api.post(
+            "/api/playlists/analyze",
+            json={"url": f"https://youtube.com/playlist?list={PLAYLIST_ID}", "max_videos": 50},
+        )
+    assert resp.status_code == 200, resp.text
+    assert background.await_args.kwargs["max_videos"] == 10
+
+
+@pytest.mark.unit
+async def test_pro_monthly_playlist_quota_is_enforced(api, current, worker_a, db_sessionmaker):
+    current["user"] = _user(21, plan="pro")
+    await _seed_playlist_runs(db_sessionmaker, user_id=21, count=3)
+    with patch.object(router_mod, "_analyze_playlist_background", AsyncMock()) as background:
+        resp = await api.post(
+            "/api/playlists/analyze", json={"url": f"https://youtube.com/playlist?list={PLAYLIST_ID}"}
+        )
+    assert resp.status_code == 403
+    detail = resp.json()["detail"]
+    assert detail["code"] == "playlist_quota_reached"
+    assert detail["limit"] == 3 and detail["used"] == 3
+    background.assert_not_awaited()
+
+
+@pytest.mark.unit
+async def test_failed_playlist_runs_do_not_count(api, current, worker_a, db_sessionmaker):
+    current["user"] = _user(22, plan="pro")
+    await _seed_playlist_runs(db_sessionmaker, user_id=22, count=3, status="failed")
+    with patch.object(router_mod, "_analyze_playlist_background", AsyncMock()):
+        resp = await api.post(
+            "/api/playlists/analyze", json={"url": f"https://youtube.com/playlist?list={PLAYLIST_ID}"}
+        )
+    assert resp.status_code == 200, resp.text
+
+
+@pytest.mark.unit
+async def test_admin_has_no_monthly_playlist_quota(api, current, worker_a, db_sessionmaker):
+    current["user"] = _user(23, plan="free", is_admin=True)
+    await _seed_playlist_runs(db_sessionmaker, user_id=23, count=15)
+    with patch.object(router_mod, "_analyze_playlist_background", AsyncMock()):
+        resp = await api.post(
+            "/api/playlists/analyze", json={"url": f"https://youtube.com/playlist?list={PLAYLIST_ID}"}
+        )
+    assert resp.status_code == 200, resp.text

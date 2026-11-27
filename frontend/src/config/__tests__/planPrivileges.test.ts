@@ -86,8 +86,13 @@ describe("Pro v2 (Tier intermédiaire)", () => {
     expect(PLAN_FEATURES.pro.exportPdf).toBe(true);
   });
 
-  it("does NOT have playlists / deepResearch (Expert features)", () => {
-    expect(PLAN_FEATURES.pro.playlists).toBe(false);
+  it("has 3 playlists per month (pricing grid v2)", () => {
+    expect(PLAN_FEATURES.pro.playlists).toBe(true);
+    expect(PLAN_LIMITS.pro.playlistsEnabled).toBe(true);
+    expect(PLAN_LIMITS.pro.maxPlaylists).toBe(3);
+  });
+
+  it("does NOT have deepResearch (Expert feature)", () => {
     expect(PLAN_FEATURES.pro.deepResearch).toBe(false);
     expect(PLAN_LIMITS.pro.deepResearchEnabled).toBe(false);
   });
@@ -282,8 +287,8 @@ describe("getMinPlanForFeature v2", () => {
     expect(getMinPlanForFeature("webSearchEnabled")).toBe("pro");
   });
 
-  it("playlists require expert v2", () => {
-    expect(getMinPlanForFeature("playlistsEnabled")).toBe("expert");
+  it("playlists unlocked at pro v2", () => {
+    expect(getMinPlanForFeature("playlistsEnabled")).toBe("pro");
   });
 
   it("monthlyAnalyses available from free", () => {

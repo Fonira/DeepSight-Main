@@ -18,7 +18,7 @@ import httpx
 import re
 import hashlib
 from uuid import uuid4
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Annotated, Optional, Dict, Any, List, Tuple
 from collections import Counter, OrderedDict
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Query
@@ -129,6 +129,45 @@ def _check_playlist_access(user: User) -> tuple[str, int]:
             raise HTTPException(status_code=403, detail=error_info)
         plan = normalize_plan_id(user.plan or "free")
     return plan, int(get_limits(plan).get("max_playlist_videos", 0) or 0)
+
+
+async def _check_monthly_playlist_quota(session: AsyncSession, user: User, plan: str) -> None:
+    """Applique max_playlists : analyses de playlist/corpus lancées ce mois-ci.
+
+    Les analyses en échec ne comptent pas. L'admin n'a pas de limite, ni un
+    plan dont max_playlists vaut -1.
+    """
+    if is_admin_user(user):
+        return
+    max_per_month = int(get_limits(plan).get("max_playlists", 0) or 0)
+    if max_per_month == -1:
+        return
+
+    # created_at est stocké sans fuseau (func.now() en UTC côté Postgres)
+    month_start = datetime.now(UTC).replace(day=1, hour=0, minute=0, second=0, microsecond=0, tzinfo=None)
+    used = (
+        await session.execute(
+            select(func.count(PlaylistAnalysis.id)).where(
+                PlaylistAnalysis.user_id == user.id,
+                PlaylistAnalysis.created_at >= month_start,
+                PlaylistAnalysis.status != "failed",
+            )
+        )
+    ).scalar() or 0
+
+    if used >= max_per_month:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "playlist_quota_reached",
+                "message": (
+                    f"Vous avez atteint la limite de {max_per_month} analyses de playlist "
+                    f"ce mois-ci avec votre plan. Elle se renouvelle le 1er du mois."
+                ),
+                "limit": max_per_month,
+                "used": used,
+            },
+        )
 
 
 def _task_status_response(task_id: str, task: dict[str, Any]) -> PlaylistTaskStatus:
@@ -820,6 +859,7 @@ async def analyze_playlist(
         raise HTTPException(status_code=400, detail="URL de playlist invalide")
 
     plan, max_allowed = _check_playlist_access(current_user)
+    await _check_monthly_playlist_quota(session, current_user, plan)
     max_videos = min(request.max_videos, max_allowed)
 
     if not is_admin_user(current_user) and (current_user.credits or 0) < max_videos:
@@ -891,6 +931,7 @@ async def analyze_corpus(
     print(f"   Videos: {len(request.urls)}", flush=True)
 
     plan, max_allowed = _check_playlist_access(current_user)
+    await _check_monthly_playlist_quota(session, current_user, plan)
 
     if len(request.urls) > max_allowed:
         raise HTTPException(status_code=403, detail=f"Maximum {max_allowed} vidéos pour le plan {plan}")

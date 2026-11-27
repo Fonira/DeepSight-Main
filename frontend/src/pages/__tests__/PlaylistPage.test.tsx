@@ -92,13 +92,13 @@ describe("PlaylistPage", () => {
     api.getAll.mockResolvedValue([]);
   });
 
-  it("shows the upgrade gate to plans without playlists (Pro)", () => {
-    authState.user = makeUser("pro");
+  it("shows the upgrade gate to plans without playlists (Free)", () => {
+    authState.user = makeUser("free");
     renderPage();
     expect(
       screen.getByText(/Fonctionnalité réservée aux abonnés/i),
     ).toBeInTheDocument();
-    expect(screen.getByText(/à partir du plan Expert/i)).toBeInTheDocument();
+    expect(screen.getByText(/à partir du plan Pro/i)).toBeInTheDocument();
     expect(screen.queryByLabelText("playlist-url")).not.toBeInTheDocument();
   });
 
