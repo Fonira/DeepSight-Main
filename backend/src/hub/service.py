@@ -303,28 +303,31 @@ async def _create_miro_board_async(workspace_id: int) -> None:
                 create_hub_workspace_board,
             )
 
+            # Miro est optionnel : sans token (ou si l'API échoue), on continue
+            # vers le canvas natif Mistral au lieu de marquer le workspace
+            # "failed" avant même de l'avoir tenté.
+            miro_error: str | None = None
             try:
                 board = await create_hub_workspace_board(
                     name=workspace.name,
                     summaries=ordered,
                 )
             except MiroServiceError as exc:
-                workspace.status = "failed"
-                workspace.error_message = str(exc)[:500]
-                await session.commit()
-                logger.error(
-                    "[HUB] Miro board creation failed ws=%s err=%s",
+                board = None
+                miro_error = str(exc)[:500]
+                logger.warning(
+                    "[HUB] Miro board skipped ws=%s err=%s — canvas natif seul",
                     workspace_id,
                     exc,
                 )
-                return
 
             # 5. Persiste les infos Miro mais on garde status='creating'
             # tant que le canvas natif n'est pas tenté → le polling frontend
             # continue jusqu'à voir status='ready' avec canvas_data populé
             # (ou null sur fail Mistral).
-            workspace.miro_board_id = board.get("board_id")
-            workspace.miro_board_url = board.get("view_link")
+            if board:
+                workspace.miro_board_id = board.get("board_id")
+                workspace.miro_board_url = board.get("view_link")
             workspace.error_message = None
             await session.commit()
 
@@ -357,7 +360,19 @@ async def _create_miro_board_async(workspace_id: int) -> None:
                     workspace_id,
                 )
 
-            # 7. status='ready' (canvas_data populé ou null) → polling stop.
+            # 7. status='ready' dès qu'il y a quelque chose à afficher (canvas
+            # natif ou board Miro) ; 'failed' seulement si les deux manquent.
+            if workspace.canvas_data is None and not workspace.miro_board_url:
+                workspace.status = "failed"
+                workspace.error_message = (
+                    "La génération de l'espace de travail a échoué. Réessayez dans quelques minutes."
+                    if not miro_error
+                    else f"Canvas indisponible et Miro non disponible ({miro_error})"
+                )[:500]
+                await session.commit()
+                logger.error("[HUB] Workspace failed ws=%s (ni canvas ni Miro)", workspace_id)
+                return
+
             workspace.status = "ready"
             await session.commit()
             logger.info(
