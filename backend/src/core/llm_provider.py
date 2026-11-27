@@ -194,6 +194,41 @@ async def _call_api_stream(
 
 
 # =============================================================================
+# RESPONSE CONTENT
+# =============================================================================
+
+# Erreurs 4xx propres au modèle demandé (modèle retiré, invalide, paramètre non
+# supporté) : le modèle suivant de la chaîne a ses chances. Les autres 4xx
+# (401/402/403 : clé, facturation, droits) valent pour tout le compte : inutile
+# de réessayer ailleurs.
+MODEL_SPECIFIC_4XX = frozenset({400, 404, 422})
+
+
+def _content_to_text(content: Any) -> str:
+    """Texte d'un champ `content` Mistral/OpenAI, chaîne ou liste de blocs.
+
+    Les modèles de raisonnement (Magistral) renvoient une liste de blocs
+    `{"type": "thinking", ...}` puis `{"type": "text", "text": "..."}` : on ne
+    garde que les blocs texte, le raisonnement n'est pas destiné à l'utilisateur.
+    """
+    if content is None:
+        return ""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts: List[str] = []
+        for block in content:
+            if isinstance(block, str):
+                parts.append(block)
+            elif isinstance(block, dict) and block.get("type", "text") == "text":
+                text = block.get("text")
+                if isinstance(text, str):
+                    parts.append(text)
+        return "".join(parts)
+    return str(content)
+
+
+# =============================================================================
 # BUILD FALLBACK CHAIN
 # =============================================================================
 
@@ -315,7 +350,7 @@ async def llm_complete(
 
                 if response.status_code == 200:
                     data = response.json()
-                    content = data["choices"][0]["message"]["content"].strip()
+                    content = _content_to_text(data["choices"][0]["message"].get("content")).strip()
                     usage = data.get("usage", {})
 
                     cb.record_success()
@@ -359,8 +394,17 @@ async def llm_complete(
                     )
                     break  # Skip retries on 5xx, go to next model
 
+                elif response.status_code in MODEL_SPECIFIC_4XX:
+                    # Erreur propre à ce modèle (retiré, invalide…) : modèle suivant
+                    print(
+                        f"❌ [LLM] {provider}:{current_model} error {response.status_code}: "
+                        f"{response.text[:200]} — trying next model",
+                        flush=True,
+                    )
+                    break
+
                 else:
-                    # 4xx other than 429 — don't retry, don't fallback
+                    # 401/402/403… : problème de compte, aucun autre modèle n'aidera
                     print(
                         f"❌ [LLM] {provider}:{current_model} error {response.status_code}: {response.text[:200]}",
                         flush=True,
@@ -491,7 +535,7 @@ async def llm_complete_stream(
                                 return
                             try:
                                 chunk = json.loads(data)
-                                content = chunk["choices"][0]["delta"].get("content", "")
+                                content = _content_to_text(chunk["choices"][0]["delta"].get("content"))
                                 if content:
                                     yield content
                             except (json.JSONDecodeError, KeyError, IndexError):
