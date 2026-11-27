@@ -87,6 +87,35 @@ export function extractVideoId(url: string): string | null {
   return extractYouTubeVideoId(url) || extractTikTokVideoId(url);
 }
 
+const YOUTUBE_ID_RE = /^[A-Za-z0-9_-]{11}$/;
+
+/**
+ * URL transmise à l'API pour une analyse / un Quick Chat : seul
+ * l'identifiant de la vidéo doit sortir de l'onglet.
+ *  - YouTube → `https://www.youtube.com/watch?v=<id>` (sans t=, list=, si=,
+ *    pp=… ni autre paramètre de l'onglet) ;
+ *  - TikTok → URL publique sans query string ni fragment (le backend lit
+ *    l'ID dans le chemin et s'en sert pour les métadonnées oEmbed ; les
+ *    liens courts vm.tiktok.com sont résolus côté serveur).
+ * `null` si l'URL n'est pas une vidéo reconnue.
+ */
+export function toApiVideoUrl(url: string): string | null {
+  const youtubeId = extractYouTubeVideoId(url);
+  if (youtubeId) {
+    return YOUTUBE_ID_RE.test(youtubeId)
+      ? `https://www.youtube.com/watch?v=${youtubeId}`
+      : null;
+  }
+  if (!isTikTokUrl(url)) return null;
+  try {
+    const u = new URL(url);
+    if (!/(?:^|\.)tiktok\.com$/.test(u.hostname)) return null;
+    return `https://${u.hostname}${u.pathname}`;
+  } catch {
+    return null;
+  }
+}
+
 export function getThumbnailUrl(
   videoId: string,
   platform?: VideoPlatform,

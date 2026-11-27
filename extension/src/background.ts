@@ -12,7 +12,7 @@ import {
   getStoredUser,
   addRecentAnalysis,
 } from "./utils/storage";
-import { extractVideoId } from "./utils/video";
+import { extractVideoId, toApiVideoUrl } from "./utils/video";
 import {
   ApiError,
   ERROR_CODES,
@@ -544,6 +544,19 @@ async function fetchPlan(): Promise<PlanInfo> {
 
 // ── Video API ──
 
+/** URL canonique de la vidéo (ID seul) ou erreur `invalid_url`. */
+function requireApiVideoUrl(url: string): string {
+  const videoUrl = toApiVideoUrl(url);
+  if (!videoUrl) {
+    throw new ApiError({
+      status: 400,
+      code: "invalid_url",
+      message: "Invalid YouTube or TikTok URL",
+    });
+  }
+  return videoUrl;
+}
+
 async function analyzeVideo(
   url: string,
   options: AnalyzeOptions = {},
@@ -551,7 +564,7 @@ async function analyzeVideo(
   return apiRequest<AnalyzeResponse>("/videos/analyze", {
     method: "POST",
     body: JSON.stringify({
-      url,
+      url: requireApiVideoUrl(url),
       mode: options.mode || "standard",
       lang: options.lang || "fr",
       category: options.category || "auto",
@@ -631,7 +644,7 @@ async function quickChat(
 ): Promise<QuickChatResponse> {
   return apiRequest<QuickChatResponse>("/videos/quick-chat", {
     method: "POST",
-    body: JSON.stringify({ url, lang }),
+    body: JSON.stringify({ url: requireApiVideoUrl(url), lang }),
   });
 }
 

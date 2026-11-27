@@ -63,6 +63,8 @@ export function localizeError(
       return errors.emailNotVerified;
     case "user_not_registered":
       return errors.userNotRegistered;
+    case "invalid_url":
+      return errors.invalidUrl;
     default:
       break;
   }

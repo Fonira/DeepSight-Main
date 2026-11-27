@@ -370,6 +370,7 @@
     "voiceUnavailable": "Voice calls are not available right now.",
     "emailNotVerified": "Email address not verified. Confirm it on the DeepSight website, then sign in again.",
     "userNotRegistered": "No DeepSight account is linked to this Google account. Create an account on the website.",
+    "invalidUrl": "This page is not a recognised YouTube or TikTok video.",
     "generic": "Something went wrong. Please try again."
   }
 }

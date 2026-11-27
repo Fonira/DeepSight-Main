@@ -146,7 +146,7 @@ describe("START_ANALYSIS", () => {
     const response = (await handleMessage({
       action: "START_ANALYSIS",
       data: {
-        url: "https://youtube.com/watch?v=test",
+        url: "https://youtube.com/watch?v=dQw4w9WgXcQ",
         options: { mode: "standard", lang: "fr" },
       },
     })) as { success: boolean; result: { task_id: string } };
@@ -166,7 +166,7 @@ describe("START_ANALYSIS", () => {
 
     const response = (await handleMessage({
       action: "START_ANALYSIS",
-      data: { url: "https://youtube.com/watch?v=test", options: {} },
+      data: { url: "https://youtube.com/watch?v=dQw4w9WgXcQ", options: {} },
     })) as { success: boolean; error: string };
 
     expect(response.success).toBe(false);
@@ -453,5 +453,61 @@ describe("Structured API errors", () => {
       error: "NETWORK_ERROR",
       errorCode: "network_error",
     });
+  });
+});
+
+// ── Seul l'identifiant vidéo part vers l'API ──
+describe("Canonical video URL", () => {
+  function sentBody(): { url: string } {
+    const init = mockFetch.mock.calls[0][1] as RequestInit;
+    return JSON.parse(init.body as string) as { url: string };
+  }
+
+  it("START_ANALYSIS sends the bare YouTube watch URL", async () => {
+    seedLocalStorage({ accessToken: "valid-token" });
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ task_id: "t" }),
+    });
+
+    await handleMessage({
+      action: "START_ANALYSIS",
+      data: {
+        url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PL1&t=42s&si=abc",
+        options: {},
+      },
+    });
+
+    expect(sentBody().url).toBe("https://www.youtube.com/watch?v=dQw4w9WgXcQ");
+  });
+
+  it("QUICK_CHAT strips TikTok tracking parameters", async () => {
+    seedLocalStorage({ accessToken: "valid-token" });
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ summary_id: 1 }),
+    });
+
+    await handleMessage({
+      action: "QUICK_CHAT",
+      data: {
+        url: "https://www.tiktok.com/@a/video/7234567890123456789?is_from_webapp=1",
+      },
+    });
+
+    expect(sentBody().url).toBe(
+      "https://www.tiktok.com/@a/video/7234567890123456789",
+    );
+  });
+
+  it("refuses non-video URLs without calling the API", async () => {
+    seedLocalStorage({ accessToken: "valid-token" });
+    const res = (await handleMessage({
+      action: "START_ANALYSIS",
+      data: { url: "https://www.youtube.com/feed/trending", options: {} },
+    })) as { success: boolean; errorCode: string };
+
+    expect(res).toMatchObject({ success: false, errorCode: "invalid_url" });
+    expect(mockFetch).not.toHaveBeenCalled();
   });
 });
