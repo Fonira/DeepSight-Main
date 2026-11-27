@@ -918,7 +918,13 @@ const AppRoutes = () => {
 
                         <Route
                           path="/playlists"
-                          element={<Navigate to="/debate" replace />}
+                          element={
+                            <Suspense
+                              fallback={<PageSkeleton variant="dashboard" />}
+                            >
+                              <PlaylistPage />
+                            </Suspense>
+                          }
                         />
 
                         <Route

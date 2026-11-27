@@ -63,6 +63,7 @@ from core.config import (
     TRANSCRIPT_CONFIG,
 )
 from core.http_client import shared_http_client, get_proxied_client, record_proxied_response, smart_request
+from core.logging import logger
 
 # 💾 Cache pour les transcripts (TTL 24h)
 try:
@@ -2847,10 +2848,144 @@ async def _get_transcript_with_timestamps_inner(
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-async def get_playlist_videos(playlist_id: str, max_videos: int = 50) -> List[Dict[str, Any]]:
-    """Récupère les vidéos d'une playlist via yt-dlp ou Invidious"""
+# ─── Supadata (prioritaire) ──────────────────────────────────────────────────
+# L'IP du serveur est bloquée par YouTube : Invidious, Piped et yt-dlp y échouent.
+# Supadata interroge YouTube avec sa propre infra (pas de proxy Decodo, comme
+# les autres appels Supadata). Endpoints documentés sur docs.supadata.ai :
+#   GET /v1/youtube/playlist/videos?id=&limit=  → {videoIds, shortIds, liveIds}
+#   GET /v1/youtube/playlist?id=                → {id, title, videoCount, channel{name}, …}
+# Chaque appel coûte 1 crédit (plan gratuit : 100/mois) : le résultat est mis en
+# cache (Redis si disponible) sous l'ID de playlist pour ne pas repayer.
 
-    # Essayer Invidious d'abord
+SUPADATA_PLAYLIST_CACHE_TTL = int(os.environ.get("SUPADATA_PLAYLIST_CACHE_TTL", str(12 * 3600)))
+# Une seule requête facturée quel que soit `limit` : on prend large (le max
+# accepté par /api/playlists/analyze est 100) et on tronque côté appelant.
+SUPADATA_PLAYLIST_FETCH_LIMIT = 100
+_YOUTUBE_VIDEO_ID_RE = re.compile(r"^[A-Za-z0-9_-]{11}$")
+
+
+async def _playlist_cache_get(key: str) -> Any | None:
+    if not CACHE_AVAILABLE:
+        return None
+    return await cache_service.get(key)
+
+
+async def _playlist_cache_set(key: str, value: Any) -> None:
+    if CACHE_AVAILABLE:
+        await cache_service.set(key, value, ttl=SUPADATA_PLAYLIST_CACHE_TTL)
+
+
+async def get_playlist_videos_supadata(playlist_id: str) -> list[dict[str, Any]] | None:
+    """Liste les vidéos d'une playlist via Supadata (1 crédit, résultat mis en cache).
+
+    Supadata ne renvoie que des IDs : titre, durée et chaîne sont récupérés
+    ensuite vidéo par vidéo par le pipeline. Renvoie None si Supadata n'est
+    pas configuré ou échoue, pour que l'appelant bascule sur l'ancien chemin.
+    """
+    cache_key = f"playlist_videos:supadata:{playlist_id}"
+    cached = await _playlist_cache_get(cache_key)
+    if cached:
+        logger.info("Supadata playlist videos cache hit", playlist_id=playlist_id, count=len(cached))
+        return cached
+
+    api_key = get_supadata_key()
+    if not api_key:
+        return None
+
+    try:
+        async with shared_http_client() as client:
+            response = await client.get(
+                "https://api.supadata.ai/v1/youtube/playlist/videos",
+                params={"id": playlist_id, "limit": SUPADATA_PLAYLIST_FETCH_LIMIT},
+                headers={"x-api-key": api_key},
+                timeout=_t("supadata"),
+            )
+        if response.status_code != 200:
+            logger.warning(
+                "Supadata playlist videos failed",
+                playlist_id=playlist_id,
+                status=response.status_code,
+                body=response.text[:200],
+            )
+            return None
+        data = response.json()
+    except (httpx.HTTPError, ValueError) as e:
+        logger.warning("Supadata playlist videos error", playlist_id=playlist_id, error=str(e)[:200])
+        return None
+
+    video_ids: list[str] = []
+    if isinstance(data, dict):
+        # Vidéos classiques d'abord (ordre de la playlist), puis Shorts et lives.
+        for field in ("videoIds", "shortIds", "liveIds"):
+            for video_id in data.get(field) or []:
+                if isinstance(video_id, str) and _YOUTUBE_VIDEO_ID_RE.match(video_id) and video_id not in video_ids:
+                    video_ids.append(video_id)
+
+    if not video_ids:
+        logger.warning("Supadata playlist videos empty", playlist_id=playlist_id)
+        return None
+
+    videos = [{"video_id": vid, "title": "", "duration": 0, "channel": ""} for vid in video_ids]
+    await _playlist_cache_set(cache_key, videos)
+    logger.info("Supadata playlist videos fetched", playlist_id=playlist_id, count=len(videos))
+    return videos
+
+
+async def get_playlist_info_supadata(playlist_id: str) -> dict[str, Any] | None:
+    """Métadonnées d'une playlist via Supadata (1 crédit, résultat mis en cache)."""
+    cache_key = f"playlist_info:supadata:{playlist_id}"
+    cached = await _playlist_cache_get(cache_key)
+    if cached:
+        return cached
+
+    api_key = get_supadata_key()
+    if not api_key:
+        return None
+
+    try:
+        async with shared_http_client() as client:
+            response = await client.get(
+                "https://api.supadata.ai/v1/youtube/playlist",
+                params={"id": playlist_id},
+                headers={"x-api-key": api_key},
+                timeout=_t("supadata"),
+            )
+        if response.status_code != 200:
+            logger.warning(
+                "Supadata playlist info failed",
+                playlist_id=playlist_id,
+                status=response.status_code,
+                body=response.text[:200],
+            )
+            return None
+        data = response.json()
+    except (httpx.HTTPError, ValueError) as e:
+        logger.warning("Supadata playlist info error", playlist_id=playlist_id, error=str(e)[:200])
+        return None
+
+    if not isinstance(data, dict) or not data.get("title"):
+        return None
+
+    channel = data.get("channel") if isinstance(data.get("channel"), dict) else {}
+    info = {
+        "playlist_id": data.get("id") or playlist_id,
+        "title": data["title"],
+        "channel": channel.get("name") or "Unknown",
+        "video_count": int(data.get("videoCount") or 0),
+        "description": (data.get("description") or "")[:500],
+    }
+    await _playlist_cache_set(cache_key, info)
+    return info
+
+
+async def get_playlist_videos(playlist_id: str, max_videos: int = 50) -> List[Dict[str, Any]]:
+    """Récupère les vidéos d'une playlist : Supadata, puis Invidious, puis yt-dlp."""
+
+    supadata_videos = await get_playlist_videos_supadata(playlist_id)
+    if supadata_videos:
+        return supadata_videos[:max_videos]
+
+    # Repli : Invidious puis yt-dlp (bloqués depuis l'IP du serveur, utiles en local)
     for instance in INVIDIOUS_INSTANCES[:2]:
         try:
             # 🔄 Revert post-PR #472 — Invidious instances ont leur propre infra
@@ -2928,9 +3063,13 @@ async def get_playlist_videos(playlist_id: str, max_videos: int = 50) -> List[Di
 
 
 async def get_playlist_info(playlist_id: str) -> Optional[Dict[str, Any]]:
-    """Récupère les infos d'une playlist"""
+    """Récupère les infos d'une playlist : Supadata, puis Invidious, puis yt-dlp."""
 
-    # Essayer Invidious d'abord
+    supadata_info = await get_playlist_info_supadata(playlist_id)
+    if supadata_info:
+        return supadata_info
+
+    # Repli : Invidious puis yt-dlp (bloqués depuis l'IP du serveur, utiles en local)
     for instance in INVIDIOUS_INSTANCES[:2]:
         try:
             # 🔄 Revert post-PR #472 — Invidious instances ont leur propre infra
@@ -3034,6 +3173,8 @@ __all__ = [
     # Playlists
     "get_playlist_videos",
     "get_playlist_info",
+    "get_playlist_videos_supadata",
+    "get_playlist_info_supadata",
     # Utilities
     "format_seconds_to_timestamp",
     "TranscriptSource",
