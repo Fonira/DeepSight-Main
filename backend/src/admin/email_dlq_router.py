@@ -16,7 +16,9 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
+import html
 import logging
+import re
 from datetime import datetime
 from typing import List, Optional
 
@@ -52,6 +54,8 @@ class EmailDLQItem(BaseModel):
     replay_status: str
     replayed_at: Optional[datetime]
     replayed_by_admin_id: Optional[int]
+    # Rempli seulement avec ?include_body=true (vue admin en lecture seule)
+    body_text: str | None = None
 
 
 class EmailDLQListResponse(BaseModel):
@@ -81,6 +85,21 @@ class EmailDLQReplayResponse(BaseModel):
 # 📊 LIST + STATS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+_TAG_RE = re.compile(r"<[^>]+>")
+_BLANK_LINES_RE = re.compile(r"\n\s*\n+")
+
+
+def _plain_text_body(row: EmailDLQ) -> str:
+    """Corps texte de l'email ; à défaut, le HTML débarrassé de ses balises.
+
+    Toujours du texte brut : le frontend l'affiche tel quel, sans l'interpréter.
+    """
+    if row.body_text:
+        return row.body_text
+    raw = re.sub(r"(?is)<(script|style)\b.*?</\1>", "", row.body_html or "")
+    text = html.unescape(_TAG_RE.sub("\n", raw))
+    return _BLANK_LINES_RE.sub("\n\n", text).strip()
+
 
 @router.get("/email-dlq", response_model=EmailDLQListResponse)
 async def list_email_dlq(
@@ -92,10 +111,15 @@ async def list_email_dlq(
     email_to: Optional[str] = Query(None, description="Filter by recipient email (exact match)"),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
+    include_body: bool = Query(False, description="Include the plain-text body of each email"),
     admin: User = Depends(get_current_admin),
     session: AsyncSession = Depends(get_session),
 ):
-    """List failed emails in the DLQ. Most recent first."""
+    """List failed emails in the DLQ. Most recent first.
+
+    Sans clé Resend, les messages du formulaire de contact finissent ici :
+    `include_body=true` permet de les lire depuis la page admin.
+    """
     where_clauses = []
     if status:
         where_clauses.append(EmailDLQ.replay_status == status)
@@ -129,6 +153,7 @@ async def list_email_dlq(
             replay_status=row.replay_status,
             replayed_at=row.replayed_at,
             replayed_by_admin_id=row.replayed_by_admin_id,
+            body_text=_plain_text_body(row) if include_body else None,
         )
         for row in rows
     ]

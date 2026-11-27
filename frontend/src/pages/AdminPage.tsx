@@ -37,6 +37,7 @@ import { request } from "../services/api";
 import { useToast } from "../components/Toast";
 import { PLANS_INFO, type PlanId } from "../config/planPrivileges";
 import { AdminProxyStatsTab } from "../components/admin/AdminProxyStatsTab";
+import { AdminEmailDlqTab } from "../components/admin/AdminEmailDlqTab";
 
 // Types
 interface AdminStats {
@@ -72,7 +73,7 @@ interface AdminLog {
   created_at: string;
 }
 
-type TabType = "dashboard" | "users" | "stats" | "logs" | "proxy";
+type TabType = "dashboard" | "users" | "stats" | "logs" | "emails" | "proxy";
 
 interface AdminFetchOptions {
   method?: "GET" | "POST" | "PUT" | "DELETE";
@@ -401,6 +402,11 @@ export const AdminPage: React.FC = () => {
                   icon: TrendingUp,
                 },
                 { id: "logs", label: "Logs", icon: FileText },
+                {
+                  id: "emails",
+                  label: language === "fr" ? "Emails" : "Emails",
+                  icon: Mail,
+                },
                 {
                   id: "proxy",
                   label: language === "fr" ? "Proxy Decodo" : "Proxy Decodo",
@@ -932,6 +938,14 @@ export const AdminPage: React.FC = () => {
                       )}
                     </div>
                   </div>
+                )}
+
+                {/* Emails non envoyés (DLQ) — lecture seule */}
+                {activeTab === "emails" && (
+                  <AdminEmailDlqTab
+                    adminFetch={adminFetch}
+                    language={language as "fr" | "en"}
+                  />
                 )}
 
                 {/* Proxy Decodo Tab */}
