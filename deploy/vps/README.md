@@ -163,9 +163,13 @@ ssh -i %USERPROFILE%\.ssh\id_vps deploy@62.83.136.156 "bash /opt/deepsight/repo/
 ssh -i %USERPROFILE%\.ssh\id_vps deploy@62.83.136.156 "bash /opt/deepsight/repo/deploy/vps/scripts/setup-ci-deploy.sh private-key" | gh secret set VPS_DEPLOY_KEY --repo Fonira/DeepSight-Main
 ```
 
-**Déployer :**
-- pousser un tag `deploy-AAAAMMJJ-HHMM` sur la tête de la branche déployée (`feat/infra-ovh` par défaut, variable de dépôt `DEPLOY_BRANCH` pour en changer) : le workflow refuse un tag qui ne pointe pas sur la tête de cette branche ;
-- ou, une fois le workflow présent sur `main`, le bouton « Run workflow » dans l'onglet Actions.
+**Déployer :** placer la branche `deploy/netcup` sur la tête de la branche déployée (`feat/infra-ovh` par défaut, variable de dépôt `DEPLOY_BRANCH` pour en changer). Le workflow refuse un commit qui n'est pas cette tête.
+
+```powershell
+git fetch origin feat/infra-ovh ; git push --force origin FETCH_HEAD:refs/heads/deploy/netcup
+```
+
+Autres déclencheurs : un tag `deploy-AAAAMMJJ-HHMM` sur cette même tête, ou, une fois le workflow présent sur `main`, le bouton « Run workflow » dans l'onglet Actions.
 
 **Révoquer la clé** (sur le serveur) : `bash /opt/deepsight/repo/deploy/vps/scripts/setup-ci-deploy.sh revoke`, puis supprimer le secret `VPS_DEPLOY_KEY` dans GitHub. Pour mettre à jour la commande bridée après un changement de `ci-deploy.sh`, relancer `setup-ci-deploy.sh install` : la même clé publique est conservée.
 
