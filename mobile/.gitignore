@@ -58,3 +58,6 @@ play-store-credentials.json
 *.log
 tmp/
 temp/
+
+# Claude Code local settings (machine-specific, never commit)
+.claude/settings.local.json
