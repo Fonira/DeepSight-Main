@@ -237,7 +237,8 @@ async def create_share_link(
     """Create a public share link for an analysis."""
     # Check if active share already exists for this user+video
     existing = await session.execute(
-        select(SharedAnalysis).where(
+        select(SharedAnalysis)
+        .where(
             SharedAnalysis.user_id == current_user.id,
             SharedAnalysis.video_id == request.video_id,
             SharedAnalysis.is_active,

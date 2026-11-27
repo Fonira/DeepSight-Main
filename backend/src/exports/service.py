@@ -206,7 +206,7 @@ def content_disposition(filename: str, disposition: str = "attachment") -> str:
     ASCII de repli dans `filename` et le nom exact dans `filename*`.
     """
     ascii_name = unicodedata.normalize("NFKD", filename).encode("ascii", "ignore").decode("ascii")
-    ascii_name = re.sub(r'[^A-Za-z0-9._-]+', "_", ascii_name).strip("_") or "deepsight_export"
+    ascii_name = re.sub(r"[^A-Za-z0-9._-]+", "_", ascii_name).strip("_") or "deepsight_export"
     return f"{disposition}; filename=\"{ascii_name}\"; filename*=UTF-8''{quote(filename, safe='')}"
 
 

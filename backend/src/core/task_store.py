@@ -71,7 +71,7 @@ class TaskStore:
         self._local: Dict[str, TaskStatusDict] = {}
         # Tâches créées par CE worker : sa copie locale fait foi. Les autres ne
         # sont qu'un cache de lecture, relu dans Redis à chaque aget().
-        self._owned: Set[str] = set()
+        self._owned: set[str] = set()
         self._redis = None
         self._dirty: Set[str] = set()
         self._flush_handle = None

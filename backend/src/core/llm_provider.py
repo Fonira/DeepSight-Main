@@ -216,7 +216,7 @@ def _content_to_text(content: Any) -> str:
     if isinstance(content, str):
         return content
     if isinstance(content, list):
-        parts: List[str] = []
+        parts: list[str] = []
         for block in content:
             if isinstance(block, str):
                 parts.append(block)

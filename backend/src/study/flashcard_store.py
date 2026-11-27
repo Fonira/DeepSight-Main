@@ -15,7 +15,8 @@ cartes stable.
 from __future__ import annotations
 
 import asyncio
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -40,8 +41,7 @@ async def load_persisted_flashcards(session: AsyncSession, summary_id: int) -> l
         select(Flashcard).where(Flashcard.summary_id == summary_id).order_by(Flashcard.position)
     )
     return [
-        {"front": row.front, "back": row.back, "category": row.category or "General"}
-        for row in result.scalars().all()
+        {"front": row.front, "back": row.back, "category": row.category or "General"} for row in result.scalars().all()
     ]
 
 

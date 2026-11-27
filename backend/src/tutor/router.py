@@ -75,7 +75,7 @@ _TUTOR_MODEL_BY_PLAN = {
 }
 
 
-def _select_tutor_model(user_plan: Optional[str]) -> str:
+def _select_tutor_model(user_plan: str | None) -> str:
     """Modèle du Tuteur selon le plan : large pour Expert/admin, medium sinon."""
     return _TUTOR_MODEL_BY_PLAN.get((user_plan or "").lower(), _TUTOR_MODEL_DEFAULT)
 

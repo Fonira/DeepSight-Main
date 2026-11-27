@@ -444,7 +444,7 @@ async def _fetch_or_generate_flashcards(
     session: AsyncSession,
     summary: Summary,
     current_user: User,
-) -> List[dict]:
+) -> list[dict]:
     platform = getattr(summary, "platform", "youtube") or "youtube"
     video_id = getattr(summary, "video_id", None)
     lang = summary.lang or "fr"
