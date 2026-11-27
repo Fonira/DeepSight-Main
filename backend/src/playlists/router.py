@@ -1578,7 +1578,11 @@ async def _execute_corpus_chat(
     categories = [v["category"] for v in videos_data if v.get("category")]
     dominant_category = Counter(categories).most_common(1)[0][0] if categories else None
 
-    cache_key = _chat_cache._make_key(playlist_id, request.message, request.mode, web_search_enabled)
+    # L'ID d'une playlist YouTube est partagé entre utilisateurs : la clé inclut
+    # l'utilisateur pour ne jamais servir la réponse (et le corpus) d'un autre.
+    cache_key = _chat_cache._make_key(
+        current_user.id, playlist_id, request.message, request.mode, web_search_enabled, request.lang
+    )
     cached_response = _chat_cache.get(cache_key)
     if cached_response:
         print("   ✅ Cache HIT!", flush=True)
