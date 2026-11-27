@@ -27,7 +27,9 @@ env:
 jobs:
   smoke-tests:
     name: Run Smoke Tests
-    runs-on: ubuntu-latest
+    # Version fixée : Playwright 1.58.2 ne gère pas ubuntu-26.04 (nouvel
+    # ubuntu-latest), `playwright install --with-deps` y échoue.
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
 
     steps:
