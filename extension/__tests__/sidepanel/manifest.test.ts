@@ -1,7 +1,7 @@
 // ── Tests : manifest CSP + permissions Spec #4 ──
 //
-// Vérifie que le manifest Chrome inclut bien tous les patches requis
-// par le Spec #4 (side panel + ElevenLabs CSP/host_permissions).
+// Vérifie le manifest Chrome : side panel (Spec #4), CSP ElevenLabs et
+// permissions minimales pour la revue du Chrome Web Store.
 
 import * as fs from "fs";
 import * as path from "path";
@@ -50,26 +50,33 @@ describe("manifest.json — Spec #4 patches", () => {
     expect(manifest.side_panel?.default_path).toBe("sidepanel.html");
   });
 
-  it("declares ElevenLabs host_permissions for HTTPS + WSS", () => {
-    const hosts = manifest.host_permissions ?? [];
-    expect(hosts).toEqual(
-      expect.arrayContaining([
-        "https://api.elevenlabs.io/*",
-        "wss://api.elevenlabs.io/*",
-        "https://*.elevenlabs.io/*",
-        "wss://*.elevenlabs.io/*",
-      ]),
+  it("limits host_permissions to the API and the video sites", () => {
+    // Le SDK ElevenLabs ouvre une WebSocket (signed URL) : c'est la CSP
+    // connect-src qui l'autorise, pas host_permissions. Les content scripts
+    // du site DeepSight n'ont pas besoin de host_permissions non plus.
+    expect([...(manifest.host_permissions ?? [])].sort()).toEqual(
+      [
+        "https://api.deepsightsynthesis.com/*",
+        "https://www.youtube.com/*",
+        "https://youtube.com/*",
+        "https://www.tiktok.com/*",
+        "https://tiktok.com/*",
+        "https://vm.tiktok.com/*",
+        "https://m.tiktok.com/*",
+      ].sort(),
     );
   });
 
-  it("does NOT lose the existing DeepSight host_permissions", () => {
-    const hosts = manifest.host_permissions ?? [];
-    expect(hosts).toEqual(
-      expect.arrayContaining([
-        "https://api.deepsightsynthesis.com/*",
-        "https://www.youtube.com/*",
-      ]),
+  it("does not request the 'tabs' permission (host access is enough)", () => {
+    expect(manifest.permissions).not.toContain("tabs");
+    expect(manifest.permissions).toEqual(
+      expect.arrayContaining(["storage", "identity", "alarms", "sidePanel"]),
     );
+  });
+
+  it("references no former hosting provider", () => {
+    const raw = fs.readFileSync(manifestPath, "utf8");
+    expect(raw).not.toMatch(/89\.167\.23\.214|railway|vercel\.app|localhost/i);
   });
 
   it("CSP allows connect-src to ElevenLabs (HTTPS + WSS)", () => {
@@ -97,16 +104,17 @@ describe("manifest.json — Spec #4 patches", () => {
     expect(cmds).toHaveProperty("_execute_action");
   });
 
-  it("keeps the popup as default action target", () => {
-    expect(manifest.action?.default_popup).toBe("popup.html");
+  it("opens the side panel from the toolbar icon (no popup)", () => {
+    // setPanelBehavior({openPanelOnActionClick:true}) dans background.ts :
+    // un default_popup empêcherait l'ouverture du side panel.
+    expect(manifest.action?.default_popup).toBeUndefined();
   });
 
   // ── Quick Voice Call (B1) — permission micro ──────────────────────────────
-  // Le SDK ElevenLabs appelle `getUserMedia({audio:true})` depuis le side
-  // panel. En MV3, getUserMedia depuis chrome-extension://… est autorisé
-  // par défaut (prompt natif), mais Chrome < 116 a des bugs sur les side
-  // panels. On bumpe minimum_chrome_version + on déclare audioCapture en
-  // optional_permissions pour signaler le besoin au Chrome Web Store.
+  // getUserMedia passe par l'offscreen document (permission "offscreen") et
+  // la popup mic-permission.html. `audioCapture` n'existe que pour les
+  // Chrome Apps : Chrome affichait « 'audioCapture' is only allowed for
+  // packaged apps » au chargement de l'extension.
   describe("microphone capture (Quick Voice Call B1)", () => {
     it("bumps minimum_chrome_version to 116+", () => {
       const min = manifest.minimum_chrome_version;
@@ -115,9 +123,13 @@ describe("manifest.json — Spec #4 patches", () => {
       expect(major).toBeGreaterThanOrEqual(116);
     });
 
-    it("declares audioCapture in optional_permissions", () => {
-      const opts = manifest.optional_permissions ?? [];
-      expect(opts).toEqual(expect.arrayContaining(["audioCapture"]));
+    it("relies on the offscreen permission, not the apps-only audioCapture", () => {
+      expect(manifest.permissions).toEqual(
+        expect.arrayContaining(["offscreen"]),
+      );
+      expect(manifest.optional_permissions ?? []).not.toContain(
+        "audioCapture",
+      );
     });
   });
 });

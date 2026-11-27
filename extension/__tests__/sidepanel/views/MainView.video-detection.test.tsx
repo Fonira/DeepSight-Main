@@ -356,6 +356,45 @@ describe("MainView — video detection in side panel context", () => {
     expect(screen.queryByText("Vidéo Foo")).not.toBeInTheDocument();
   });
 
+  it("clears the video card when the tab leaves YouTube for a site without host access", async () => {
+    // Sans la permission "tabs", Chrome masque url/title des sites hors
+    // host_permissions : onUpdated n'a que `status`, et tab.url est absent.
+    const tabsApi = installTabsMock({
+      id: 1,
+      url: "https://www.youtube.com/watch?v=foo111",
+      title: "Vidéo Foo",
+    });
+
+    render(<MainView {...baseProps} />);
+    await waitFor(() => {
+      expect(screen.getByText("Vidéo Foo")).toBeInTheDocument();
+    });
+
+    (tabsApi as unknown as { __setTab: (tab: MockTab) => void }).__setTab({
+      id: 1,
+    });
+    await act(async () => {
+      for (const listener of tabsApi.onUpdated.listeners) {
+        listener(1, { status: "loading" }, { id: 1 });
+      }
+    });
+    // "loading" seul ne déclenche rien (pas de flood).
+    expect(screen.getByText("Vidéo Foo")).toBeInTheDocument();
+
+    await act(async () => {
+      for (const listener of tabsApi.onUpdated.listeners) {
+        listener(1, { status: "complete" }, { id: 1 });
+      }
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByText("Vidéo Foo")).not.toBeInTheDocument();
+    });
+    expect(
+      screen.getByText(/Ouvre une vidéo YouTube ou TikTok/),
+    ).toBeInTheDocument();
+  });
+
   it("removes onActivated and onUpdated listeners on unmount (no leak)", async () => {
     const tabsApi = installTabsMock({
       id: 1,

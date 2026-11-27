@@ -156,13 +156,19 @@ export const MainView: React.FC<MainViewProps> = ({
     const handleTabActivated = (): void => {
       void detectActiveVideo();
     };
-    // Re-détecte uniquement quand l'URL change (navigation SPA YouTube,
-    // etc.) — pas sur tous les events onUpdated (sinon flood).
+    // Re-détecte quand l'URL change (navigation SPA YouTube, etc.) ou à la
+    // fin d'un chargement — pas sur tous les events onUpdated (sinon flood).
+    // Sans la permission "tabs", Chrome ne fournit `changeInfo.url` (et
+    // `tab.url`) que pour YouTube/TikTok : en quittant YouTube pour un autre
+    // site, seul `status: "complete"` signale la navigation → la carte
+    // vidéo doit disparaître.
     const handleTabUpdated = (
       _tabId: number,
-      changeInfo: { url?: string },
+      changeInfo: { url?: string; status?: string },
     ): void => {
-      if (changeInfo.url) void detectActiveVideo();
+      if (changeInfo.url || changeInfo.status === "complete") {
+        void detectActiveVideo();
+      }
     };
 
     Browser.tabs.onActivated.addListener(handleTabActivated);
