@@ -1268,6 +1268,18 @@ export async function handleMessage(
   return handleExtensionMessage(message as ExtensionMessage, sender);
 }
 
+/** Message émis par un content script du site web DeepSight ? */
+function isFromWebApp(sender?: chrome.runtime.MessageSender | number): boolean {
+  if (!sender || typeof sender === "number") return false;
+  const source = sender.origin ?? sender.url ?? sender.tab?.url;
+  if (!source) return false;
+  try {
+    return new URL(source).origin === new URL(WEBAPP_URL).origin;
+  } catch {
+    return false;
+  }
+}
+
 async function handleExtensionMessage(
   message: ExtensionMessage,
   sender?: chrome.runtime.MessageSender | number,
@@ -1644,6 +1656,11 @@ async function handleExtensionMessage(
     }
 
     case "SYNC_AUTH_FROM_WEBSITE": {
+      // Seul le content script injecté sur le site DeepSight peut pousser
+      // des tokens (pas un autre onglet ni une page de l'extension).
+      if (!isFromWebApp(sender)) {
+        return { success: false, error: "Untrusted sender" };
+      }
       const {
         accessToken,
         refreshToken: rt,
