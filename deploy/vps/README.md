@@ -193,7 +193,7 @@ Une fois les certificats obtenus, tu peux activer le nuage orange sur `www` et `
 
 ## Monter en puissance
 
-Si la RAM sature (`free -h`) : passe au **VPS 1000 G12.5** (4 vCPU, 8 Go) depuis le Customer Control Panel netcup, puis mets `UVICORN_WORKERS=4` dans `.env.production` et relance `deploy.sh`.
+Si la RAM sature (`free -h`) : passe au **VPS 1000 G12.5** (4 vCPU, 8 Go) depuis le Customer Control Panel netcup. Garde `UVICORN_WORKERS=1` tant que les tâches playlist, les notifications et les planificateurs vivent en mémoire du process ; plusieurs workers les dupliquent ou les perdent.
 
 ---
 
@@ -204,7 +204,7 @@ Si la RAM sature (`free -h`) : passe au **VPS 1000 G12.5** (4 vCPU, 8 Go) depuis
 | Site web | Vercel | Caddy sur le VPS, réécritures de `vercel.json` reprises dans le `Caddyfile` |
 | En-têtes / CSP | `vercel.json` | toujours `vercel.json`, converti à chaque déploiement |
 | Redis | sans mot de passe, déjà signalé ouvert (BSI, février 2026) | mot de passe obligatoire, aucun port publié |
-| Workers API | 4 (16 Go de RAM) | 2 (4 Go), réglable via `UVICORN_WORKERS` |
+| Workers API | 4 (16 Go de RAM) | 1 (état en mémoire du process), réglable via `UVICORN_WORKERS` |
 | Sauvegardes | APScheduler → R2, non vérifiées | dump vérifié chaque nuit, copie chiffrée sur R2 (UE) + snapshots netcup |
 
 **Pas repris** (à refaire si besoin) : la fonction Vercel `/api/prerender` (pages simplifiées pour les robots d'IA), `/api/status`, `vault-mcp`, les aperçus `studio` et les démos sur `sslip.io`.

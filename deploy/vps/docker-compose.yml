@@ -30,6 +30,8 @@ volumes:
   redis_data:
   caddy_data:
   caddy_config:
+  # Miniatures générées par l'API (sans R2) : conservées entre deux déploiements.
+  thumbnails_data:
 
 services:
   # ─── PostgreSQL 17 ──────────────────────────────────────────────────────────
@@ -50,7 +52,8 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-deepsight}
       PGDATA: /var/lib/postgresql/data
     # Réglages dimensionnés pour 4 Go de RAM partagés avec l'API et Redis.
-    # max_connections : 2 workers × (pool SQLAlchemy 10+5 + pool cache 10) = 50, marge incluse.
+    # max_connections : par worker, pool SQLAlchemy 10+5 + pool cache 10 + pool images 3 = 28 ;
+    # 80 couvre 2 workers + alembic + sauvegardes.
     command: >
       postgres
       -c shared_preload_libraries=pg_stat_statements
@@ -123,6 +126,13 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       DB_POOL_SIZE: "10"
       DB_MAX_OVERFLOW: "5"
+      # Miniatures servies par l'API (/api/thumbnails), fichiers dans le volume.
+      # Sans URL absolue, l'app enregistrait « /thumbnails/... », résolu sur www → 404.
+      THUMBNAIL_BASE_URL: https://api.deepsightsynthesis.com/api/thumbnails
+      THUMBNAIL_LOCAL_DIR: /app/data/thumbnails
+      # Les sauvegardes sont faites par l'hôte (backup.sh, 03:17, copie R2
+      # chiffrée) : pas de pg_dump en RAM dans chaque worker.
+      APP_BACKUP_ENABLED: "false"
     # L'ENTRYPOINT de l'image (alembic upgrade heads) reste actif ; on ne
     # remplace que la commande uvicorn pour adapter le nombre de workers.
     command:
@@ -136,12 +146,21 @@ services:
       - "300"
       - --limit-concurrency
       - "200"
+      # Caddy est le seul client (port non publié) : on fait confiance à son
+      # X-Forwarded-For pour l'IP réelle (rate limits, formulaire de contact).
+      - --proxy-headers
+      - --forwarded-allow-ips
+      - "*"
+      # 1 worker par défaut : plusieurs états restent en mémoire du process
+      # (tâches playlist, notifications, planificateurs dupliqués). Monter à 2+
+      # seulement après les avoir déplacés dans Redis.
       - --workers
-      - "${UVICORN_WORKERS:-2}"
+      - "${UVICORN_WORKERS:-1}"
     volumes:
       # Cookies yt-dlp (fichiers créés vides par bootstrap.sh si absents).
       - /opt/deepsight/cookies.txt:/app/cookies.txt:ro
       - /opt/deepsight/tiktok_cookies.txt:/app/tiktok_cookies.txt:ro
+      - thumbnails_data:/app/data/thumbnails
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
       interval: 30s

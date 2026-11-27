@@ -123,7 +123,7 @@ www.deepsightsynthesis.com {
 # ═══ API ════════════════════════════════════════════════════════════════════════
 api.deepsightsynthesis.com {
 	# SSE : flush immédiat, jamais de timeout (le client gère la déconnexion).
-	@sse path /api/voice/context/stream /api/notifications/sse/*
+	@sse path /api/voice/context/stream /api/notifications/stream
 	handle @sse {
 		reverse_proxy backend:8080 {
 			flush_interval -1
