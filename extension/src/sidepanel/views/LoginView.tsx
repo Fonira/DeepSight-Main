@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import type { MessageResponse } from "../../types";
 import Browser from "../../utils/browser-polyfill";
 import { GoogleIcon } from "../shared/Icons";
 import { DoodleIcon } from "../shared/doodles/DoodleIcon";
@@ -31,6 +32,27 @@ export const LoginView: React.FC<LoginViewProps> = ({
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  // null = inconnu → bouton affiché ; false = non configuré côté serveur.
+  const [googleAvailable, setGoogleAvailable] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    Browser.runtime
+      .sendMessage<unknown, MessageResponse>({ action: "GET_AUTH_PROVIDERS" })
+      .then((response) => {
+        const google = (response?.result as { google?: boolean | null })
+          ?.google;
+        if (!cancelled && typeof google === "boolean") {
+          setGoogleAvailable(google);
+        }
+      })
+      .catch(() => {
+        /* SW indisponible : on garde le bouton, le clic gère l'erreur */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const displayError = localError || error;
 
@@ -159,23 +181,27 @@ export const LoginView: React.FC<LoginViewProps> = ({
         </span>
       </div>
 
-      {/* Google Login */}
-      <button
-        className="btn-google"
-        onClick={handleGoogle}
-        disabled={googleLoading || loading}
-      >
-        {googleLoading ? (
-          t.login.googleLoading
-        ) : (
-          <>
-            <GoogleIcon /> {t.login.googleButton}
-          </>
-        )}
-      </button>
+      {/* Google Login — masqué si le serveur n'a pas Google OAuth */}
+      {googleAvailable !== false && (
+        <>
+          <button
+            className="btn-google"
+            onClick={handleGoogle}
+            disabled={googleLoading || loading}
+          >
+            {googleLoading ? (
+              t.login.googleLoading
+            ) : (
+              <>
+                <GoogleIcon /> {t.login.googleButton}
+              </>
+            )}
+          </button>
 
-      {/* Divider */}
-      <div className="login-divider">{t.login.divider}</div>
+          {/* Divider */}
+          <div className="login-divider">{t.login.divider}</div>
+        </>
+      )}
 
       {/* Email/Password */}
       <form className="login-form" onSubmit={handleSubmit}>

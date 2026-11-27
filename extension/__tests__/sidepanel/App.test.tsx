@@ -23,6 +23,7 @@ jest.mock("../../src/i18n/useTranslation", () => ({
 const fr = jest.requireActual("../../src/i18n/fr.json") as {
   login: { guestButton: string };
   guest: { banner: string };
+  errors: { privateMode: string };
 };
 
 beforeEach(() => {
@@ -107,16 +108,21 @@ describe("App — unauthenticated state", () => {
 });
 
 // ── Login flow ──
+/** Réponses du SW par action (l'ordre des appels varie selon les vues). */
+function mockSwByAction(responses: Record<string, unknown>): void {
+  (chrome.runtime.sendMessage as jest.Mock).mockImplementation(
+    (msg: { action?: string }) =>
+      Promise.resolve(responses[msg?.action ?? ""] ?? {}),
+  );
+}
+
 describe("App — login flow", () => {
   it("transitions to main view on successful login", async () => {
     const user = userEvent.setup();
 
-    // First call: CHECK_AUTH → not authenticated
-    // Second call: LOGIN → success
-    // Third call: GET_PLAN → plan info
-    (chrome.runtime.sendMessage as jest.Mock)
-      .mockResolvedValueOnce({ authenticated: false })
-      .mockResolvedValueOnce({
+    mockSwByAction({
+      CHECK_AUTH: { authenticated: false },
+      LOGIN: {
         success: true,
         user: {
           id: 1,
@@ -126,8 +132,8 @@ describe("App — login flow", () => {
           credits: 100,
           credits_monthly: 150,
         },
-      })
-      .mockResolvedValueOnce({
+      },
+      GET_PLAN: {
         success: true,
         plan: {
           plan_name: "Gratuit",
@@ -138,7 +144,8 @@ describe("App — login flow", () => {
           credits_monthly: 150,
           features: {},
         },
-      });
+      },
+    });
 
     render(<App />);
 
@@ -170,9 +177,10 @@ describe("App — login flow", () => {
   it("shows error on failed login", async () => {
     const user = userEvent.setup();
 
-    (chrome.runtime.sendMessage as jest.Mock)
-      .mockResolvedValueOnce({ authenticated: false }) // CHECK_AUTH
-      .mockResolvedValueOnce({ success: false, error: "Invalid credentials" }); // LOGIN
+    mockSwByAction({
+      CHECK_AUTH: { authenticated: false },
+      LOGIN: { success: false, error: "Invalid credentials" },
+    });
 
     render(<App />);
 
@@ -248,6 +256,34 @@ describe("App — authenticated state", () => {
         screen.queryByPlaceholderText("Adresse e-mail"),
       ).not.toBeInTheDocument();
     });
+  });
+});
+
+describe("App — private mode", () => {
+  it("shows the private-mode message instead of [object Object]", async () => {
+    const user = userEvent.setup();
+    mockSwByAction({
+      CHECK_AUTH: { authenticated: false },
+      LOGIN: {
+        success: false,
+        error: "DeepSight est temporairement en accès privé (maintenance).",
+        errorCode: "private_mode",
+        httpStatus: 403,
+      },
+    });
+
+    render(<App />);
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText("Adresse e-mail")).toBeInTheDocument();
+    });
+    await user.type(screen.getByPlaceholderText("Adresse e-mail"), "a@b.c");
+    await user.type(screen.getByPlaceholderText("Mot de passe"), "secret");
+    await user.click(screen.getByText("Se connecter"));
+
+    await waitFor(() => {
+      expect(screen.getByText(fr.errors.privateMode)).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/object Object/)).not.toBeInTheDocument();
   });
 });
 

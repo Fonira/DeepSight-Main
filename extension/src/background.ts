@@ -413,9 +413,40 @@ function generateOidcNonce(): string {
   return Array.from(arr, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+/**
+ * La connexion Google est-elle configurée côté serveur ?
+ *
+ * `GET /auth/google/login` répond 400 (« Google OAuth non activé ») ou 500
+ * (client ID absent) tant que GOOGLE_CLIENT_ID n'est pas renseigné. Sans
+ * cette vérification, l'utilisateur passait par la popup Google pour finir
+ * sur « Invalid Google ID token ».
+ *
+ * `null` = inconnu (réseau, 429, 5xx transitoire) : on laisse tenter.
+ */
+async function isGoogleAuthAvailable(): Promise<boolean | null> {
+  if (!GOOGLE_CLIENT_ID) return false;
+  let response: Response;
+  try {
+    response = await fetchApi("/auth/google/login", { method: "GET" });
+  } catch {
+    return null;
+  }
+  if (response.ok) return true;
+  if ([400, 404, 500, 501].includes(response.status)) return false;
+  return null;
+}
+
+function googleUnavailableError(): ApiError {
+  return new ApiError({
+    status: 503,
+    code: ERROR_CODES.GOOGLE_UNAVAILABLE,
+    message: "Google sign-in is not configured. Use email/password login.",
+  });
+}
+
 async function loginWithGoogle(): Promise<User> {
-  if (!GOOGLE_CLIENT_ID) {
-    throw new Error("Google OAuth not configured. Use email/password login.");
+  if ((await isGoogleAuthAvailable()) === false) {
+    throw googleUnavailableError();
   }
 
   assertNotRateLimited("/auth/google/token");
@@ -1289,6 +1320,15 @@ async function handleExtensionMessage(
       } catch (e) {
         return toErrorResponse(e);
       }
+    }
+
+    case "GET_AUTH_PROVIDERS": {
+      // L'écran de connexion masque le bouton Google si le serveur ne le
+      // propose pas (même logique que le site, cf. Login.tsx).
+      return {
+        success: true,
+        result: { google: await isGoogleAuthAvailable() },
+      };
     }
 
     case "START_ANALYSIS": {

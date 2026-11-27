@@ -287,6 +287,7 @@ export type MessageAction =
   | "GET_USER"
   | "LOGIN"
   | "GOOGLE_LOGIN"
+  | "GET_AUTH_PROVIDERS"
   | "LOGOUT"
   | "START_ANALYSIS"
   | "ANALYZE_VIDEO"
