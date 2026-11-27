@@ -79,6 +79,11 @@
       "de": "Deutsch"
     }
   },
+  "suggestions": {
+    "flashcards": "Create flashcards",
+    "history": "My analyses",
+    "openApp": "Open in the app"
+  },
   "guest": {
     "banner": "Discovery mode — 3 free analyses without an account",
     "exhaustedText": "Create a free account to save your analyses and do more"

@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from "react";
 import Browser from "../../utils/browser-polyfill";
-import { WEBAPP_URL } from "../../utils/config";
+import { analysisUrl } from "../../utils/webappLinks";
 import type { Summary, MessageResponse } from "../../types";
 
 interface Props {
@@ -25,7 +25,7 @@ export const ActionBar: React.FC<Props> = ({ summary, summaryId }) => {
   const videoId = extractVideoId(summary.video_url);
 
   const handleShare = useCallback(async () => {
-    const fallbackUrl = `${WEBAPP_URL}/summary/${summaryId}`;
+    const fallbackUrl = analysisUrl(summaryId);
     let shareUrl = fallbackUrl;
 
     if (videoId) {
@@ -52,7 +52,7 @@ export const ActionBar: React.FC<Props> = ({ summary, summaryId }) => {
   }, [videoId, summaryId]);
 
   const handleOpenWeb = useCallback(() => {
-    Browser.tabs.create({ url: `${WEBAPP_URL}/summary/${summaryId}` });
+    Browser.tabs.create({ url: analysisUrl(summaryId) });
   }, [summaryId]);
 
   const handleAnalyzeAnother = useCallback(() => {

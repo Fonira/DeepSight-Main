@@ -29,7 +29,8 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import Browser from "../../utils/browser-polyfill";
-import { API_BASE_URL, WEBAPP_URL } from "../../utils/config";
+import { API_BASE_URL } from "../../utils/config";
+import { DASHBOARD_URL } from "../../utils/webappLinks";
 import { getStoredTokens } from "../../utils/storage";
 import { ExternalLinkIcon } from "../shared/Icons";
 import { DeepSightSpinner } from "../shared/DeepSightSpinner";
@@ -574,10 +575,9 @@ const EmptyVisualState: React.FC<{ videoId: string | null }> = ({
       className="analyze-btn"
       data-testid="visual-panel-reanalyze-cta"
       onClick={() => {
-        const target = videoId
-          ? `${WEBAPP_URL}/analyze?v=${encodeURIComponent(videoId)}&visual=1`
-          : `${WEBAPP_URL}/analyze`;
-        Browser.tabs.create({ url: target });
+        // Pas de route d'analyse par URL sur le site : le tableau de bord
+        // permet de relancer l'analyse (option visuelle comprise).
+        Browser.tabs.create({ url: DASHBOARD_URL });
       }}
     >
       Réanalyser avec le visuel <ExternalLinkIcon size={12} />

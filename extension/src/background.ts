@@ -1222,7 +1222,9 @@ export async function handleMessage(
       if (visualMsg.plan) {
         params.set("from_plan", visualMsg.plan);
       }
-      const pricingUrl = `${WEBAPP_URL}/pricing?${params.toString()}`;
+      // /upgrade directement : l'alias /pricing redirige sans la query
+      // string, ce qui perdait les UTM du funnel.
+      const pricingUrl = `${WEBAPP_URL}/upgrade?${params.toString()}`;
       await Browser.tabs.create({ url: pricingUrl });
       return { success: true };
     } catch (e) {

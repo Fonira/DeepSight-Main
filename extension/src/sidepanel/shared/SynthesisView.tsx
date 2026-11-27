@@ -9,6 +9,7 @@ import {
 import type { KeyPoint } from "../../utils/sanitize";
 import Browser from "../../utils/browser-polyfill";
 import { WEBAPP_URL } from "../../utils/config";
+import { featureUrl, type WebFeature } from "../../utils/webappLinks";
 import {
   ChatIcon,
   ExternalLinkIcon,
@@ -56,11 +57,10 @@ function keyPointClass(type: KeyPoint["type"]): string {
 }
 
 interface FeatureCTA {
-  key: keyof NonNullable<PlanInfo["features"]>;
+  key: WebFeature;
   icon: string;
   doodleName: string;
   labelKey: "flashcards" | "mindMaps" | "webSearch" | "exports" | "playlists";
-  hash: string;
   minPlan: string;
   price: string;
 }
@@ -71,7 +71,6 @@ const FEATURE_CTAS: FeatureCTA[] = [
     icon: "\uD83D\uDDC2\uFE0F",
     doodleName: "book",
     labelKey: "flashcards",
-    hash: "#flashcards",
     minPlan: "pro",
     price: "8,99€",
   },
@@ -80,7 +79,6 @@ const FEATURE_CTAS: FeatureCTA[] = [
     icon: "\uD83E\uDDE0",
     doodleName: "brain",
     labelKey: "mindMaps",
-    hash: "#mindmap",
     minPlan: "pro",
     price: "8,99€",
   },
@@ -89,7 +87,6 @@ const FEATURE_CTAS: FeatureCTA[] = [
     icon: "\uD83C\uDF10",
     doodleName: "globe",
     labelKey: "webSearch",
-    hash: "#websearch",
     minPlan: "pro",
     price: "8,99€",
   },
@@ -98,7 +95,6 @@ const FEATURE_CTAS: FeatureCTA[] = [
     icon: "\uD83D\uDCE4",
     doodleName: "code",
     labelKey: "exports",
-    hash: "#export",
     minPlan: "pro",
     price: "8,99€",
   },
@@ -107,7 +103,6 @@ const FEATURE_CTAS: FeatureCTA[] = [
     icon: "\uD83C\uDFAC",
     doodleName: "camera",
     labelKey: "playlists",
-    hash: "#playlists",
     minPlan: "pro",
     price: "8,99€",
   },
@@ -381,7 +376,7 @@ export const SynthesisView: React.FC<SynthesisViewProps> = ({
               className="feature-cta feature-cta-available"
               onClick={() =>
                 Browser.tabs.create({
-                  url: `${WEBAPP_URL}/summary/${summaryId}${cta.hash}`,
+                  url: featureUrl(summaryId, cta.key),
                 })
               }
             >

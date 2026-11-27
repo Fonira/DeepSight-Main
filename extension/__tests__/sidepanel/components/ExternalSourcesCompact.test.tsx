@@ -157,7 +157,7 @@ describe("ExternalSourcesCompact", () => {
     expect(cta).toBeInTheDocument();
     fireEvent.click(cta);
     expect(tabsCreateSpy).toHaveBeenCalledWith({
-      url: expect.stringContaining("/hub/analysis/777"),
+      url: expect.stringContaining("/hub?conv=777"),
     });
   });
 

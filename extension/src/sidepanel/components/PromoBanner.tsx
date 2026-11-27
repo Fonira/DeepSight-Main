@@ -46,7 +46,7 @@ const PROMOS_PRO: Promo[] = [
   {
     id: "pro-mobile",
     textKey: 0,
-    url: `${WEBAPP_URL}/mobile`,
+    url: WEBAPP_URL,
     gradient: GRADIENTS.goldDark,
   },
   {

@@ -4,6 +4,13 @@ import { GoogleIcon } from "../shared/Icons";
 import { DoodleIcon } from "../shared/doodles/DoodleIcon";
 import { DeepSightSpinner } from "../shared/DeepSightSpinner";
 import { useTranslation } from "../../i18n/useTranslation";
+import {
+  FORGOT_PASSWORD_URL,
+  HOME_URL,
+  PRIVACY_URL,
+  REGISTER_URL,
+  TERMS_URL,
+} from "../../utils/webappLinks";
 
 interface LoginViewProps {
   onLogin: (email: string, password: string) => Promise<void>;
@@ -206,7 +213,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
       {/* Footer */}
       <div className="login-footer">
         <a
-          href="https://www.deepsightsynthesis.com/register"
+          href={REGISTER_URL}
           target="_blank"
           rel="noreferrer"
         >
@@ -214,7 +221,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
         </a>
         <span>&middot;</span>
         <a
-          href="https://www.deepsightsynthesis.com/forgot-password"
+          href={FORGOT_PASSWORD_URL}
           target="_blank"
           rel="noreferrer"
         >
@@ -222,7 +229,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
         </a>
         <span>&middot;</span>
         <a
-          href="https://www.deepsightsynthesis.com"
+          href={HOME_URL}
           target="_blank"
           rel="noreferrer"
         >
@@ -233,7 +240,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
       {/* Legal */}
       <div className="login-legal">
         <a
-          href="https://www.deepsightsynthesis.com/legal/privacy"
+          href={PRIVACY_URL}
           target="_blank"
           rel="noreferrer"
         >
@@ -241,7 +248,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
         </a>
         <span>&middot;</span>
         <a
-          href="https://www.deepsightsynthesis.com/legal/cgu"
+          href={TERMS_URL}
           target="_blank"
           rel="noreferrer"
         >

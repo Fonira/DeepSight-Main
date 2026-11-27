@@ -35,6 +35,13 @@ import { useTranslation } from "../../i18n/useTranslation";
 import { localizeError } from "../../i18n/errorMessages";
 import { isAnalysisQuotaExceeded } from "../../utils/plan";
 import {
+  DASHBOARD_URL,
+  HISTORY_URL,
+  REGISTER_URL,
+  STUDY_HUB_URL,
+  analysisUrl,
+} from "../../utils/webappLinks";
+import {
   POLL_INTERVAL_MS,
   MAX_POLL_DURATION_MS,
   decidePollAfterError,
@@ -232,7 +239,7 @@ export const MainView: React.FC<MainViewProps> = ({
 
       const result = response.result as QuickChatResponse;
       Browser.tabs.create({
-        url: `${WEBAPP_URL}/chat?summary=${result.summary_id}`,
+        url: analysisUrl(result.summary_id, "chat"),
       });
     } catch (e) {
       onError(localizeError(t.errors, (e as Error).message));
@@ -530,8 +537,8 @@ export const MainView: React.FC<MainViewProps> = ({
           <button
             className="v3-icon-btn"
             onClick={() => Browser.tabs.create({ url: WEBAPP_URL })}
-            title="Ouvrir DeepSight"
-            aria-label="Ouvrir DeepSight"
+            title={t.suggestions.openApp}
+            aria-label={t.suggestions.openApp}
           >
             <ExternalLinkIcon size={13} />
           </button>
@@ -696,7 +703,7 @@ export const MainView: React.FC<MainViewProps> = ({
                 <button
                   className="v3-button-primary"
                   onClick={() =>
-                    Browser.tabs.create({ url: `${WEBAPP_URL}/register` })
+                    Browser.tabs.create({ url: REGISTER_URL })
                   }
                 >
                   {t.common.createAccount} {"↗"}
@@ -784,30 +791,24 @@ export const MainView: React.FC<MainViewProps> = ({
                     suggestions={[
                       {
                         id: "flashcards",
-                        label: "Créer flashcards",
+                        label: t.suggestions.flashcards,
                         icon: "🎴",
                         onTrigger: () =>
-                          Browser.tabs.create({
-                            url: `${WEBAPP_URL}/study/${video.videoId}`,
-                          }),
+                          Browser.tabs.create({ url: STUDY_HUB_URL }),
                       },
                       {
-                        id: "sources",
-                        label: "Voir sources",
+                        id: "history",
+                        label: t.suggestions.history,
                         icon: "🔍",
                         onTrigger: () =>
-                          Browser.tabs.create({
-                            url: `${WEBAPP_URL}/library`,
-                          }),
+                          Browser.tabs.create({ url: HISTORY_URL }),
                       },
                       {
                         id: "openweb",
-                        label: "Ouvrir dans l'app",
+                        label: t.suggestions.openApp,
                         icon: "🌐",
                         onTrigger: () =>
-                          Browser.tabs.create({
-                            url: `${WEBAPP_URL}/`,
-                          }),
+                          Browser.tabs.create({ url: DASHBOARD_URL }),
                       },
                     ]}
                   />
@@ -889,7 +890,7 @@ export const MainView: React.FC<MainViewProps> = ({
                 <button
                   className="v3-button-secondary"
                   onClick={() =>
-                    Browser.tabs.create({ url: `${WEBAPP_URL}/register` })
+                    Browser.tabs.create({ url: REGISTER_URL })
                   }
                 >
                   {t.common.createAccount} {"↗"}
@@ -962,7 +963,7 @@ export const MainView: React.FC<MainViewProps> = ({
                 <button
                   className="v3-button-primary"
                   onClick={() =>
-                    Browser.tabs.create({ url: `${WEBAPP_URL}/register` })
+                    Browser.tabs.create({ url: REGISTER_URL })
                   }
                 >
                   {t.common.createAccount} {"↗"}
@@ -980,7 +981,7 @@ export const MainView: React.FC<MainViewProps> = ({
               {recentAnalyses.slice(0, 5).map((item) => (
                 <li key={item.videoId}>
                   <a
-                    href={`${WEBAPP_URL}/summary/${item.summaryId}`}
+                    href={analysisUrl(item.summaryId)}
                     target="_blank"
                     rel="noreferrer"
                     className="v3-recent-item"
