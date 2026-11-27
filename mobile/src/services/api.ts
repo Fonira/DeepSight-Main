@@ -597,9 +597,22 @@ export const userApi = {
 // ============================================
 export const videoApi = {
   async analyze(data: AnalysisRequest): Promise<{ task_id: string }> {
+    // Contrat HybridAnalyzeRequest (aligné sur analyzeHybrid du web) :
+    // - `lang`, pas `language` (ignoré → toutes les analyses sortaient en français) ;
+    // - pas de `model` : le backend prend le modèle du plan (une valeur inconnue
+    //   retombait sur mistral-small, même pour Expert/unlimited) ;
+    // - `category` seulement si imposée : "auto" était pris comme catégorie forcée.
+    const body: Record<string, unknown> = {
+      mode: data.mode,
+      lang: data.language,
+    };
+    if (data.url) body.url = data.url;
+    if (data.category && data.category !== "auto") body.category = data.category;
+    if (data.deep_research !== undefined) body.deep_research = data.deep_research;
+
     return request("/api/videos/analyze/hybrid", {
       method: "POST",
-      body: data,
+      body,
       timeout: TIMEOUTS.ANALYSIS,
     });
   },

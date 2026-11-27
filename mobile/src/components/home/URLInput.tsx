@@ -96,7 +96,6 @@ export const URLInput: React.FC<URLInputProps> = ({ onOptionsPress }) => {
         url,
         mode: options.mode,
         language: options.language,
-        model: "mistral",
         category: "auto",
       });
 

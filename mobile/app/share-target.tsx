@@ -106,7 +106,6 @@ export default function ShareTargetScreen() {
         url,
         mode: options.mode,
         language: options.language,
-        model: "mistral",
         category: "auto",
       });
       const taskId = response.task_id;

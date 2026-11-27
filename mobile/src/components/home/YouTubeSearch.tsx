@@ -148,7 +148,6 @@ export const YouTubeSearch: React.FC<YouTubeSearchProps> = ({
           url: videoUrl,
           mode: options.mode,
           language: options.language,
-          model: "mistral",
           category: "auto",
         });
 
