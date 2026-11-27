@@ -33,7 +33,7 @@ import {
   Server,
 } from "lucide-react";
 import { DeepSightSpinner, DeepSightSpinnerMicro } from "../components/ui";
-import { API_URL } from "../services/api";
+import { request } from "../services/api";
 import { useToast } from "../components/Toast";
 import { PLANS_INFO, type PlanId } from "../config/planPrivileges";
 import { AdminProxyStatsTab } from "../components/admin/AdminProxyStatsTab";
@@ -74,6 +74,11 @@ interface AdminLog {
 
 type TabType = "dashboard" | "users" | "stats" | "logs" | "proxy";
 
+interface AdminFetchOptions {
+  method?: "GET" | "POST" | "PUT" | "DELETE";
+  body?: Record<string, unknown>;
+}
+
 const ADMIN_EMAIL = "maximeleparc3@gmail.com";
 
 // Plan colors and labels — synced from planPrivileges.ts
@@ -105,9 +110,6 @@ export const AdminPage: React.FC = () => {
   const navigate = useNavigate();
   const { showToast, ToastComponent } = useToast();
 
-  // Récupérer le token depuis localStorage
-  const getToken = () => localStorage.getItem("access_token");
-
   // UI State
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -136,40 +138,18 @@ export const AdminPage: React.FC = () => {
   const isUserAdmin =
     user?.is_admin || user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
 
-  // API Helper
+  // API Helper — via request() : jeton renouvelé sur 401 (sinon l'admin
+  // restait vide une fois l'access token expiré, au bout de 60 min).
   const adminFetch = useCallback(
-    async (endpoint: string, options: RequestInit = {}) => {
-      const accessToken = getToken();
-
-      if (!accessToken) {
-        throw new Error("Not authenticated");
-      }
-
-      const response = await fetch(`${API_URL}${endpoint}`, {
-        ...options,
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-          ...options.headers,
-        },
-      });
-
-      if (!response.ok) {
-        const error = await response
-          .json()
-          .catch(() => ({ detail: "Erreur serveur" }));
-        throw new Error(error.detail || "Erreur");
-      }
-
-      return response.json();
-    },
+    <T = unknown,>(endpoint: string, options: AdminFetchOptions = {}) =>
+      request<T>(endpoint, options),
     [],
   );
 
   // Load Stats
   const loadStats = useCallback(async () => {
     try {
-      const data = await adminFetch("/api/admin/stats");
+      const data = await adminFetch<AdminStats>("/api/admin/stats");
       setStats(data);
     } catch (err: unknown) {
       console.error("Stats error:", err);
@@ -186,7 +166,9 @@ export const AdminPage: React.FC = () => {
       if (usersSearch) params.append("search", usersSearch);
       if (usersPlanFilter) params.append("plan", usersPlanFilter);
 
-      const data = await adminFetch(`/api/admin/users?${params}`);
+      const data = await adminFetch<{ users: AdminUser[]; total: number }>(
+        `/api/admin/users?${params}`,
+      );
       setUsers(data.users);
       setUsersTotal(data.total);
     } catch (err: unknown) {
@@ -197,7 +179,7 @@ export const AdminPage: React.FC = () => {
   // Load Logs
   const loadLogs = useCallback(async () => {
     try {
-      const data = await adminFetch("/api/admin/logs");
+      const data = await adminFetch<{ logs: AdminLog[] }>("/api/admin/logs");
       setLogs(data.logs);
     } catch (err: unknown) {
       console.error("Logs error:", err);
@@ -229,7 +211,7 @@ export const AdminPage: React.FC = () => {
     try {
       await adminFetch(`/api/admin/users/${selectedUser.id}`, {
         method: "PUT",
-        body: JSON.stringify({ plan: editPlan }),
+        body: { plan: editPlan },
       });
 
       await loadUsers();
@@ -251,10 +233,10 @@ export const AdminPage: React.FC = () => {
     try {
       await adminFetch(`/api/admin/users/${selectedUser.id}/credits`, {
         method: "POST",
-        body: JSON.stringify({
+        body: {
           amount: creditsAmount,
           reason: creditsReason || "Admin bonus",
-        }),
+        },
       });
 
       await loadUsers();
