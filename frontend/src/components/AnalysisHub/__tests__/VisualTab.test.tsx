@@ -8,8 +8,8 @@
 //
 // Pas de mock — le composant est pur (props in / DOM out), pas d'API.
 
-import { describe, it, expect } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { describe, it, expect, vi } from "vitest";
+import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import { afterEach } from "vitest";
 import { VisualTab } from "../VisualTab";
 import type { VisualAnalysis } from "../../../types/analysis";
@@ -58,9 +58,37 @@ describe("VisualTab", () => {
     expect(
       screen.getByText(/Analyse visuelle non disponible/i),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(/Réanalyser avec le visuel/i),
-    ).toBeInTheDocument();
+  });
+
+  it("n'invite pas à réanalyser quand la couche visuelle est désactivée sur le serveur", () => {
+    const onReanalyze = vi.fn();
+    render(
+      <VisualTab
+        visualAnalysis={null}
+        language="fr"
+        visualAvailable={false}
+        onReanalyze={onReanalyze}
+      />,
+    );
+    expect(screen.getByText(/pas encore activée/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Réanalyser avec le visuel/i)).toBeNull();
+    expect(screen.queryByRole("button")).toBeNull();
+  });
+
+  it("propose la ré-analyse quand la couche visuelle est activée", () => {
+    const onReanalyze = vi.fn();
+    render(
+      <VisualTab
+        visualAnalysis={null}
+        language="fr"
+        visualAvailable
+        onReanalyze={onReanalyze}
+      />,
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: /Réanalyser avec le visuel/i }),
+    );
+    expect(onReanalyze).toHaveBeenCalledTimes(1);
   });
 
   it("affiche un empty state quand visualAnalysis est undefined", () => {

@@ -36,7 +36,7 @@ from dataclasses import dataclass, field
 from typing import AsyncGenerator, Dict, List, Literal, Optional
 
 from core.http_client import shared_http_client
-from core.config import get_mistral_key
+from core.config import get_mistral_analyst_agent_id, get_mistral_key
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +49,9 @@ MISTRAL_CONVERSATIONS_URL = "https://api.mistral.ai/v1/conversations"
 
 # Default model for the Agent — configurable via ensure_agent()
 DEFAULT_AGENT_MODEL = "mistral-small-2603"
+
+# Nom de l'agent côté Mistral : sert à retrouver un agent déjà créé
+AGENT_NAME = "DeepSight Analyst"
 
 # Agent singleton state
 _agent_id: Optional[str] = None
@@ -156,13 +159,48 @@ _AGENT_SYSTEM_INSTRUCTIONS = (
 # =============================================================================
 
 
+async def _find_existing_agent(client, api_key: str, model: str) -> str | None:
+    """Cherche un agent « DeepSight Analyst » déjà créé sur le compte Mistral.
+
+    Préfère celui qui utilise `model`, sinon le premier du même nom.
+    Retourne None si aucun, ou si la liste est indisponible (on crée alors).
+    """
+    try:
+        response = await client.get(
+            MISTRAL_AGENTS_URL,
+            headers={"Authorization": f"Bearer {api_key}"},
+            params={"name": AGENT_NAME, "page": 0, "page_size": 100},
+            timeout=15,
+        )
+        if response.status_code != 200:
+            logger.warning(f"[AGENT] Could not list agents: {response.status_code} {response.text[:200]}")
+            return None
+        data = response.json()
+    except Exception as e:  # noqa: BLE001 — recherche facultative, repli sur la création
+        logger.warning(f"[AGENT] Could not list agents: {e}")
+        return None
+
+    agents = data.get("data", []) if isinstance(data, dict) else data
+    # Le filtre `name` côté API est un confort : on revérifie le nom exact.
+    same_name = [a for a in agents or [] if isinstance(a, dict) and a.get("name") == AGENT_NAME and a.get("id")]
+    if not same_name:
+        return None
+    for agent in same_name:
+        if agent.get("model") == model:
+            return agent["id"]
+    return same_name[0]["id"]
+
+
 async def ensure_agent(
     model: str = DEFAULT_AGENT_MODEL,
     force_recreate: bool = False,
 ) -> Optional[str]:
     """
-    Ensure the DeepSight Analyst agent exists. Creates it if needed.
-    Returns the agent_id or None on failure.
+    Ensure the DeepSight Analyst agent exists and return its id (None on failure).
+
+    Ordre : ID fixé dans la config (MISTRAL_ANALYST_AGENT_ID) → agent du même
+    nom déjà présent sur le compte Mistral → création. Sans cela, chaque
+    redémarrage du process créait un nouvel agent.
 
     Thread-safe via asyncio.Lock.
     """
@@ -176,6 +214,13 @@ async def ensure_agent(
         if _agent_id and not force_recreate:
             return _agent_id
 
+        if not force_recreate:
+            configured_id = get_mistral_analyst_agent_id()
+            if configured_id:
+                _agent_id = configured_id
+                logger.info(f"[AGENT] Using configured DeepSight Analyst agent: {_agent_id}")
+                return _agent_id
+
         api_key = get_mistral_key()
         if not api_key:
             logger.error("[AGENT] No MISTRAL_API_KEY configured")
@@ -183,6 +228,13 @@ async def ensure_agent(
 
         try:
             async with shared_http_client() as client:
+                if not force_recreate:
+                    existing_id = await _find_existing_agent(client, api_key, model)
+                    if existing_id:
+                        _agent_id = existing_id
+                        logger.info(f"[AGENT] Reusing existing DeepSight Analyst agent: {_agent_id}")
+                        return _agent_id
+
                 response = await client.post(
                     MISTRAL_AGENTS_URL,
                     headers={
@@ -191,7 +243,7 @@ async def ensure_agent(
                     },
                     json={
                         "model": model,
-                        "name": "DeepSight Analyst",
+                        "name": AGENT_NAME,
                         "description": "Agent d'analyse et de fact-checking pour DeepSight",
                         "instructions": _AGENT_SYSTEM_INSTRUCTIONS,
                         "tools": [{"type": "web_search"}],

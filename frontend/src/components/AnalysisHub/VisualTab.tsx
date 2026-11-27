@@ -47,6 +47,12 @@ interface VisualTabProps {
   visualAnalysis: VisualAnalysis | null | undefined;
   language: "fr" | "en";
   /**
+   * Couche visuelle activée sur le serveur (`user.visual_analysis_available`).
+   * Absent/false : aucune invitation à réanalyser — la ré-analyse coûterait
+   * un crédit et produirait un doublon sans visuel.
+   */
+  visualAvailable?: boolean;
+  /**
    * Callback déclenché par le CTA "Réanalyser avec le visuel" de l'empty state.
    * Si fourni, le bouton devient interactif. Si absent, le CTA reste un badge
    * informatif inerte (rétrocompat tests / pages legacy).
@@ -193,12 +199,14 @@ const BooleanBadge: React.FC<{
 
 interface EmptyVisualStateProps {
   language: "fr" | "en";
+  visualAvailable?: boolean;
   onReanalyze?: () => void;
   isReanalyzing?: boolean;
 }
 
 const EmptyVisualState: React.FC<EmptyVisualStateProps> = ({
   language,
+  visualAvailable,
   onReanalyze,
   isReanalyzing,
 }) => {
@@ -227,14 +235,24 @@ const EmptyVisualState: React.FC<EmptyVisualStateProps> = ({
           "Visual analysis unavailable",
         )}
       </h3>
-      <p className="text-sm text-text-tertiary max-w-md mx-auto mb-4">
-        {t(
-          language,
-          "Cette analyse n'a pas inclus la couche visuelle. Réanalysez la vidéo en activant l'option « Analyse visuelle » pour voir le hook, la structure, les moments clés et les indicateurs SEO visuels extraits par Mistral Vision.",
-          "This analysis did not include the visual layer. Re-run the analysis with the « Visual analysis » option enabled to see the hook, structure, key moments and SEO indicators extracted by Mistral Vision.",
-        )}
-      </p>
-      {onReanalyze ? (
+      {!visualAvailable ? (
+        <p className="text-sm text-text-tertiary max-w-md mx-auto">
+          {t(
+            language,
+            "L'analyse visuelle (hook, structure, moments clés et indicateurs SEO extraits par Mistral Vision) n'est pas encore activée sur DeepSight.",
+            "Visual analysis (hook, structure, key moments and SEO indicators extracted by Mistral Vision) is not enabled on DeepSight yet.",
+          )}
+        </p>
+      ) : (
+        <p className="text-sm text-text-tertiary max-w-md mx-auto mb-4">
+          {t(
+            language,
+            "Cette analyse n'a pas inclus la couche visuelle. Réanalysez la vidéo en activant l'option « Analyse visuelle » pour voir le hook, la structure, les moments clés et les indicateurs SEO visuels extraits par Mistral Vision.",
+            "This analysis did not include the visual layer. Re-run the analysis with the « Visual analysis » option enabled to see the hook, structure, key moments and SEO indicators extracted by Mistral Vision.",
+          )}
+        </p>
+      )}
+      {!visualAvailable ? null : onReanalyze ? (
         <button
           type="button"
           onClick={onReanalyze}
@@ -271,10 +289,20 @@ const EmptyVisualState: React.FC<EmptyVisualStateProps> = ({
 export const VisualTab: React.FC<VisualTabProps> = ({
   visualAnalysis,
   language,
+  visualAvailable = false,
+  onReanalyze,
+  isReanalyzing,
 }) => {
   // Empty state quand le payload est absent (Phase 2 non lancée)
   if (!visualAnalysis) {
-    return <EmptyVisualState language={language} />;
+    return (
+      <EmptyVisualState
+        language={language}
+        visualAvailable={visualAvailable}
+        onReanalyze={onReanalyze}
+        isReanalyzing={isReanalyzing}
+      />
+    );
   }
 
   const {

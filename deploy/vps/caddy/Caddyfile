@@ -112,10 +112,20 @@ www.deepsightsynthesis.com {
 		file_server
 	}
 
+	# /auth/callback reçoit des jetons et /reset-password un code en query :
+	# masqués dans le log.
 	log {
 		output file /data/logs/www.log {
 			roll_size 50mb
 			roll_keep 3
+		}
+		format filter {
+			request>uri query {
+				replace access_token REDACTED
+				replace refresh_token REDACTED
+				replace code REDACTED
+			}
+			wrap json
 		}
 	}
 }
@@ -152,10 +162,21 @@ api.deepsightsynthesis.com {
 		-Server
 	}
 
+	# Le flux d'analyse (EventSource) et le WebSocket du chat passent le JWT en
+	# ?token= : on le masque avant écriture. Les en-têtes Authorization/Cookie
+	# sont déjà masqués par Caddy par défaut.
 	log {
 		output file /data/logs/access.log {
 			roll_size 100mb
 			roll_keep 5
+		}
+		format filter {
+			request>uri query {
+				replace token REDACTED
+				replace access_token REDACTED
+				replace refresh_token REDACTED
+			}
+			wrap json
 		}
 	}
 }

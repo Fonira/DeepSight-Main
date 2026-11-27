@@ -87,6 +87,7 @@ export const HubAnalysisPanel: React.FC<Props> = ({
   const analysisUser = {
     plan: user?.plan,
     credits: user?.credits,
+    visual_analysis_available: user?.visual_analysis_available,
   };
 
   return (

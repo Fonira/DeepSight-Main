@@ -458,3 +458,44 @@ class TestAdminDLQRouter:
                 session=admin_session_with_rows,
             )
         assert exc_info.value.status_code == 409
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_list_include_body_returns_plain_text(self, sqlite_session):
+        """Vue admin en lecture seule : corps texte, ou HTML sans balises."""
+        from admin.email_dlq_router import list_email_dlq
+        from db.database import EmailDLQ
+
+        sqlite_session.add(
+            EmailDLQ(
+                email_to="contact@x.com",
+                subject="[DeepSight Contact] Bonjour",
+                body_html="<p>ignored</p>",
+                body_text="De: Alice\n\nMessage du formulaire",
+                replay_status="pending",
+            )
+        )
+        sqlite_session.add(
+            EmailDLQ(
+                email_to="html@x.com",
+                subject="html only",
+                body_html="<style>p{}</style><p>Salut &amp; <b>bienvenue</b></p><script>x()</script>",
+                replay_status="pending",
+            )
+        )
+        await sqlite_session.commit()
+        admin = MagicMock()
+        admin.id = 1
+
+        with_body = await list_email_dlq(
+            status=None, email_to=None, limit=50, offset=0, include_body=True, admin=admin, session=sqlite_session
+        )
+        bodies = {it.email_to: it.body_text for it in with_body.items}
+        assert bodies["contact@x.com"] == "De: Alice\n\nMessage du formulaire"
+        assert "Salut & " in bodies["html@x.com"] and "bienvenue" in bodies["html@x.com"]
+        assert "<" not in bodies["html@x.com"] and "x()" not in bodies["html@x.com"]
+
+        without_body = await list_email_dlq(
+            status=None, email_to=None, limit=50, offset=0, include_body=False, admin=admin, session=sqlite_session
+        )
+        assert all(it.body_text is None for it in without_body.items)

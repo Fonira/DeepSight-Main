@@ -75,6 +75,7 @@ import {
   reliabilityApi,
   chatApi,
   debateApi,
+  request,
 } from "../services/api";
 import type {
   Summary,
@@ -96,7 +97,6 @@ import { sanitizeTitle } from "../utils/sanitize";
 // ═══════════════════════════════════════════════════════════════════════════════
 const BASE_API_URL =
   import.meta.env.VITE_API_URL || "https://api.deepsightsynthesis.com";
-const API_URL = BASE_API_URL.replace(/\/api\/?$/, "") + "/api";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📦 TYPES
@@ -271,15 +271,44 @@ const formatRelativeDate = (dateString: string, lang: string): string => {
 // 🎣 API HOOK
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const useHistoryApi = () => {
-  const getAuthHeaders = () => {
-    const token = localStorage.getItem("access_token");
-    return {
-      "Content-Type": "application/json",
-      Authorization: token ? `Bearer ${token}` : "",
-    };
-  };
+// Les appels passent par request() (services/api) : sur 401, le jeton est
+// renouvelé puis la requête rejouée. Un fetch direct laissait la page vide
+// une fois l'access token expiré (60 min).
+interface HistoryVideosResponse {
+  items: VideoSummary[];
+  total: number;
+}
 
+interface HistoryPlaylistsResponse {
+  items: PlaylistSummary[];
+  total: number;
+}
+
+interface HistoryChatResponse {
+  response?: string;
+  message?: string;
+  sources?: ChatMessage["sources"];
+  web_search_used?: boolean;
+  quota_info?: Record<string, unknown>;
+}
+
+type ChatHistoryPayload =
+  | Record<string, unknown>[]
+  | { messages?: Record<string, unknown>[] };
+
+const toChatMessages = (data: ChatHistoryPayload): ChatMessage[] => {
+  // Le backend retourne { messages: [...], ... } ou directement [...]
+  const messages = Array.isArray(data) ? data : data.messages || [];
+  return messages.map((m: Record<string, unknown>, i: number) => ({
+    id: (m.id as string | number | undefined)?.toString() || `history-${i}-${Date.now()}`,
+    role: m.role as ChatMessage["role"],
+    content: m.content as string,
+    sources: (m.sources as ChatMessage["sources"]) || [],
+    web_search_used: (m.web_search_used as boolean) || false,
+  }));
+};
+
+const useHistoryApi = () => {
   const fetchVideos = async (params: {
     page?: number;
     per_page?: number;
@@ -294,11 +323,9 @@ const useHistoryApi = () => {
       queryParams.set("category", params.category);
     if (params.search) queryParams.set("search", params.search);
 
-    const response = await fetch(`${API_URL}/history/videos?${queryParams}`, {
-      headers: getAuthHeaders(),
-    });
-    if (!response.ok) throw new Error("Failed to fetch videos");
-    return response.json();
+    return request<HistoryVideosResponse>(
+      `/api/history/videos?${queryParams}`,
+    );
   };
 
   const fetchPlaylists = async (params: {
@@ -312,98 +339,55 @@ const useHistoryApi = () => {
       queryParams.set("per_page", params.per_page.toString());
     if (params.search) queryParams.set("search", params.search);
 
-    const response = await fetch(
-      `${API_URL}/history/playlists?${queryParams}`,
-      {
-        headers: getAuthHeaders(),
-      },
+    return request<HistoryPlaylistsResponse>(
+      `/api/history/playlists?${queryParams}`,
     );
-    if (!response.ok) throw new Error("Failed to fetch playlists");
-    return response.json();
   };
 
   const fetchPlaylistDetail = async (
     playlistId: string,
-  ): Promise<PlaylistDetail> => {
-    const response = await fetch(`${API_URL}/history/playlists/${playlistId}`, {
-      headers: getAuthHeaders(),
-    });
-    if (!response.ok) throw new Error("Failed to fetch playlist detail");
-    return response.json();
-  };
+  ): Promise<PlaylistDetail> =>
+    request<PlaylistDetail>(`/api/history/playlists/${playlistId}`);
 
-  const fetchStats = async (): Promise<HistoryStats> => {
-    const response = await fetch(`${API_URL}/history/stats`, {
-      headers: getAuthHeaders(),
-    });
-    if (!response.ok) throw new Error("Failed to fetch stats");
-    return response.json();
-  };
+  const fetchStats = async (): Promise<HistoryStats> =>
+    request<HistoryStats>("/api/history/stats");
 
   const deleteVideo = async (videoId: number) => {
-    const response = await fetch(`${API_URL}/history/videos/${videoId}`, {
-      method: "DELETE",
-      headers: getAuthHeaders(),
-    });
-    if (!response.ok) throw new Error("Failed to delete video");
+    await request(`/api/history/videos/${videoId}`, { method: "DELETE" });
   };
 
   const deletePlaylist = async (playlistId: string) => {
-    const response = await fetch(`${API_URL}/history/playlists/${playlistId}`, {
+    await request(`/api/history/playlists/${playlistId}`, {
       method: "DELETE",
-      headers: getAuthHeaders(),
     });
-    if (!response.ok) throw new Error("Failed to delete playlist");
   };
 
   // 🗑️ Supprimer tout l'historique
   const clearAllHistory = async (
     type: "all" | "videos" | "playlists" = "all",
-  ) => {
-    const response = await fetch(`${API_URL}/history/clear?type=${type}`, {
-      method: "DELETE",
-      headers: getAuthHeaders(),
-    });
-    if (!response.ok) throw new Error("Failed to clear history");
-    return response.json();
-  };
+  ) => request<unknown>(`/api/history/clear?type=${type}`, { method: "DELETE" });
 
   // Chat API pour vidéos
   const chatWithVideo = async (
     summaryId: number,
     message: string,
     webSearch: boolean = false,
-  ) => {
-    const response = await fetch(`${API_URL}/chat/${summaryId}`, {
+  ) =>
+    request<HistoryChatResponse>(`/api/chat/${summaryId}`, {
       method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ message, web_search: webSearch }),
+      body: { message, web_search: webSearch },
+      timeout: 120000,
     });
-    if (!response.ok) throw new Error("Chat failed");
-    return response.json();
-  };
 
   // 🆕 Récupérer l'historique du chat vidéo
   const getChatHistoryVideo = async (
     summaryId: number,
   ): Promise<ChatMessage[]> => {
     try {
-      const response = await fetch(`${API_URL}/chat/${summaryId}/history`, {
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) {
-        return [];
-      }
-      const data = await response.json();
-      // Le backend retourne { messages: [...], quota_info: {...} }
-      const messages = data.messages || data || [];
-      return messages.map((m: Record<string, unknown>, i: number) => ({
-        id: (m.id as string | number | undefined)?.toString() || `history-${i}-${Date.now()}`,
-        role: m.role as ChatMessage["role"],
-        content: m.content as string,
-        sources: (m.sources as ChatMessage["sources"]) || [],
-        web_search_used: (m.web_search_used as boolean) || false,
-      }));
+      const data = await request<ChatHistoryPayload>(
+        `/api/chat/${summaryId}/history`,
+      );
+      return toChatMessages(data);
     } catch (err) {
       console.error(`❌ [History] Error loading chat history:`, err);
       return [];
@@ -415,40 +399,22 @@ const useHistoryApi = () => {
     playlistId: string,
     message: string,
     webSearch: boolean = false,
-  ) => {
-    const response = await fetch(`${API_URL}/playlists/${playlistId}/chat`, {
+  ) =>
+    request<HistoryChatResponse>(`/api/playlists/${playlistId}/chat`, {
       method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ message, web_search: webSearch }),
+      body: { message, web_search: webSearch },
+      timeout: 120000,
     });
-    if (!response.ok) throw new Error("Chat failed");
-    return response.json();
-  };
 
   // 🆕 Récupérer l'historique du chat playlist/corpus
   const getChatHistoryPlaylist = async (
     playlistId: string,
   ): Promise<ChatMessage[]> => {
     try {
-      const response = await fetch(
-        `${API_URL}/playlists/${playlistId}/chat/history`,
-        {
-          headers: getAuthHeaders(),
-        },
+      const data = await request<ChatHistoryPayload>(
+        `/api/playlists/${playlistId}/chat/history`,
       );
-      if (!response.ok) {
-        return [];
-      }
-      const data = await response.json();
-      // Le backend peut retourner { messages: [...] } ou directement [...]
-      const messages = data.messages || data || [];
-      return messages.map((m: Record<string, unknown>, i: number) => ({
-        id: (m.id as string | number | undefined)?.toString() || `history-${i}-${Date.now()}`,
-        role: m.role as ChatMessage["role"],
-        content: m.content as string,
-        sources: (m.sources as ChatMessage["sources"]) || [],
-        web_search_used: (m.web_search_used as boolean) || false,
-      }));
+      return toChatMessages(data);
     } catch (err) {
       console.error(`❌ [History] Error loading playlist chat history:`, err);
       return [];
@@ -459,16 +425,10 @@ const useHistoryApi = () => {
   const fetchPlaylistVideoDetail = async (
     playlistId: string,
     videoId: string,
-  ): Promise<PlaylistVideoDetail> => {
-    const response = await fetch(
-      `${API_URL}/history/playlists/${playlistId}/videos/${videoId}`,
-      {
-        headers: getAuthHeaders(),
-      },
+  ): Promise<PlaylistVideoDetail> =>
+    request<PlaylistVideoDetail>(
+      `/api/history/playlists/${playlistId}/videos/${videoId}`,
     );
-    if (!response.ok) throw new Error("Failed to fetch video detail");
-    return response.json();
-  };
 
   return {
     fetchVideos,
@@ -712,8 +672,8 @@ export const History: React.FC = () => {
         search: searchQuery,
       });
 
-      setVideos(videosRes.items || videosRes);
-      setVideosTotal(videosRes.total || videosRes.length);
+      setVideos(videosRes.items || []);
+      setVideosTotal(videosRes.total || videosRes.items?.length || 0);
 
       // Stats non-bloquantes : un échec n'empêche pas l'affichage
       try {

@@ -26,6 +26,8 @@ vi.mock("../../services/api", () => {
     setTokens: mockSetTokens,
     getAccessToken: mockGetAccessToken,
     getRefreshToken: mockGetRefreshToken,
+    // Auth V2 : hard cap « Rester connecté » — session jamais expirée ici
+    isSessionExpired: vi.fn(() => false),
     ApiError: class ApiError extends Error {
       status: number;
       data?: Record<string, unknown>;

@@ -13,6 +13,7 @@
 from __future__ import annotations
 
 import asyncio
+import itertools
 import os
 import sys
 import time
@@ -123,14 +124,17 @@ async def test_rate_limit_concurrent_workers(fast_interval, redis_client_fixture
     """4 concurrent workers respect the Redis-shared rate window.
 
     Spec sect. 4.5 — Redis-backed distributed delay (NOT a strict SETNX lock —
-    Scholar uses a "best-effort" timestamp marker). With fakeredis under asyncio
-    the workers serialize cooperatively : the first call goes through fast,
-    the remaining workers each see the timestamp set by an earlier sibling and
-    must wait ~interval before proceeding.
+    Scholar uses a "best-effort" timestamp marker across workers). Inside one
+    process, concurrent coroutines are serialized by a lock: the first call
+    goes through fast, each following one waits ~interval after the previous.
+    (Without the lock the read-then-write raced: workers read the same marker
+    and fired together, or one read a fresher marker and waited too little,
+    which made this test flaky.)
 
     Concretely we check :
       * At least one worker was fast (< interval / 2).
       * All other workers had to wait >= 70% of the interval (lock honoured).
+      * Calls are spaced by >= 70% of the interval (no burst after the wait).
     """
     await scholar.init_scholar_redis(redis_client_fixture)
 
@@ -148,4 +152,10 @@ async def test_rate_limit_concurrent_workers(fast_interval, redis_client_fixture
     assert len(blocked_calls) >= 3, (
         f"expected >=3 workers to block >= {scholar.SCHOLAR_RATE_INTERVAL * 0.7:.3f}s, "
         f"got waits={waits}"
+    )
+    # Tous partent en même temps : l'écart entre deux fins = l'écart entre deux appels.
+    ordered = sorted(waits)
+    gaps = [b - a for a, b in itertools.pairwise(ordered)]
+    assert all(g >= scholar.SCHOLAR_RATE_INTERVAL * 0.7 for g in gaps), (
+        f"calls must be spaced by the interval, got waits={waits}"
     )

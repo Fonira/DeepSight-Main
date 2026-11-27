@@ -134,6 +134,8 @@ export interface User {
   // Bag JSON merge non-destructivement par PUT /api/auth/preferences
   // (has_completed_onboarding, persona, etc.)
   preferences?: Record<string, unknown>;
+  // Couche visuelle activée sur le serveur (VISUAL_ANALYSIS_ENABLED)
+  visual_analysis_available?: boolean;
 }
 
 export interface TokenResponse {
@@ -756,7 +758,9 @@ interface RequestOptions {
   _retried?: boolean;
 }
 
-async function request<T>(
+// Exporté pour les appels encore hors des modules *Api (Historique, admin…) :
+// passer par ici donne le renouvellement du jeton sur 401.
+export async function request<T>(
   endpoint: string,
   options: RequestOptions = {},
 ): Promise<T> {
