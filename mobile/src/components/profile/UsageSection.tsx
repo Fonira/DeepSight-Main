@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, DimensionValue } from "react-native";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useCredits } from "@/hooks/useCredits";
 import { useAuth } from "@/contexts/AuthContext";
+import { normalizePlanId } from "@/config/planPrivileges";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { sp, borderRadius } from "@/theme/spacing";
 import { fontFamily, fontSize } from "@/theme/typography";
@@ -19,7 +20,8 @@ export const UsageSection: React.FC = () => {
   const credits = useCredits();
 
   const analysesUsed = user?.analyses_this_month ?? 0;
-  const analysesTotal = PLAN_ANALYSES[user?.plan ?? "free"] ?? 3;
+  // "unlimited" (admin) et plans legacy → plan v2 équivalent (avant : « x/3 »)
+  const analysesTotal = PLAN_ANALYSES[normalizePlanId(user?.plan)] ?? 5;
   const analysesPercent =
     analysesTotal > 0 ? Math.min((analysesUsed / analysesTotal) * 100, 100) : 0;
 
