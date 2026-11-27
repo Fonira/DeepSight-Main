@@ -8,7 +8,10 @@ import * as WebBrowser from "expo-web-browser";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { billingApi, ApiError } from "@/services/api";
+import { billingApi } from "@/services/api";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { showBillingError } from "@/utils/billingErrors";
+import { WEB_ACCOUNT_URL } from "@/constants/config";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -46,6 +49,7 @@ export default function ProfileScreen() {
   const tabBarFootprint = useTabBarFootprint();
   const { colors } = useTheme();
   const { user, logout } = useAuth();
+  const { tr } = useLanguage();
   const router = useRouter();
   const [manageLoading, setManageLoading] = useState(false);
 
@@ -57,11 +61,16 @@ export default function ProfileScreen() {
       const { url } = await billingApi.getPortalUrl();
       await WebBrowser.openBrowserAsync(url);
     } catch (err) {
-      const message =
-        err instanceof ApiError
-          ? err.message
-          : "Impossible d'ouvrir le portail";
-      Alert.alert("Erreur", message);
+      showBillingError({
+        error: err,
+        tr,
+        fallbackTitle: tr("Erreur", "Error"),
+        fallbackMessage: tr(
+          "Impossible d'ouvrir le portail",
+          "Could not open the billing portal",
+        ),
+        webUrl: WEB_ACCOUNT_URL,
+      });
     } finally {
       setManageLoading(false);
     }

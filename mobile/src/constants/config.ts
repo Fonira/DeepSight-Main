@@ -1,6 +1,11 @@
 // API Configuration
 export const API_BASE_URL = "https://api.deepsightsynthesis.com";
 
+// Site web (paiements et gestion d'abonnement quand ils sont indisponibles dans l'app)
+export const WEB_APP_URL = "https://www.deepsightsynthesis.com";
+export const WEB_UPGRADE_URL = `${WEB_APP_URL}/upgrade`;
+export const WEB_ACCOUNT_URL = `${WEB_APP_URL}/account`;
+
 // Google OAuth Configuration
 // Web Client ID (used for Expo Go and web)
 export const GOOGLE_CLIENT_ID =

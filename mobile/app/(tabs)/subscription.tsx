@@ -28,7 +28,10 @@ import { LinearGradient } from "expo-linear-gradient";
 
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { billingApi, ApiError, type BillingCycle } from "@/services/api";
+import { billingApi, type BillingCycle } from "@/services/api";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { showBillingError } from "@/utils/billingErrors";
+import { WEB_ACCOUNT_URL, WEB_UPGRADE_URL } from "@/constants/config";
 import { OfflineCache, CachePriority } from "@/services/OfflineCache";
 import { useIsOffline } from "@/hooks/useNetworkStatus";
 import { DoodleBackground } from "@/components/ui/DoodleBackground";
@@ -284,6 +287,7 @@ export default function SubscriptionScreen() {
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const { user } = useAuth();
+  const { tr } = useLanguage();
   const isOffline = useIsOffline();
 
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
@@ -362,14 +366,18 @@ export default function SubscriptionScreen() {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         }
       } catch (err) {
-        const message =
-          err instanceof ApiError ? err.message : "Erreur lors du paiement";
-        Alert.alert("Paiement impossible", message, [{ text: "OK" }]);
+        showBillingError({
+          error: err,
+          tr,
+          fallbackTitle: tr("Paiement impossible", "Payment failed"),
+          fallbackMessage: tr("Erreur lors du paiement", "Payment error"),
+          webUrl: WEB_UPGRADE_URL,
+        });
       } finally {
         setCheckoutLoading(null);
       }
     },
-    [cycle],
+    [cycle, tr],
   );
 
   const handleStartTrial = useCallback(
@@ -393,16 +401,21 @@ export default function SubscriptionScreen() {
           controlsColor: "#8b5cf6",
         });
       } catch (err) {
-        const message =
-          err instanceof ApiError
-            ? err.message
-            : "Impossible de démarrer l'essai";
-        Alert.alert("Erreur", message, [{ text: "OK" }]);
+        showBillingError({
+          error: err,
+          tr,
+          fallbackTitle: tr("Erreur", "Error"),
+          fallbackMessage: tr(
+            "Impossible de démarrer l'essai",
+            "Could not start the trial",
+          ),
+          webUrl: WEB_UPGRADE_URL,
+        });
       } finally {
         setTrialLoading(null);
       }
     },
-    [cycle],
+    [cycle, tr],
   );
 
   const handleManageSubscription = useCallback(async () => {
@@ -415,15 +428,20 @@ export default function SubscriptionScreen() {
         controlsColor: "#8b5cf6",
       });
     } catch (err) {
-      const message =
-        err instanceof ApiError
-          ? err.message
-          : "Impossible d'ouvrir le portail";
-      Alert.alert("Erreur", message, [{ text: "OK" }]);
+      showBillingError({
+        error: err,
+        tr,
+        fallbackTitle: tr("Erreur", "Error"),
+        fallbackMessage: tr(
+          "Impossible d'ouvrir le portail",
+          "Could not open the billing portal",
+        ),
+        webUrl: WEB_ACCOUNT_URL,
+      });
     } finally {
       setPortalLoading(false);
     }
-  }, []);
+  }, [tr]);
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
