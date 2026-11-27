@@ -29,9 +29,9 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import Browser from "../../utils/browser-polyfill";
-import { API_BASE_URL } from "../../utils/config";
 import { DASHBOARD_URL } from "../../utils/webappLinks";
-import { getStoredTokens } from "../../utils/storage";
+import { getRecentAnalyses } from "../../utils/storage";
+import type { MessageResponse } from "../../types";
 import { ExternalLinkIcon } from "../shared/Icons";
 import { DeepSightSpinner } from "../shared/DeepSightSpinner";
 
@@ -315,38 +315,44 @@ export const VisualPanelView: React.FC<VisualPanelViewProps> = ({
 
     setPhase("loading");
     try {
-      const { accessToken } = await getStoredTokens();
-      if (!accessToken) {
-        setPhase("error");
-        setErrorMsg("Connectez-vous pour voir l'analyse visuelle");
-        return;
-      }
-
-      const resp = await fetch(
-        `${API_BASE_URL}/videos/${context.videoId}`,
-        {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        },
-      );
-
-      if (resp.status === 401) {
-        onSessionExpired?.();
-        setPhase("error");
-        setErrorMsg("Session expirée — reconnectez-vous");
-        return;
-      }
-
-      if (resp.status === 404) {
+      // L'API n'expose pas d'analyse par video_id (l'ancienne route
+      // GET /videos/{videoId} n'existe pas → 404 systématique). On retrouve
+      // le summary_id dans l'historique local, puis on passe par le service
+      // worker (GET_SUMMARY) : refresh JWT géré, au lieu d'un fetch direct
+      // qui déconnectait l'utilisateur dès que l'access token expirait.
+      const recents = await getRecentAnalyses();
+      const match = recents.find((item) => item.videoId === context.videoId);
+      if (!match) {
         setPhase("ready");
         setVisual(null);
         return;
       }
 
-      if (!resp.ok) {
-        throw new Error(`HTTP ${resp.status}`);
+      const resp = await Browser.runtime.sendMessage<unknown, MessageResponse>(
+        { action: "GET_SUMMARY", data: { summaryId: match.summaryId } },
+      );
+
+      if (!resp?.success || !resp.summary) {
+        if (resp?.errorCode === "session_expired") {
+          onSessionExpired?.();
+          setPhase("error");
+          setErrorMsg("Session expirée — reconnectez-vous");
+          return;
+        }
+        if (resp?.errorCode === "auth_required") {
+          setPhase("error");
+          setErrorMsg("Connectez-vous pour voir l'analyse visuelle");
+          return;
+        }
+        if (resp?.httpStatus === 404) {
+          setPhase("ready");
+          setVisual(null);
+          return;
+        }
+        throw new Error(resp?.error || "Impossible de charger l'analyse");
       }
 
-      const data = (await resp.json()) as VideoSummaryResponse;
+      const data = resp.summary as unknown as VideoSummaryResponse;
       setVideoTitle(data.video_title ?? null);
       setVisual(data.visual_analysis ?? null);
       setPhase("ready");
