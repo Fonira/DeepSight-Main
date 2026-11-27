@@ -7,7 +7,15 @@ export interface User {
   username: string;
   email: string;
   avatar_url?: string;
-  plan: "free" | "starter" | "pro" | "expert" | "student" | "team";
+  /** "unlimited" = compte admin (seul autorisé en mode privé). */
+  plan:
+    | "free"
+    | "starter"
+    | "pro"
+    | "expert"
+    | "student"
+    | "team"
+    | "unlimited";
   credits: number;
   credits_monthly: number;
   default_lang?: string;
@@ -247,7 +255,8 @@ export interface VoiceQuotaInfo {
 
 export interface PlanInfo {
   plan_name: string;
-  plan_id: "free" | "starter" | "pro" | "expert" | "student" | "team";
+  plan_id: User["plan"];
+  /** -1 = illimité. */
   monthly_analyses: number;
   analyses_this_month: number;
   credits: number;

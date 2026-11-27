@@ -231,31 +231,45 @@ describe("GET_SUMMARY", () => {
 
 // ── GET_PLAN ──
 describe("GET_PLAN", () => {
-  it("returns plan info", async () => {
-    seedLocalStorage({ accessToken: "valid-token" });
-
-    const mockPlan = {
-      plan_name: "Pro",
-      plan_id: "pro",
-      monthly_analyses: 200,
-      analyses_this_month: 42,
-      credits: 12000,
-      credits_monthly: 15000,
-    };
+  it("normalises the /billing/my-plan payload", async () => {
+    seedLocalStorage({
+      accessToken: "valid-token",
+      user: { id: 1, plan: "pro", credits: 12000, credits_monthly: 15000 },
+    });
 
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: () => Promise.resolve(mockPlan),
+      json: () =>
+        Promise.resolve({
+          plan: "pro",
+          plan_name: "Pro",
+          limits: { monthly_analyses: 30, monthly_credits: 15000 },
+          usage: { analyses_this_month: 12 },
+          voice_quota: { trial_used: false, monthly_minutes_used: 0 },
+        }),
     });
 
     const response = (await handleMessage({ action: "GET_PLAN" })) as {
       success: boolean;
-      plan: typeof mockPlan;
+      plan: {
+        plan_id: string;
+        monthly_analyses: number;
+        analyses_this_month: number;
+        credits: number;
+      };
     };
 
     expect(response.success).toBe(true);
-    expect(response.plan.plan_id).toBe("pro");
-    expect(response.plan.monthly_analyses).toBe(200);
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("/billing/my-plan?platform=extension"),
+      expect.anything(),
+    );
+    expect(response.plan).toMatchObject({
+      plan_id: "pro",
+      monthly_analyses: 30,
+      analyses_this_month: 12,
+      credits: 12000,
+    });
   });
 });
 

@@ -22,6 +22,7 @@ import {
   toErrorResponse,
 } from "./utils/apiError";
 import { expiresWithin } from "./utils/jwt";
+import { normalizePlanInfo } from "./utils/plan";
 import { drainCrashes } from "./utils/crash-logger";
 import { reportCrashes } from "./utils/sentry-reporter";
 import type {
@@ -506,7 +507,8 @@ async function getCurrentUser(): Promise<User> {
 // ── Plan API ──
 
 async function fetchPlan(): Promise<PlanInfo> {
-  return apiRequest<PlanInfo>("/billing/my-plan?platform=extension");
+  const raw = await apiRequest<unknown>("/billing/my-plan?platform=extension");
+  return normalizePlanInfo(raw, await getStoredUser());
 }
 
 // ── Video API ──
@@ -1442,7 +1444,11 @@ async function handleExtensionMessage(
       }
       const planId = stored.plan;
       const voicePlan: "free" | "pro" | "expert" =
-        planId === "expert" ? "expert" : planId === "pro" ? "pro" : "free";
+        planId === "expert" || planId === "unlimited"
+          ? "expert"
+          : planId === "pro"
+            ? "pro"
+            : "free";
       let trialUsed = false;
       let monthlyMinutesUsed = 0;
       try {

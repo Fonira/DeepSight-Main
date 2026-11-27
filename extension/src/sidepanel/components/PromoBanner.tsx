@@ -70,6 +70,8 @@ function getPromoTier(planId?: string): PromoTier {
     case "etudiant":
     case "student":
     case "starter":
+    case "team":
+    case "unlimited":
       return "pro";
     default:
       return "free";

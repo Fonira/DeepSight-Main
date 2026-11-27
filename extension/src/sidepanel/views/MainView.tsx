@@ -33,6 +33,7 @@ import { RevokeAllDevicesButton } from "../components/RevokeAllDevicesButton";
 import { DeepSightSpinner } from "../shared/DeepSightSpinner";
 import { useTranslation } from "../../i18n/useTranslation";
 import { localizeError } from "../../i18n/errorMessages";
+import { isAnalysisQuotaExceeded } from "../../utils/plan";
 import {
   POLL_INTERVAL_MS,
   MAX_POLL_DURATION_MS,
@@ -173,9 +174,8 @@ export const MainView: React.FC<MainViewProps> = ({
     setRecentAnalyses(items);
   }
 
-  const isQuotaExceeded = planInfo
-    ? planInfo.analyses_this_month >= planInfo.monthly_analyses
-    : false;
+  const isQuotaExceeded = isAnalysisQuotaExceeded(planInfo);
+  const hasAnalysisQuota = planInfo ? planInfo.monthly_analyses > 0 : false;
   const quotaRemaining = planInfo
     ? planInfo.monthly_analyses - planInfo.analyses_this_month
     : null;
@@ -199,7 +199,11 @@ export const MainView: React.FC<MainViewProps> = ({
   // (badge essai gratuit ou disabled). Pro reste "pro" pour permettre le CTA
   // upgrade futur — actuellement le widget ne distingue pas pro.
   const voicePlan: "free" | "pro" | "expert" =
-    userPlanId === "expert" ? "expert" : userPlanId === "pro" ? "pro" : "free";
+    userPlanId === "expert" || userPlanId === "unlimited"
+      ? "expert"
+      : userPlanId === "pro"
+        ? "pro"
+        : "free";
   // [I4] voice_quota exposé par /api/billing/my-plan — si dispo, on s'en sert
   // pour afficher des badges honnêtes ; sinon valeurs pessimistes par défaut.
   // Le backend reste SoT au moment du POST /voice/session.
@@ -558,7 +562,8 @@ export const MainView: React.FC<MainViewProps> = ({
               <span
                 className={`v3-quota-item${quotaWarning ? " warning" : ""}`}
               >
-                {planInfo.analyses_this_month}/{planInfo.monthly_analyses}{" "}
+                {planInfo.analyses_this_month}
+                {hasAnalysisQuota ? `/${planInfo.monthly_analyses}` : ""}{" "}
                 {t.common.analyses}
               </span>
             ) : (
