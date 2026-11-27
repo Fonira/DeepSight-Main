@@ -20,6 +20,7 @@ from db.database import (
 )
 from auth.dependencies import get_current_user
 from study.fsrs import FSRSCard, schedule_card, Rating, State, calculate_xp
+from study.flashcard_store import flashcard_generation_lock, load_persisted_flashcards, persist_flashcards
 from study.schemas import (
     ReviewRequest,
     ReviewResponse,
@@ -426,11 +427,24 @@ async def _get_flashcards_for_summary(
     current_user: User,
 ) -> List[dict]:
     """
-    Try to retrieve flashcards for a summary:
-    1. Video content cache
-    2. Generate via study_tools
+    Flashcards d'un résumé, dans cet ordre :
+    1. Table `flashcards` (source de vérité : l'historique FSRS est indexé par position)
+    2. Cache de contenu vidéo (puis enregistrement en table)
+    3. Génération via study_tools (puis enregistrement en table + cache)
     Returns list of dicts with keys: front, back, category
     """
+    async with flashcard_generation_lock(summary.id):
+        persisted = await load_persisted_flashcards(session, summary.id)
+        if persisted:
+            return persisted
+        return await _fetch_or_generate_flashcards(session, summary, current_user)
+
+
+async def _fetch_or_generate_flashcards(
+    session: AsyncSession,
+    summary: Summary,
+    current_user: User,
+) -> List[dict]:
     platform = getattr(summary, "platform", "youtube") or "youtube"
     video_id = getattr(summary, "video_id", None)
     lang = summary.lang or "fr"
@@ -443,9 +457,10 @@ async def _get_flashcards_for_summary(
         if vcache is not None and video_id:
             cached = await vcache.get_studio_content(platform, video_id, "flashcards", lang)
             if cached and cached.get("flashcards"):
+                await persist_flashcards(session, summary.id, current_user.id, cached["flashcards"])
                 return cached["flashcards"]
     except Exception:
-        pass
+        await session.rollback()
 
     # Generate flashcards
     try:
@@ -487,6 +502,9 @@ async def _get_flashcards_for_summary(
                             "category": "Questions",
                         }
                     )
+
+        if flashcards:
+            await persist_flashcards(session, summary.id, current_user.id, flashcards)
 
         # Cache result
         if flashcards and video_id:
