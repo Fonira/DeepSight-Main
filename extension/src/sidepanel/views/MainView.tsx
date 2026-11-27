@@ -6,6 +6,7 @@ import type {
   PlanInfo,
   QuickChatResponse,
   MessageResponse,
+  GuestAnalyzeResponse,
 } from "../../types";
 import {
   extractVideoId,
@@ -34,6 +35,7 @@ import { DeepSightSpinner } from "../shared/DeepSightSpinner";
 import { useTranslation } from "../../i18n/useTranslation";
 import { localizeError } from "../../i18n/errorMessages";
 import { isAnalysisQuotaExceeded } from "../../utils/plan";
+import { escapeHtml, markdownToFullHtml } from "../../utils/sanitize";
 import {
   DASHBOARD_URL,
   HISTORY_URL,
@@ -66,6 +68,7 @@ type AnalysisPhase =
   | { phase: "idle" }
   | { phase: "analyzing"; progress: number; message: string; taskId?: string }
   | { phase: "complete"; summaryId: number; summary: Summary }
+  | { phase: "guestComplete"; result: GuestAnalyzeResponse }
   | { phase: "error"; message: string; code?: string };
 
 export const MainView: React.FC<MainViewProps> = ({
@@ -254,6 +257,39 @@ export const MainView: React.FC<MainViewProps> = ({
     }
   }, [video, lang, onError, onLogout, t]);
 
+  // Mode découverte : analyse express synchrone (POST /videos/analyze/guest),
+  // résultat éphémère affiché tel quel, puis invitation à créer un compte.
+  const runGuestAnalysis = useCallback(
+    async (url: string): Promise<void> => {
+      let response: MessageResponse;
+      try {
+        response = await Browser.runtime.sendMessage<unknown, MessageResponse>(
+          { action: "START_GUEST_ANALYSIS", data: { url } },
+        );
+      } catch {
+        response = { success: false, errorCode: "network_error" };
+      }
+
+      if (!response?.success || !response.result) {
+        if (response?.errorCode === "guest_quota_exhausted") {
+          setGuestUsed(true);
+        }
+        setAnalysis({
+          phase: "error",
+          message: localizeError(t.errors, response, t.analysis.failed),
+          code: response?.errorCode,
+        });
+        return;
+      }
+
+      const result = response.result as GuestAnalyzeResponse;
+      const count = await incrementFreeAnalysisCount();
+      if (result.remaining_analyses <= 0 || count >= 3) setGuestUsed(true);
+      setAnalysis({ phase: "guestComplete", result });
+    },
+    [t],
+  );
+
   const startAnalysis = useCallback(async () => {
     if (!video) return;
 
@@ -270,6 +306,11 @@ export const MainView: React.FC<MainViewProps> = ({
       progress: 0,
       message: t.analysis.starting,
     });
+
+    if (isGuest) {
+      await runGuestAnalysis(video.url);
+      return;
+    }
 
     try {
       const startRes = await Browser.runtime.sendMessage<
@@ -370,11 +411,6 @@ export const MainView: React.FC<MainViewProps> = ({
         if (status.status === "completed" && status.result?.summary_id) {
           stopPolling();
 
-          if (isGuest) {
-            await incrementFreeAnalysisCount();
-            setGuestUsed(true);
-          }
-
           await addRecentAnalysis({
             videoId: video.videoId,
             summaryId: status.result.summary_id,
@@ -448,7 +484,7 @@ export const MainView: React.FC<MainViewProps> = ({
         ),
       });
     }
-  }, [video, mode, lang, isGuest, t, onLogout, stopPolling]);
+  }, [video, mode, lang, isGuest, t, onLogout, stopPolling, runGuestAnalysis]);
 
   const cancelAnalysis = useCallback(async () => {
     if (analysis.phase !== "analyzing" || !analysis.taskId) return;
@@ -866,13 +902,44 @@ export const MainView: React.FC<MainViewProps> = ({
               />
             </div>
             <p className="v3-progress-text">{analysis.message}</p>
+            {/* L'analyse invitée est synchrone : rien à annuler côté API. */}
+            {analysis.taskId && (
+              <button
+                className="v3-button-secondary"
+                onClick={cancelAnalysis}
+                style={{ marginTop: 12 }}
+                aria-label={t.common.cancel}
+              >
+                {t.common.cancel}
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* ── Guest result (mode découverte, non sauvegardé) ─────── */}
+        {analysis.phase === "guestComplete" && (
+          <div className="v3-card">
+            <div className="v3-card-eyebrow">{t.guest.banner}</div>
+            <h3 className="v3-card-title">{analysis.result.video_title}</h3>
+            <div
+              className="digest-body"
+              style={{ padding: 0, overflow: "visible" }}
+              dangerouslySetInnerHTML={{
+                __html: markdownToFullHtml(
+                  escapeHtml(analysis.result.summary_content),
+                ),
+              }}
+            />
+            <p className="v3-card-desc">{t.guest.unlockText}</p>
             <button
-              className="v3-button-secondary"
-              onClick={cancelAnalysis}
-              style={{ marginTop: 12 }}
-              aria-label="Annuler l'analyse"
+              className="v3-button-primary"
+              onClick={() => Browser.tabs.create({ url: REGISTER_URL })}
+              style={{ marginBottom: 8 }}
             >
-              {language === "fr" ? "Annuler" : "Cancel"}
+              {t.common.createAccount} {"↗"}
+            </button>
+            <button className="v3-button-secondary" onClick={onLoginRedirect}>
+              {t.common.login}
             </button>
           </div>
         )}
@@ -884,7 +951,8 @@ export const MainView: React.FC<MainViewProps> = ({
             <h3 className="v3-card-title" style={{ color: "#fca5a5" }}>
               {analysis.message}
             </h3>
-            {analysis.code === "auth_required" ? (
+            {analysis.code === "auth_required" ||
+            analysis.code === "guest_quota_exhausted" ? (
               <>
                 <button
                   className="v3-button-primary"

@@ -65,6 +65,8 @@ export function localizeError(
       return errors.userNotRegistered;
     case "invalid_url":
       return errors.invalidUrl;
+    case "guest_quota_exhausted":
+      return errors.guestQuota;
     default:
       break;
   }

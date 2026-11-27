@@ -224,6 +224,22 @@ export interface ChatResponse {
   web_search_used: boolean;
 }
 
+// ── Guest (mode découverte) ──
+
+/** Réponse de POST /api/videos/analyze/guest (éphémère, non sauvegardée). */
+export interface GuestAnalyzeResponse {
+  video_title: string;
+  video_channel: string;
+  video_duration: number;
+  thumbnail_url: string;
+  summary_content: string;
+  category: string;
+  word_count: number;
+  mode: string;
+  lang: string;
+  remaining_analyses: number;
+}
+
 // ── Quick Chat ──
 
 export interface QuickChatResponse {

@@ -39,6 +39,7 @@ import type {
   ChatMessage,
   PlanInfo,
   QuickChatResponse,
+  GuestAnalyzeResponse,
 } from "./types";
 import type {
   GlobalSearchOptions,
@@ -572,6 +573,36 @@ async function analyzeVideo(
       force_refresh: options.force_refresh || false,
     }),
   });
+}
+
+/**
+ * Mode découverte (sans compte) : POST /videos/analyze/guest, la route prévue
+ * pour les visiteurs (vidéos < 5 min, 3 analyses / 24 h par IP, résultat non
+ * sauvegardé). Le mode invité appelait /videos/analyze, qui exige un compte :
+ * il ne pouvait jamais aboutir.
+ */
+async function analyzeVideoAsGuest(url: string): Promise<GuestAnalyzeResponse> {
+  const endpoint = "/videos/analyze/guest";
+  assertNotRateLimited(endpoint);
+  const response = await fetchApi(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url: requireApiVideoUrl(url) }),
+  });
+  if (!response.ok) {
+    const error = await apiErrorFromResponse(response);
+    if (error.status === 429 && error.retryAfter === undefined) {
+      // 429 sans Retry-After = quota invité de 24 h épuisé, pas un
+      // rate-limit court : on invite à créer un compte.
+      throw new ApiError({
+        status: 429,
+        code: "guest_quota_exhausted",
+        message: error.message,
+      });
+    }
+    throw noteRateLimit(endpoint, error);
+  }
+  return parseJsonBody<GuestAnalyzeResponse>(response);
 }
 
 async function getTaskStatus(taskId: string): Promise<TaskStatus> {
@@ -1364,6 +1395,16 @@ async function handleExtensionMessage(
       try {
         const { task_id } = await analyzeVideo(url, options);
         return { success: true, result: { task_id } };
+      } catch (e) {
+        return toErrorResponse(e);
+      }
+    }
+
+    case "START_GUEST_ANALYSIS": {
+      const { url } = message.data as { url: string };
+      try {
+        const result = await analyzeVideoAsGuest(url);
+        return { success: true, result };
       } catch (e) {
         return toErrorResponse(e);
       }

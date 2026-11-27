@@ -86,7 +86,8 @@
   },
   "guest": {
     "banner": "Discovery mode — 3 free analyses without an account",
-    "exhaustedText": "Create a free account to save your analyses and do more"
+    "exhaustedText": "Create a free account to save your analyses and do more",
+    "unlockText": "Create a free account to chat with the video, keep your history and analyse longer videos."
   },
   "credits": {
     "critical": "Only {count} credits left —",
@@ -371,6 +372,7 @@
     "emailNotVerified": "Email address not verified. Confirm it on the DeepSight website, then sign in again.",
     "userNotRegistered": "No DeepSight account is linked to this Google account. Create an account on the website.",
     "invalidUrl": "This page is not a recognised YouTube or TikTok video.",
+    "guestQuota": "You have used your free analyses. Create an account to continue.",
     "generic": "Something went wrong. Please try again."
   }
 }
