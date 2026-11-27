@@ -22,6 +22,8 @@ export const APP_BUNDLE_ID = "com.deepsight.app";
 // Timeouts (in milliseconds)
 export const TIMEOUTS = {
   DEFAULT: 30000,
+  // Quick Chat d'une vidéo jamais vue : extraction Supadata asynchrone (~25 s + 60 s de polling)
+  QUICK_CHAT: 120000,
   ANALYSIS: 120000,
   PLAYLIST: 600000,
   FACT_CHECK: 120000,

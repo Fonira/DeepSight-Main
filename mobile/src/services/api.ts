@@ -200,6 +200,13 @@ const _requestRaw = async <T>(
   }
 };
 
+// POST/PATCH ne sont jamais rejoués automatiquement (sauf 429 avec Retry-After court) :
+// un timeout ou un 5xx ne prouve pas que le serveur n'a pas déjà traité la requête.
+const IDEMPOTENT_METHODS: ReadonlyArray<NonNullable<RequestConfig["method"]>> =
+  ["GET", "PUT", "DELETE"];
+const isIdempotent = (method: RequestConfig["method"] = "GET"): boolean =>
+  IDEMPOTENT_METHODS.includes(method);
+
 // Public request with RetryService (exponential backoff + jitter + circuit breaker)
 const request = async <T>(
   endpoint: string,
@@ -211,6 +218,7 @@ const request = async <T>(
     () => _requestRaw<T>(endpoint, cleanConfig),
     "standard",
     endpoint,
+    { idempotent: isIdempotent(cleanConfig.method) },
   );
 };
 
@@ -225,6 +233,7 @@ const requestPatient = async <T>(
     () => _requestRaw<T>(endpoint, cleanConfig),
     "patient",
     endpoint,
+    { idempotent: isIdempotent(cleanConfig.method) },
   );
 };
 
@@ -544,6 +553,7 @@ export const userApi = {
       },
       "quick",
       "upload-avatar",
+      { idempotent: false },
     );
   },
 };
@@ -669,9 +679,11 @@ export const videoApi = {
     word_count: number;
     message: string;
   }> {
+    // 120 s : vidéo non analysée → extraction Supadata (jusqu'à ~85 s en mode asynchrone)
     return request("/api/videos/quick-chat", {
       method: "POST",
       body: { url, lang },
+      timeout: TIMEOUTS.QUICK_CHAT,
     });
   },
 
