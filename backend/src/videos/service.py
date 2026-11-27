@@ -59,7 +59,14 @@ _HISTORY_LIST_COLUMNS = [
 # 🎫 GESTION DES CRÉDITS ET QUOTAS (via module centralisé)
 # ═══════════════════════════════════════════════════════════════════════════════
 
-from core.credits import calculate_analysis_cost, calculate_chat_cost, check_credits, deduct_credits, MODEL_COSTS
+from core.credits import (
+    calculate_analysis_cost,
+    calculate_chat_cost,
+    check_credits,
+    deduct_credits,
+    add_credits,
+    MODEL_COSTS,
+)
 
 
 async def check_can_analyze(
@@ -103,6 +110,31 @@ async def deduct_credit(
         session=session, user_id=user_id, amount=amount, action_type=action_type, description=description
     )
     return success
+
+
+async def refund_credit(session: AsyncSession, user_id: int, amount: int, description: str) -> bool:
+    """Rend des crédits débités pour une génération qui a échoué.
+
+    Annule d'abord la transaction en cours (une erreur SQL a pu la laisser
+    inutilisable), puis crédite via add_credits (transaction "refund").
+    N'échoue jamais : appelée depuis un bloc except, une erreur ici
+    masquerait l'erreur d'origine.
+    """
+    if amount <= 0:
+        return False
+    try:
+        await session.rollback()
+        success, _ = await add_credits(
+            session=session,
+            user_id=user_id,
+            amount=amount,
+            reason=f"Remboursement : {description}",
+            transaction_type="refund",
+        )
+        return success
+    except Exception as e:  # noqa: BLE001 — ne jamais masquer l'erreur d'origine
+        logger.error(f"[CREDITS] Remboursement impossible (user={user_id}, {amount} cr, {description}): {e}")
+        return False
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

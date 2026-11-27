@@ -89,6 +89,7 @@ from voice.companion_context import invalidate_companion_context_cache
 from .service import (
     check_can_analyze,
     deduct_credit,
+    refund_credit,
     save_summary,
     get_summary_by_id,
     get_summary_by_video_id,
@@ -4509,8 +4510,8 @@ async def create_study_card(
     if current_user.credits < 1:
         raise HTTPException(status_code=402, detail="Crédits insuffisants")
 
-    # Déduire 1 crédit
-    await deduct_credit(session, current_user.id, 1, "study_card")
+    # Déduire 1 crédit (rendu si la génération échoue)
+    deducted = await deduct_credit(session, current_user.id, 1, "study_card")
 
     # Générer la fiche
     try:
@@ -4527,6 +4528,8 @@ async def create_study_card(
 
     except Exception as e:
         logger.error(f"❌ [STUDY_CARD] Erreur: {e}")
+        if deducted:
+            await refund_credit(session, current_user.id, 1, "study_card")
         raise HTTPException(status_code=500, detail=f"Erreur génération: {str(e)}")
 
 
@@ -4552,8 +4555,8 @@ async def create_concept_map(
     if current_user.credits < 1:
         raise HTTPException(status_code=402, detail="Crédits insuffisants")
 
-    # Déduire 1 crédit
-    await deduct_credit(session, current_user.id, 1, "concept_map")
+    # Déduire 1 crédit (rendu si la génération échoue)
+    deducted = await deduct_credit(session, current_user.id, 1, "concept_map")
 
     # Générer le mindmap
     try:
@@ -4569,6 +4572,8 @@ async def create_concept_map(
 
     except Exception as e:
         logger.error(f"❌ [CONCEPT_MAP] Erreur: {e}")
+        if deducted:
+            await refund_credit(session, current_user.id, 1, "concept_map")
         raise HTTPException(status_code=500, detail=f"Erreur génération: {str(e)}")
 
 
@@ -4595,8 +4600,8 @@ async def create_all_study_materials(
     if current_user.credits < 2:
         raise HTTPException(status_code=402, detail="Crédits insuffisants (2 requis)")
 
-    # Déduire 2 crédits
-    await deduct_credit(session, current_user.id, 2, "study_all")
+    # Déduire 2 crédits (1 par partie : rendu pour chaque partie en échec)
+    deducted = await deduct_credit(session, current_user.id, 2, "study_all")
 
     # Générer tout
     try:
@@ -4611,10 +4616,20 @@ async def create_all_study_materials(
             include_map=True,
         )
 
+        # generate_study_materials capture l'erreur de chaque partie : rendre
+        # 1 crédit par partie absente, et répondre en erreur si tout a échoué.
+        failed_parts = sum(1 for key in ("study_card", "concept_map") if not materials.get(key))
+        if failed_parts == 2:
+            raise ValueError("Aucun outil d'étude généré")
+        if failed_parts and deducted:
+            await refund_credit(session, current_user.id, failed_parts, "study_all (partiel)")
+
         return {"success": True, "summary_id": summary_id, "materials": materials}
 
     except Exception as e:
         logger.error(f"❌ [STUDY_ALL] Erreur: {e}")
+        if deducted:
+            await refund_credit(session, current_user.id, 2, "study_all")
         raise HTTPException(status_code=500, detail=f"Erreur génération: {str(e)}")
 
 
