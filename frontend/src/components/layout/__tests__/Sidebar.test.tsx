@@ -39,6 +39,7 @@ vi.mock("../../../hooks/useTranslation", () => ({
         dashboard: "Tableau de bord",
         analysis: "Analyse",
         history: "Historique",
+        playlists: "Playlists",
         study: "Révision",
         settings: "Paramètres",
         myAccount: "Mon compte",
@@ -173,5 +174,33 @@ describe("Sidebar — Workspaces nav item (Wave 2c discoverability)", () => {
     renderWith(<Sidebar />);
     const link = screen.getByRole("link", { name: /workspaces/i });
     expect(link).toHaveAttribute("href", "/hub/workspaces");
+  });
+});
+
+describe("Sidebar — Playlists entry (relance web)", () => {
+  it("links to /playlists with the Expert badge for a Pro user", () => {
+    mockUser.current = {
+      id: 7,
+      email: "pro@test.com",
+      plan: "pro",
+      is_admin: false,
+    };
+    renderWith(<Sidebar />);
+    const link = screen.getByRole("link", { name: /playlists/i });
+    expect(link).toHaveAttribute("href", "/playlists");
+    expect(link).toHaveTextContent("Expert");
+  });
+
+  it("links to /playlists without badge for the admin", () => {
+    mockUser.current = {
+      id: 1,
+      email: "admin@test.com",
+      plan: "free",
+      is_admin: true,
+    };
+    renderWith(<Sidebar />);
+    const link = screen.getByRole("link", { name: /playlists/i });
+    expect(link).toHaveAttribute("href", "/playlists");
+    expect(link).not.toHaveTextContent("Expert");
   });
 });

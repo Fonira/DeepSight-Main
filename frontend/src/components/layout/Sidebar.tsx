@@ -27,6 +27,7 @@ import {
   GraduationCap,
   LayoutGrid,
   Menu,
+  ListVideo,
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { useTranslation } from "../../hooks/useTranslation";
@@ -532,6 +533,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
               icon={Search}
               label={language === "fr" ? "Recherche" : "Search"}
               collapsed={collapsed}
+            />
+            <NavItem
+              to="/playlists"
+              icon={ListVideo}
+              label={t.nav.playlists}
+              collapsed={collapsed}
+              {...(isUserAdmin ? {} : getBadge(minPlanPlaylists))}
             />
             <NavItem
               to="/debate"
