@@ -200,7 +200,9 @@ describe("GET_RECENT_QUERIES handler", () => {
     });
 
     expect(res.success).toBe(false);
-    expect(res.error).toContain("ECONNREFUSED");
+    // Les rejets fetch sont normalisés (utils/apiError.ts::networkError).
+    expect(res.error).toBe("NETWORK_ERROR");
+    expect(res.errorCode).toBe("network_error");
 
     global.fetch = origFetch;
   });

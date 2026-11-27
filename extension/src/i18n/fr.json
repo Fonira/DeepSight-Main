@@ -351,5 +351,19 @@
     "upgradeDescription": "Mini-résumé Mistral de chaque lien cité dans la description",
     "upgradeCta": "Passer Pro",
     "openExternalAriaLabel": "Ouvrir {host} dans un nouvel onglet"
+  },
+  "errors": {
+    "privateMode": "DeepSight est temporairement en accès privé (maintenance). L'accès est réservé à l'administrateur.",
+    "paymentsUnavailable": "Les paiements sont momentanément indisponibles. Réessayez plus tard.",
+    "rateLimited": "Trop de requêtes. Réessayez dans {seconds} s.",
+    "rateLimitedShort": "Trop de requêtes. Réessayez dans un instant.",
+    "sessionExpired": "Votre session a expiré. Reconnectez-vous.",
+    "network": "Impossible de joindre le serveur DeepSight. Vérifiez votre connexion et réessayez.",
+    "authRequired": "Connectez-vous ou créez un compte pour utiliser cette fonctionnalité.",
+    "googleUnavailable": "La connexion avec Google n'est pas disponible pour le moment. Utilisez votre e-mail et votre mot de passe.",
+    "voiceUnavailable": "L'appel vocal n'est pas disponible pour le moment.",
+    "emailNotVerified": "Adresse e-mail non vérifiée. Validez-la depuis le site DeepSight, puis reconnectez-vous.",
+    "userNotRegistered": "Aucun compte DeepSight n'est associé à ce compte Google. Créez un compte sur le site.",
+    "generic": "Une erreur est survenue. Réessayez."
   }
 }

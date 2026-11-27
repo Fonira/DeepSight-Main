@@ -2,53 +2,29 @@
  * Tests — Background script API client (message handler)
  * Fichier source : src/background.ts
  *
- * On teste handleMessage indirectement via le listener chrome.runtime.onMessage
- * car handleMessage n'est pas exporté. On simule via le pattern sendMessage mockée.
+ * `handleMessage` est exporté par background.ts : on l'appelle directement.
+ * (L'ancien harnais récupérait le PREMIER listener `onMessage` enregistré —
+ * devenu le relais URL_CHANGED, qui ne répond jamais aux autres actions →
+ * tous les tests tombaient en timeout.)
  */
 
 import { resetChromeMocks, seedLocalStorage } from "../setup/chrome-api-mock";
+import { handleMessage as backgroundHandleMessage } from "../../src/background";
+import type { ExtensionMessage } from "../../src/types";
 
 // Mock fetch globally
 const mockFetch = jest.fn();
 (global as unknown as Record<string, unknown>).fetch = mockFetch;
 
-// We need to capture the handleMessage function from background.ts
-// Since it registers via chrome.runtime.onMessage.addListener, we capture it
-let handleMessage: (message: {
+const handleMessage = (message: {
   action: string;
   data?: Record<string, unknown>;
-}) => Promise<unknown>;
-
-beforeAll(() => {
-  // Import background.ts which registers the listener
-  // The chrome-api-mock is already set up via setupFiles
-  const onMessageAddListener = chrome.runtime.onMessage
-    .addListener as jest.Mock;
-
-  // Reset to capture the listener
-  onMessageAddListener.mockClear();
-
-  // Import to trigger registration
-  require("../../src/background");
-
-  // Grab the registered handler
-  const registeredCallback = onMessageAddListener.mock.calls[0]?.[0];
-  if (registeredCallback) {
-    // Wrap it to extract the Promise from the callback pattern
-    handleMessage = async (message) => {
-      return new Promise((resolve) => {
-        registeredCallback(message, {}, resolve);
-      });
-    };
-  }
-});
+}): Promise<unknown> =>
+  backgroundHandleMessage(message as unknown as ExtensionMessage);
 
 beforeEach(() => {
   resetChromeMocks();
   mockFetch.mockReset();
-
-  // Re-mock onMessage.addListener since resetChromeMocks clears it
-  // but we already captured the handler
 });
 
 // ── CHECK_AUTH ──
@@ -341,5 +317,127 @@ describe("Unknown action", () => {
       error: string;
     };
     expect(response.error).toBe("Unknown action");
+  });
+});
+
+// ── Erreurs structurées (detail objet / tableau) ──
+describe("Structured API errors", () => {
+  it("LOGIN surfaces the private_mode message instead of [object Object]", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      json: () =>
+        Promise.resolve({
+          detail: {
+            code: "private_mode",
+            message:
+              "DeepSight est temporairement en accès privé (maintenance).",
+          },
+        }),
+    });
+
+    const response = (await handleMessage({
+      action: "LOGIN",
+      data: { email: "user@test.com", password: "secret" },
+    })) as { success: boolean; error: string; errorCode: string };
+
+    expect(response.success).toBe(false);
+    expect(response.error).toBe(
+      "DeepSight est temporairement en accès privé (maintenance).",
+    );
+    expect(response.error).not.toContain("[object Object]");
+    expect(response.errorCode).toBe("private_mode");
+  });
+
+  it("START_ANALYSIS forwards the code + message of an object detail", async () => {
+    seedLocalStorage({ accessToken: "valid-token" });
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      json: () =>
+        Promise.resolve({
+          detail: {
+            code: "insufficient_credits",
+            message: "Crédits insuffisants",
+            credits: 0,
+          },
+        }),
+    });
+
+    const response = (await handleMessage({
+      action: "START_ANALYSIS",
+      data: { url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ", options: {} },
+    })) as {
+      success: boolean;
+      error: string;
+      errorCode: string;
+      httpStatus: number;
+      errorDetail: Record<string, unknown>;
+    };
+
+    expect(response).toMatchObject({
+      success: false,
+      error: "Crédits insuffisants",
+      errorCode: "insufficient_credits",
+      httpStatus: 403,
+    });
+    expect(response.errorDetail.credits).toBe(0);
+  });
+
+  it("joins 422 validation messages", async () => {
+    seedLocalStorage({ accessToken: "valid-token" });
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 422,
+      json: () =>
+        Promise.resolve({
+          detail: [
+            { loc: ["body", "question"], msg: "Field required", type: "missing" },
+          ],
+        }),
+    });
+
+    const response = (await handleMessage({
+      action: "ASK_QUESTION",
+      data: { summaryId: 1, question: "" },
+    })) as { success: boolean; error: string; errorCode: string };
+
+    expect(response.success).toBe(false);
+    expect(response.error).toBe("Field required");
+    expect(response.errorCode).toBe("validation_error");
+  });
+
+  it("returns auth_required (not SESSION_EXPIRED) when no account is signed in", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 401,
+      json: () => Promise.resolve({ detail: "Not authenticated" }),
+    });
+
+    const response = (await handleMessage({
+      action: "QUICK_CHAT",
+      data: { url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" },
+    })) as { success: boolean; error: string; errorCode: string };
+
+    expect(response.success).toBe(false);
+    expect(response.errorCode).toBe("auth_required");
+    // Pas de tentative de refresh sans compte.
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("maps a rejected fetch to network_error", async () => {
+    seedLocalStorage({ accessToken: "valid-token" });
+    mockFetch.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+
+    const response = (await handleMessage({
+      action: "GET_TASK_STATUS",
+      data: { taskId: "task-1" },
+    })) as { success: boolean; error: string; errorCode: string };
+
+    expect(response).toMatchObject({
+      success: false,
+      error: "NETWORK_ERROR",
+      errorCode: "network_error",
+    });
   });
 });

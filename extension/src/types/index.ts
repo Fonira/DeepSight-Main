@@ -328,6 +328,14 @@ export interface MessageResponse {
   plan?: PlanInfo;
   result?: unknown;
   error?: string;
+  /** Code machine de l'erreur (`private_mode`, `rate_limited`…), cf. apiError.ts. */
+  errorCode?: string;
+  /** Statut HTTP de l'erreur API (0 = erreur réseau). */
+  httpStatus?: number;
+  /** Secondes à attendre avant de réessayer (429). */
+  retryAfter?: number;
+  /** `detail` objet renvoyé par l'API (ex. quota voice 402). */
+  errorDetail?: Record<string, unknown>;
   share_url?: string;
   state?: VoiceButtonState;
   // Phase 4 — Semantic Search V1

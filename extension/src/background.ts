@@ -14,6 +14,14 @@ import {
   getTokenRefreshedAt,
 } from "./utils/storage";
 import { extractVideoId } from "./utils/video";
+import {
+  ApiError,
+  ERROR_CODES,
+  LEGACY_ERROR_MESSAGES,
+  apiErrorFromResponse,
+  networkError,
+  toErrorResponse,
+} from "./utils/apiError";
 import { drainCrashes } from "./utils/crash-logger";
 import { reportCrashes } from "./utils/sentry-reporter";
 import type {
@@ -115,47 +123,68 @@ async function apiRequest<T>(
       headers["Authorization"] = `Bearer ${fresh.accessToken}`;
   }
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  const response = await fetchApi(endpoint, { ...options, headers });
 
   if (response.status === 401) {
+    if (!accessToken) {
+      // Aucun compte connecté (mode découverte) : ce n'est pas une session
+      // expirée, il faut se connecter. Rien à rafraîchir ni à effacer.
+      throw new ApiError({
+        status: 401,
+        code: ERROR_CODES.AUTH_REQUIRED,
+        message: LEGACY_ERROR_MESSAGES.AUTH_REQUIRED,
+      });
+    }
     const refreshed = await tryRefreshToken();
     if (refreshed === "ok") {
       const { accessToken: newToken } = await getStoredTokens();
       headers["Authorization"] = `Bearer ${newToken}`;
-      const retryResponse = await fetch(`${API_BASE_URL}${endpoint}`, {
-        ...options,
-        headers,
-      });
+      const retryResponse = await fetchApi(endpoint, { ...options, headers });
       if (!retryResponse.ok) {
-        throw new Error(`API Error: ${retryResponse.status}`);
+        throw await apiErrorFromResponse(retryResponse);
       }
-      return retryResponse.json();
+      return parseJsonBody<T>(retryResponse);
     }
     if (refreshed === "transient") {
       // Backend down / réseau coupé / 5xx — on ne clear PAS l'auth, l'user
       // peut retry plus tard sans avoir à se relogguer.
       console.warn("[DeepSight] Refresh transiently failed — keeping tokens.");
-      throw new Error("NETWORK_ERROR");
+      throw networkError();
     }
     // refreshed === "invalid_token" → vraie expiration / révocation explicite.
     await clearStoredAuth();
     console.warn(
       "[DeepSight] Session expired, refresh failed. User needs to re-login.",
     );
-    throw new Error("SESSION_EXPIRED");
+    throw new ApiError({
+      status: 401,
+      code: ERROR_CODES.SESSION_EXPIRED,
+      message: LEGACY_ERROR_MESSAGES.SESSION_EXPIRED,
+    });
   }
 
   if (!response.ok) {
-    const errorBody = await response
-      .json()
-      .catch(() => ({ detail: "Unknown error" }));
-    throw new Error(errorBody.detail || `API Error: ${response.status}`);
+    throw await apiErrorFromResponse(response);
   }
 
-  return response.json();
+  return parseJsonBody<T>(response);
+}
+
+/** `fetch` vers l'API ; un rejet réseau devient une `ApiError` typée. */
+async function fetchApi(
+  endpoint: string,
+  init: RequestInit,
+): Promise<Response> {
+  try {
+    return await fetch(`${API_BASE_URL}${endpoint}`, init);
+  } catch {
+    throw networkError();
+  }
+}
+
+async function parseJsonBody<T>(response: Response): Promise<T> {
+  if (response.status === 204) return undefined as T;
+  return response.json() as Promise<T>;
 }
 
 // ── Auth API ──
@@ -280,17 +309,16 @@ async function doRefreshToken(): Promise<RefreshResult> {
 }
 
 async function login(email: string, password: string): Promise<User> {
-  const response = await fetch(`${API_BASE_URL}/auth/login`, {
+  const response = await fetchApi("/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
   });
 
   if (!response.ok) {
-    const errorBody = await response
-      .json()
-      .catch(() => ({ detail: "Login failed" }));
-    throw new Error(errorBody.detail || "Login failed");
+    // 401 identifiants, 403 EMAIL_NOT_VERIFIED ou {code:"private_mode"},
+    // 429 (5 tentatives/min) : toujours un message lisible.
+    throw await apiErrorFromResponse(response, "Login failed");
   }
 
   const data: LoginResponse = await response.json();
@@ -343,7 +371,7 @@ async function loginWithGoogle(): Promise<User> {
 
   if (!idToken) throw new Error("No ID token received from Google");
 
-  const response = await fetch(`${API_BASE_URL}/auth/google/token`, {
+  const response = await fetchApi("/auth/google/token", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -353,10 +381,7 @@ async function loginWithGoogle(): Promise<User> {
   });
 
   if (!response.ok) {
-    const errorBody = await response
-      .json()
-      .catch(() => ({ detail: "Google login failed" }));
-    throw new Error(errorBody.detail || "Google login failed on server");
+    throw await apiErrorFromResponse(response, "Google login failed on server");
   }
 
   const data: LoginResponse = await response.json();
@@ -1096,7 +1121,7 @@ export async function handleMessage(
       await sidePanel.open({ tabId });
       return { success: true };
     } catch (e) {
-      return { success: false, error: (e as Error).message };
+      return toErrorResponse(e);
     }
   }
 
@@ -1121,7 +1146,7 @@ export async function handleMessage(
       await Browser.tabs.create({ url: pricingUrl });
       return { success: true };
     } catch (e) {
-      return { success: false, error: (e as Error).message };
+      return toErrorResponse(e);
     }
   }
 
@@ -1158,7 +1183,7 @@ async function handleExtensionMessage(
         const user = await getCurrentUser();
         return { success: true, user };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
     }
 
@@ -1171,7 +1196,7 @@ async function handleExtensionMessage(
         const user = await login(email, password);
         return { success: true, user };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
     }
 
@@ -1180,7 +1205,7 @@ async function handleExtensionMessage(
         const user = await loginWithGoogle();
         return { success: true, user };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
     }
 
@@ -1193,7 +1218,7 @@ async function handleExtensionMessage(
         const { task_id } = await analyzeVideo(url, options);
         return { success: true, result: { task_id } };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
     }
 
@@ -1222,7 +1247,7 @@ async function handleExtensionMessage(
 
         return { success: true, result };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
     }
 
@@ -1232,7 +1257,7 @@ async function handleExtensionMessage(
         const status = await getTaskStatus(taskId);
         return { success: true, status };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
     }
 
@@ -1242,7 +1267,7 @@ async function handleExtensionMessage(
         const result = await cancelTask(taskId);
         return { success: true, result };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
     }
 
@@ -1252,7 +1277,7 @@ async function handleExtensionMessage(
         const summary = await getSummary(summaryId);
         return { success: true, summary };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
     }
 
@@ -1266,7 +1291,7 @@ async function handleExtensionMessage(
         const result = await askQuestion(summaryId, question, options);
         return { success: true, result };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
     }
 
@@ -1276,7 +1301,7 @@ async function handleExtensionMessage(
         const messages = await getChatHistory(summaryId);
         return { success: true, result: messages };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
     }
 
@@ -1289,7 +1314,7 @@ async function handleExtensionMessage(
         const result = await clearChatHistory(summaryId, { includeVoice });
         return { success: true, result };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
     }
 
@@ -1298,7 +1323,7 @@ async function handleExtensionMessage(
         const plan = await fetchPlan();
         return { success: true, plan };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
     }
 
@@ -1308,7 +1333,7 @@ async function handleExtensionMessage(
         const searchResults = await searchGlobal(opts);
         return { success: true, searchResults };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
     }
 
@@ -1317,7 +1342,7 @@ async function handleExtensionMessage(
         const result = await getRecentQueries();
         return { success: true, recentQueries: result.queries };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
     }
 
@@ -1368,7 +1393,7 @@ async function handleExtensionMessage(
         const result = await shareAnalysis(videoId);
         return { success: true, share_url: result.share_url };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
     }
 
@@ -1378,7 +1403,7 @@ async function handleExtensionMessage(
         const result = await quickChat(url, lang || "fr");
         return { success: true, result };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
     }
 
@@ -1392,7 +1417,7 @@ async function handleExtensionMessage(
         const result = await revokeAllOtherSessions();
         return { success: true, result };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
     }
 
@@ -1413,7 +1438,7 @@ async function handleExtensionMessage(
         });
         return { success: true };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
     }
 
@@ -1423,7 +1448,7 @@ async function handleExtensionMessage(
         const result = await createVoiceSession(payload);
         return { success: true, result };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
     }
 
@@ -1433,7 +1458,7 @@ async function handleExtensionMessage(
         const result = await appendVoiceTranscript(payload);
         return { success: true, result };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
     }
 
@@ -1442,7 +1467,7 @@ async function handleExtensionMessage(
         const result = await getVoicePreferences();
         return { success: true, result };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
     }
 
@@ -1452,7 +1477,7 @@ async function handleExtensionMessage(
         const result = await updateVoicePreferences(payload);
         return { success: true, result };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
     }
 
@@ -1461,7 +1486,7 @@ async function handleExtensionMessage(
         const result = await getVoiceCatalog();
         return { success: true, result };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
     }
 
@@ -1478,7 +1503,7 @@ async function handleExtensionMessage(
         }
         return { success: true, result: { token: accessToken } };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
     }
 
@@ -1515,7 +1540,7 @@ async function handleExtensionMessage(
         Browser.action.setBadgeText({ text: "" });
         return { success: true };
       } catch (e) {
-        return { success: false, error: (e as Error).message };
+        return toErrorResponse(e);
       }
     }
 

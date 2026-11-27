@@ -32,6 +32,7 @@ import { ExternalSourcesCompact } from "../components/ExternalSourcesCompact";
 import { RevokeAllDevicesButton } from "../components/RevokeAllDevicesButton";
 import { DeepSightSpinner } from "../shared/DeepSightSpinner";
 import { useTranslation } from "../../i18n/useTranslation";
+import { localizeError } from "../../i18n/errorMessages";
 
 interface MainViewProps {
   user: User | null;
@@ -52,7 +53,7 @@ type AnalysisPhase =
   | { phase: "idle" }
   | { phase: "analyzing"; progress: number; message: string; taskId?: string }
   | { phase: "complete"; summaryId: number; summary: Summary }
-  | { phase: "error"; message: string };
+  | { phase: "error"; message: string; code?: string };
 
 export const MainView: React.FC<MainViewProps> = ({
   user,
@@ -205,19 +206,22 @@ export const MainView: React.FC<MainViewProps> = ({
         data: { url: video.url, lang },
       });
 
-      if (!response.success)
-        throw new Error(response.error || "Quick Chat failed");
+      if (!response.success) {
+        if (response.errorCode === "session_expired") onLogout();
+        onError(localizeError(t.errors, response));
+        return;
+      }
 
       const result = response.result as QuickChatResponse;
       Browser.tabs.create({
         url: `${WEBAPP_URL}/chat?summary=${result.summary_id}`,
       });
     } catch (e) {
-      onError((e as Error).message);
+      onError(localizeError(t.errors, (e as Error).message));
     } finally {
       setQuickChatLoading(false);
     }
-  }, [video, lang, onError]);
+  }, [video, lang, onError, onLogout, t]);
 
   const startAnalysis = useCallback(async () => {
     if (!video) return;
@@ -246,9 +250,14 @@ export const MainView: React.FC<MainViewProps> = ({
       });
 
       if (!startRes.success) {
+        if (startRes.errorCode === "session_expired") {
+          onLogout();
+          return;
+        }
         setAnalysis({
           phase: "error",
-          message: startRes.error || t.analysis.startFailed,
+          message: localizeError(t.errors, startRes, t.analysis.startFailed),
+          code: startRes.errorCode,
         });
         return;
       }
@@ -327,9 +336,16 @@ export const MainView: React.FC<MainViewProps> = ({
         }
       }, 2500);
     } catch (e) {
-      setAnalysis({ phase: "error", message: (e as Error).message });
+      setAnalysis({
+        phase: "error",
+        message: localizeError(
+          t.errors,
+          (e as Error).message,
+          t.analysis.startFailed,
+        ),
+      });
     }
-  }, [video, mode, lang, isGuest, t]);
+  }, [video, mode, lang, isGuest, t, onLogout]);
 
   const cancelAnalysis = useCallback(async () => {
     if (analysis.phase !== "analyzing" || !analysis.taskId) return;
@@ -766,16 +782,36 @@ export const MainView: React.FC<MainViewProps> = ({
         {/* ── Error state ────────────────────────────────────────── */}
         {analysis.phase === "error" && (
           <div className="v3-card">
-            <div className="v3-card-eyebrow">Erreur</div>
+            <div className="v3-card-eyebrow">{t.common.error}</div>
             <h3 className="v3-card-title" style={{ color: "#fca5a5" }}>
               {analysis.message}
             </h3>
-            <button
-              className="v3-button-primary"
-              onClick={() => setAnalysis({ phase: "idle" })}
-            >
-              {t.common.retry}
-            </button>
+            {analysis.code === "auth_required" ? (
+              <>
+                <button
+                  className="v3-button-primary"
+                  onClick={onLoginRedirect}
+                  style={{ marginBottom: 8 }}
+                >
+                  {t.common.login}
+                </button>
+                <button
+                  className="v3-button-secondary"
+                  onClick={() =>
+                    Browser.tabs.create({ url: `${WEBAPP_URL}/register` })
+                  }
+                >
+                  {t.common.createAccount} {"↗"}
+                </button>
+              </>
+            ) : (
+              <button
+                className="v3-button-primary"
+                onClick={() => setAnalysis({ phase: "idle" })}
+              >
+                {t.common.retry}
+              </button>
+            )}
           </div>
         )}
 
