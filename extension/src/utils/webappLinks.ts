@@ -36,6 +36,8 @@ export const STUDY_HUB_URL = `${WEBAPP_URL}/study`;
 export const UPGRADE_URL = `${WEBAPP_URL}/upgrade`;
 export const REGISTER_URL = `${WEBAPP_URL}/login?tab=register`;
 export const FORGOT_PASSWORD_URL = `${WEBAPP_URL}/forgot-password`;
+/** Page d'accueil post-installation de l'extension. */
+export const EXTENSION_WELCOME_URL = `${WEBAPP_URL}/extension-welcome`;
 export const PRIVACY_URL = `${WEBAPP_URL}/legal/privacy`;
 export const TERMS_URL = `${WEBAPP_URL}/legal/cgu`;
 

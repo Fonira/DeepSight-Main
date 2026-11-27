@@ -23,6 +23,7 @@ import {
 } from "./utils/apiError";
 import { expiresWithin } from "./utils/jwt";
 import { normalizePlanInfo } from "./utils/plan";
+import { EXTENSION_WELCOME_URL } from "./utils/webappLinks";
 import { drainCrashes } from "./utils/crash-logger";
 import { reportCrashes } from "./utils/sentry-reporter";
 import type {
@@ -1779,7 +1780,8 @@ Browser.runtime.onInstalled.addListener(
       /* never block install on telemetry */
     }
     if (details.reason === "install") {
-      Browser.tabs.create({ url: WEBAPP_URL });
+      // Page d'onboarding dédiée du site (frontend /extension-welcome).
+      Browser.tabs.create({ url: EXTENSION_WELCOME_URL });
       Browser.storage.local.set({ showYouTubeRecommendation: true });
     }
   },
