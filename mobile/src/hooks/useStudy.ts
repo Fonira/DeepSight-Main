@@ -2,8 +2,20 @@ import { useCallback } from "react";
 import NetInfo from "@react-native-community/netinfo";
 import { useStudyStore } from "../stores/studyStore";
 import { studyApi } from "../services/api";
+import { ApiError } from "../services/apiErrors";
 import { OfflineCache, CachePriority } from "../services/OfflineCache";
+import { isOfflineLikeError } from "../utils/studyErrors";
 import type { Flashcard, QuizQuestionV2 } from "../types/v2";
+
+/**
+ * Cache hors ligne si disponible, sinon erreur « hors ligne » (affichée avec
+ * un bouton Réessayer) plutôt qu'une liste vide « Aucune flashcard ».
+ */
+async function cachedOrOfflineError<T>(cacheKey: string): Promise<T[]> {
+  const cached = await OfflineCache.get<T[]>(cacheKey);
+  if (cached && cached.length > 0) return cached;
+  throw new ApiError("No internet connection", 0, "OFFLINE");
+}
 
 // Cache study content aggressively — flashcards/quizzes for a given summary
 // rarely change, and offline review is the #1 mobile retention use case.
@@ -20,10 +32,9 @@ export function useStudy(summaryId: string) {
   const generateFlashcards = useCallback(async (): Promise<Flashcard[]> => {
     const cacheKey = `flashcards_${summaryId}`;
 
-    // Offline: serve cache (empty fallback keeps existing "silent fail" contract)
+    // Offline: serve cache
     if (await isOffline()) {
-      const cached = await OfflineCache.get<Flashcard[]>(cacheKey);
-      return cached ?? [];
+      return cachedOrOfflineError<Flashcard>(cacheKey);
     }
 
     try {
@@ -49,10 +60,12 @@ export function useStudy(summaryId: string) {
         });
       }
       return mapped;
-    } catch {
-      // Network failure → fallback to cache
-      const cached = await OfflineCache.get<Flashcard[]>(cacheKey);
-      return cached ?? [];
+    } catch (error: unknown) {
+      // Coupure réseau → cache ; 402/403/429/5xx → erreur affichée à l'utilisateur
+      if (isOfflineLikeError(error)) {
+        return cachedOrOfflineError<Flashcard>(cacheKey);
+      }
+      throw error;
     }
   }, [summaryId]);
 
@@ -60,8 +73,7 @@ export function useStudy(summaryId: string) {
     const cacheKey = `quiz_${summaryId}`;
 
     if (await isOffline()) {
-      const cached = await OfflineCache.get<QuizQuestionV2[]>(cacheKey);
-      return cached ?? [];
+      return cachedOrOfflineError<QuizQuestionV2>(cacheKey);
     }
 
     try {
@@ -97,9 +109,11 @@ export function useStudy(summaryId: string) {
         });
       }
       return mapped;
-    } catch {
-      const cached = await OfflineCache.get<QuizQuestionV2[]>(cacheKey);
-      return cached ?? [];
+    } catch (error: unknown) {
+      if (isOfflineLikeError(error)) {
+        return cachedOrOfflineError<QuizQuestionV2>(cacheKey);
+      }
+      throw error;
     }
   }, [summaryId]);
 

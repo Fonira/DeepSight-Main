@@ -24,7 +24,10 @@ import Animated, {
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useLanguage } from "../../contexts/LanguageContext";
 import { useStudy } from "../../hooks/useStudy";
+import { studyErrorMessage } from "../../utils/studyErrors";
+import { StudyLoadError } from "./StudyLoadError";
 import { sp, borderRadius } from "../../theme/spacing";
 import { fontFamily, fontSize } from "../../theme/typography";
 import { springs, duration } from "../../theme/animations";
@@ -82,6 +85,9 @@ export const MultiAnswerQuiz: React.FC<MultiAnswerQuizProps> = ({
 }) => {
   const { colors } = useTheme();
   const { generateQuiz, saveProgress } = useStudy(summaryId);
+  const { t, tr } = useLanguage();
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
 
   const [questions, setQuestions] = useState<QuizQuestionV2[]>([]);
   const [index, setIndex] = useState(0);
@@ -101,18 +107,25 @@ export const MultiAnswerQuiz: React.FC<MultiAnswerQuizProps> = ({
 
   useEffect(() => {
     let mounted = true;
+    setLoading(true);
+    setLoadError(null);
     (async () => {
-      const result = await generateQuiz();
-      if (mounted) {
-        setQuestions(result);
-        setLoading(false);
+      try {
+        const result = await generateQuiz();
+        if (mounted) setQuestions(result);
+      } catch (error: unknown) {
+        if (mounted) setLoadError(studyErrorMessage(error, tr));
+      } finally {
+        if (mounted) setLoading(false);
       }
     })();
     return () => {
       mounted = false;
       if (advanceTimer.current) clearTimeout(advanceTimer.current);
     };
-  }, [generateQuiz]);
+    // tr volontairement hors dépendances : changer de langue ne relance pas la génération
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [generateQuiz, loadAttempt]);
 
   // Derived
   const current = questions[index] ?? null;
@@ -261,6 +274,19 @@ export const MultiAnswerQuiz: React.FC<MultiAnswerQuizProps> = ({
             Génération du quiz...
           </Text>
         </View>
+      </View>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
+        <QuizHeader onClose={onClose} scoreLabel="" progressLabel="" />
+        <StudyLoadError
+          message={loadError}
+          retryLabel={t.errors.tryAgain}
+          onRetry={() => setLoadAttempt((n) => n + 1)}
+        />
       </View>
     );
   }

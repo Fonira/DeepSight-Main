@@ -55,7 +55,14 @@ export const QuizGame: React.FC<QuizGameProps> = ({ summaryId, onClose }) => {
   useEffect(() => {
     let mounted = true;
     (async () => {
-      const result = await generateQuiz();
+      // useStudy remonte désormais les erreurs API : on garde ici l'ancien
+      // comportement (liste vide) pour ce composant historique.
+      let result: QuizQuestionV2[] = [];
+      try {
+        result = await generateQuiz();
+      } catch {
+        result = [];
+      }
       if (mounted) {
         setQuestions(result);
         setLoading(false);
