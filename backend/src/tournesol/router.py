@@ -7,12 +7,14 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional, List
 import httpx
 import asyncio
 import logging
+
+from auth.dependencies import get_current_admin
 
 logger = logging.getLogger("deepsight.tournesol")
 
@@ -389,7 +391,7 @@ async def get_recommendations_raw(request: Request):
         return {"count": 0, "next": None, "previous": None, "results": []}
 
 
-@router.get("/trending/stats")
+@router.get("/trending/stats", dependencies=[Depends(get_current_admin)])
 async def get_trending_cache_stats():
     """📊 Stats du pre-cache trending (admin debug)."""
     from tournesol.trending_cache import get_cache_stats
@@ -397,9 +399,9 @@ async def get_trending_cache_stats():
     return await get_cache_stats()
 
 
-@router.get("/trending/refresh")
+@router.get("/trending/refresh", dependencies=[Depends(get_current_admin)])
 async def trigger_trending_refresh():
-    """🔄 Force un refresh du pre-cache trending (admin debug)."""
+    """🔄 Force un refresh du pre-cache trending (admin uniquement : déclenche des appels sortants)."""
     from tournesol.trending_cache import refresh_trending_cache
 
     stats = await refresh_trending_cache()

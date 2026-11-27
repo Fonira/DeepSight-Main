@@ -25,6 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.database import get_session, User, Summary
 from auth.dependencies import (
+    enforce_private_mode,
     get_current_user,
     get_verified_user,
     require_plan,
@@ -700,6 +701,9 @@ async def analyze_video_guest(
     - Mode accessible, résumé court
     - Aucune sauvegarde en DB
     """
+    # Mode privé : pas d'analyse anonyme (Supadata + Mistral à nos frais)
+    enforce_private_mode(None)
+
     import time
 
     # 1. Rate-limit par IP (3 analyses / 24h)
