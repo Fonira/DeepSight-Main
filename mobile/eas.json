@@ -47,7 +47,7 @@
       "channel": "production",
       "ios": {
         "resourceClass": "m-medium",
-        "image": "latest"
+        "image": "sdk-54"
       },
       "android": {
         "buildType": "app-bundle",
