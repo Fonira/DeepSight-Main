@@ -53,7 +53,7 @@ const FAQ_ITEMS: FaqItem[] = [
   {
     question: "Mes données sont-elles protégées ?",
     answer:
-      "Oui, DeepSight est conforme au RGPD. Vos données sont chiffrées, stockées sur des serveurs sécurisés en Europe (Hetzner + Vercel), et ne sont jamais partagées avec des tiers. Vous pouvez supprimer votre compte et toutes vos données à tout moment.",
+      "Oui, DeepSight est conforme au RGPD. Vos données sont chiffrées, stockées sur des serveurs sécurisés en Allemagne (netcup, UE), et ne sont jamais partagées avec des tiers. Vous pouvez supprimer votre compte et toutes vos données à tout moment.",
     icon: Shield,
   },
   {

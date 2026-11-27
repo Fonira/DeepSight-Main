@@ -55,20 +55,21 @@ const LEGAL_INFO = {
     director: "Maxime Leparc",
   },
   hosting: {
+    // Site et API sur le même serveur (VPS netcup, centre de données de Nuremberg)
     frontend: {
-      name: "Vercel Inc.",
-      address: "340 S Lemon Ave #4133, Walnut, CA 91789, USA",
-      website: "https://vercel.com",
+      name: "netcup GmbH",
+      address: "Emmy-Noether-Str. 10, 76131 Karlsruhe, Allemagne",
+      website: "https://www.netcup.com",
     },
     backend: {
-      name: "Hetzner Online GmbH",
-      address: "Industriestr. 25, 91710 Gunzenhausen, Allemagne",
-      website: "https://www.hetzner.com",
+      name: "netcup GmbH",
+      address: "Emmy-Noether-Str. 10, 76131 Karlsruhe, Allemagne",
+      website: "https://www.netcup.com",
     },
   },
   dpo: {
     name: "Maxime Leparc",
-    email: "maximeleparc3@gmail.com",
+    email: "maximeleparc3@proton.me",
   },
   website: {
     url: "https://www.deepsightsynthesis.com",
@@ -77,7 +78,7 @@ const LEGAL_INFO = {
   vat: {
     status: "TVA non applicable, article 293 B du CGI",
   },
-  lastUpdate: "8 janvier 2026",
+  lastUpdate: "27 novembre 2026",
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -248,8 +249,9 @@ const MentionsLegales: React.FC = () => (
       <div className="mt-4 p-3 bg-green-500/10 rounded-lg border border-green-500/20">
         <p className="text-green-200 text-sm">
           <Shield className="w-4 h-4 inline mr-2" />
-          Le backend et les données utilisateur sont hébergés en Allemagne (UE)
-          chez Hetzner. Le frontend est servi depuis le CDN mondial de Vercel.
+          Le site, l'API et les données utilisateur sont hébergés en Allemagne
+          (UE, centre de données de Nuremberg) chez netcup GmbH. Les sauvegardes
+          chiffrées sont conservées chez Cloudflare R2, dans l'Union européenne.
           Vos données restent en Europe conformément au RGPD.
         </p>
       </div>

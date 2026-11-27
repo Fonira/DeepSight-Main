@@ -86,20 +86,14 @@ const TECH_PARTNERS: Partner[] = [
 
 const INFRA_PARTNERS: Partner[] = [
   {
-    name: "Vercel",
-    role: "Frontend hosting",
-    url: "https://vercel.com",
-    icon: Globe,
-  },
-  {
-    name: "Railway",
-    role: "Backend hosting",
-    url: "https://railway.app",
+    name: "netcup",
+    role: "Hébergement (Allemagne)",
+    url: "https://www.netcup.com",
     icon: Database,
   },
   {
     name: "Cloudflare",
-    role: "CDN & storage",
+    role: "Sauvegardes chiffrées (UE)",
     url: "https://cloudflare.com",
     icon: Shield,
   },

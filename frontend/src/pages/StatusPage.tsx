@@ -1,7 +1,6 @@
 /**
  * Page de statut interne — accessible aux utilisateurs connectés.
- * Appelle le proxy Vercel /api/status (deep health check) toutes les 60s.
- * Fallback public /api/health/status si le proxy échoue.
+ * Appelle l'endpoint public /api/health/status de l'API toutes les 60s.
  *
  * Section "Live status (Instatus)" en bas : fetch le summary.json public
  * de la status page externe https://status.deepsightsynthesis.com et
