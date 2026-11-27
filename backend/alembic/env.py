@@ -97,6 +97,18 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
+        if connection.dialect.name == "postgresql":
+            # Par défaut alembic crée version_num en VARCHAR(32), trop court pour
+            # certains IDs (006, 016, 023 > 32 caractères) : l'upgrade échouait
+            # sur une base neuve. On fixe la taille AVANT que alembic ne crée la table.
+            connection.exec_driver_sql(
+                "CREATE TABLE IF NOT EXISTS alembic_version ("
+                "version_num VARCHAR(255) NOT NULL, "
+                "CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num))"
+            )
+            connection.exec_driver_sql("ALTER TABLE alembic_version ALTER COLUMN version_num TYPE VARCHAR(255)")
+            connection.commit()
+
         context.configure(
             connection=connection,
             target_metadata=target_metadata,

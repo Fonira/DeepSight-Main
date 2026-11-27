@@ -22,6 +22,16 @@ cd /app
 # 2026-05-06 — `019_visual_analysis_quota` + `022_summary_extras` divergeaient
 # à `018_hub_workspace`, `alembic upgrade head` échouait, container démarrait
 # sans migrations 023+024 appliquées.
+# Base construite par create_all mais jamais suivie par alembic (cas du VPS
+# netcup) : on l'aligne une fois sur la baseline, sinon chaque démarrage
+# rejoue les migrations depuis zéro et échoue (cf. alembic/baseline.py).
+if python alembic/baseline.py; then
+    BASELINE_REVS=$(python alembic/baseline.py --revisions)
+    echo "[entrypoint] Schema created by create_all, not tracked by alembic: stamping baseline ($BASELINE_REVS)"
+    # shellcheck disable=SC2086 — deux révisions séparées par un espace
+    alembic stamp $BASELINE_REVS || echo "[entrypoint] WARNING: alembic stamp failed"
+fi
+
 if alembic upgrade heads; then
     echo "[entrypoint] alembic upgrade heads: OK"
 else
