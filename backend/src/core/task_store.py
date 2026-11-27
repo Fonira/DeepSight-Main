@@ -69,6 +69,9 @@ class TaskStore:
 
     def __init__(self):
         self._local: Dict[str, TaskStatusDict] = {}
+        # Tâches créées par CE worker : sa copie locale fait foi. Les autres ne
+        # sont qu'un cache de lecture, relu dans Redis à chaque aget().
+        self._owned: Set[str] = set()
         self._redis = None
         self._dirty: Set[str] = set()
         self._flush_handle = None
@@ -92,6 +95,7 @@ class TaskStore:
             self._local[task_id] = data
         else:
             self._local[task_id] = TaskStatusDict(task_id, self, data)
+        self._owned.add(task_id)
         self._mark_dirty(task_id)
 
     def get(self, task_id: str, default=None):
@@ -101,11 +105,15 @@ class TaskStore:
 
     async def aget(self, task_id: str) -> Optional[Dict[str, Any]]:
         """
-        Lecture async: cache local d'abord, puis Redis si absent.
-        Essentiel pour le polling cross-worker (Worker B lit un task créé par Worker A).
+        Lecture async, essentielle pour le polling cross-worker.
+
+        - Tâche créée par ce worker : la copie locale est la source de vérité.
+        - Tâche d'un autre worker : relue dans Redis à CHAQUE appel. Avant, la
+          première lecture était mise en cache et jamais rafraîchie, si bien que
+          les polls servis par ce worker restaient figés sur l'ancienne progression.
         """
         local = self._local.get(task_id)
-        if local is not None:
+        if local is not None and (task_id in self._owned or not self._redis):
             return local
 
         if self._redis:
@@ -119,7 +127,7 @@ class TaskStore:
             except Exception as e:
                 logger.warning("TaskStore Redis GET failed", task_id=task_id, error=str(e))
 
-        return None
+        return local
 
     # ── Dirty tracking & flush batché ──
 
