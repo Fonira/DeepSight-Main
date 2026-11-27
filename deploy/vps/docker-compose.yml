@@ -114,6 +114,9 @@ services:
     # Redis est toujours dérivée des mots de passe, jamais recopiée à la main.
     environment:
       ENV: production
+      # Lu séparément par main.py, les logs et Sentry : sans lui, /docs,
+      # /openapi.json, /debug/* et le détail des erreurs 500 sont publics.
+      ENVIRONMENT: production
       PORT: "8080"
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-deepsight}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-deepsight}
       VPS_DATABASE_URL: postgresql://${POSTGRES_USER:-deepsight}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-deepsight}
