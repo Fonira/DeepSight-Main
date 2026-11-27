@@ -288,6 +288,19 @@ async def test_admin_is_treated_as_expert(api, current, worker_a):
 
 
 @pytest.mark.unit
+@pytest.mark.parametrize("field", ["max_videos", "maxVideos"])
+async def test_analyze_honours_requested_video_count(api, worker_a, field):
+    # Le client web envoie `maxVideos` ; l'API publique documente `max_videos`.
+    with patch.object(router_mod, "_analyze_playlist_background", AsyncMock()) as background:
+        resp = await api.post(
+            "/api/playlists/analyze",
+            json={"url": f"https://youtube.com/playlist?list={PLAYLIST_ID}", field: 5},
+        )
+    assert resp.status_code == 200, resp.text
+    assert background.await_args.kwargs["max_videos"] == 5
+
+
+@pytest.mark.unit
 async def test_analyze_rejects_insufficient_credits(api, current, worker_a):
     current["user"] = _user(4, plan="expert", credits=3)
     resp = await api.post(

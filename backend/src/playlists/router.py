@@ -22,7 +22,7 @@ from datetime import datetime, timedelta
 from typing import Annotated, Optional, Dict, Any, List, Tuple
 from collections import Counter, OrderedDict
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Query
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, func
 
@@ -49,7 +49,9 @@ router = APIRouter()
 
 class AnalyzePlaylistRequest(BaseModel):
     url: str
-    max_videos: int = Field(default=10, ge=1, le=100)
+    # Le client web envoie `maxVideos` (camelCase) : sans alias, la valeur était
+    # ignorée et chaque analyse retombait sur 10 vidéos.
+    max_videos: int = Field(default=10, ge=1, le=100, validation_alias=AliasChoices("max_videos", "maxVideos"))
     mode: str = Field(default="standard", description="accessible | standard | expert")
     lang: str = "fr"
     model: Optional[str] = None
