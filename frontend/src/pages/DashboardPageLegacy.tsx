@@ -91,6 +91,7 @@ import { AnalysisHub } from "../components/AnalysisHub";
 import { AudioPlayer } from "../components/analysis/AudioPlayer";
 import { AnalysisActionBar } from "../components/analysis/AnalysisActionBar";
 import { sanitizeTitle } from "../utils/sanitize";
+import { takePendingSmartInput } from "../utils/pendingSmartInput";
 // 🎙️ Voice Chat
 import { VoiceModal } from "../components/voice/VoiceModal";
 import { useVoiceChat } from "../components/voice/useVoiceChat";
@@ -286,6 +287,23 @@ export const DashboardPage: React.FC = () => {
     null,
   );
   useEffect(() => {
+    // Saisie transmise par le dashboard minimal (recherche, texte, images,
+    // bibliothèque). La recherche est relancée automatiquement ; les autres
+    // modes sont seulement pré-remplis (pas de dépense de crédits implicite).
+    const pending = takePendingSmartInput();
+    if (pending) {
+      setSmartInput((prev) => ({
+        ...prev,
+        ...pending,
+        searchLanguages:
+          pending.searchLanguages || prev.searchLanguages || ["fr", "en"],
+      }));
+      if (pending.mode === "search" && pending.searchQuery?.trim()) {
+        setPendingAutoSearch(pending.searchQuery);
+      }
+      return;
+    }
+
     const params = new URLSearchParams(window.location.search);
     const q = params.get("q");
     if (q && q.trim().length > 0) {

@@ -455,7 +455,10 @@ const RoutePrefetcher = () => {
  *   - localStorage : `ds_hub_legacy_home=1`
  */
 const DashboardRoute: React.FC = () => {
-  const params = new URLSearchParams(window.location.search);
+  // useLocation : re-évalué quand on passe de /dashboard à /dashboard?legacy=1
+  // depuis le dashboard minimal (même route, seule la query change).
+  const { search } = useLocation();
+  const params = new URLSearchParams(search);
   const useLegacy =
     params.get("legacy") === "1" ||
     (typeof window !== "undefined" &&

@@ -115,6 +115,13 @@ vi.mock("../../components/SmartInputBar", () => ({
           onChange({ ...value, mode: "url", url: e.target.value })
         }
       />
+      <input
+        data-testid="search-input"
+        value={value.searchQuery || ""}
+        onChange={(e) =>
+          onChange({ ...value, mode: "search", searchQuery: e.target.value })
+        }
+      />
       <button type="button" data-testid="analyze-btn" onClick={onSubmit}>
         Analyser
       </button>
@@ -171,5 +178,23 @@ describe("DashboardPageMinimal", () => {
     expect(mockAnalyze).toHaveBeenCalledWith(
       "https://www.youtube.com/watch?v=xyz_video_id",
     );
+  });
+  it("hands a search over to the full dashboard with the query kept", () => {
+    sessionStorage.clear();
+    renderPage();
+    fireEvent.change(screen.getByTestId("search-input"), {
+      target: { value: "biais cognitifs" },
+    });
+    fireEvent.click(screen.getByTestId("analyze-btn"));
+
+    expect(mockNavigate).toHaveBeenCalledWith("/dashboard?legacy=1");
+    const pending = JSON.parse(
+      sessionStorage.getItem("ds_pending_smart_input") || "{}",
+    );
+    expect(pending).toMatchObject({
+      mode: "search",
+      searchQuery: "biais cognitifs",
+    });
+    expect(mockAnalyze).not.toHaveBeenCalled();
   });
 });

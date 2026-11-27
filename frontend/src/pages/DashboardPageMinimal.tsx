@@ -27,6 +27,7 @@ import DoodleBackground from "../components/DoodleBackground";
 import { SEO } from "../components/SEO";
 import { Sidebar } from "../components/layout/Sidebar";
 import SmartInputBar, {
+  type ImageFile,
   type SmartInputValue,
 } from "../components/SmartInputBar";
 import { TournesolTrendingSection } from "../components/TournesolTrendingSection";
@@ -34,6 +35,10 @@ import { RecentAnalysesSection } from "../components/RecentAnalysesSection";
 import { useAnalyzeAndOpenHub } from "../hooks/useAnalyzeAndOpenHub";
 import { useAuth } from "../hooks/useAuth";
 import { useTranslation } from "../hooks/useTranslation";
+import {
+  LEGACY_DASHBOARD_PATH,
+  savePendingSmartInput,
+} from "../utils/pendingSmartInput";
 
 const DashboardPageMinimal: React.FC = () => {
   const { user } = useAuth();
@@ -59,22 +64,32 @@ const DashboardPageMinimal: React.FC = () => {
 
   const handleSmartSubmit = () => {
     // Mode URL : déclenche l'analyse via le hook puis redirige vers /hub.
-    if (smartInput.mode === "url" && smartInput.url) {
-      analyze(smartInput.url);
+    if (smartInput.mode === "url") {
+      if (smartInput.url) analyze(smartInput.url);
       return;
     }
-    // Modes search / text / image / library : pour l'instant, redirige sur le
-    // legacy dashboard où ces flows sont implémentés (le minimal landing
-    // n'expose volontairement qu'URL → Hub). À enrichir dans une itération
-    // suivante si nécessaire.
-    if (smartInput.mode === "search" && smartInput.searchQuery) {
-      // Navigation vers la page legacy avec query pré-remplie pour l'instant.
-      const qs = new URLSearchParams({
-        legacy: "1",
-        q: smartInput.searchQuery,
-      });
-      navigate(`/?${qs.toString()}`);
-    }
+    // Modes search / text / image / library : implémentés dans le dashboard
+    // complet (legacy). On lui transmet la saisie puis on l'ouvre. Avant, la
+    // recherche partait sur "/?legacy=1&q=…", que HomeRoute redirigeait vers
+    // /dashboard en perdant la requête, et les autres modes ne faisaient rien.
+    savePendingSmartInput(smartInput);
+    navigate(LEGACY_DASHBOARD_PATH);
+  };
+
+  // Le mode image soumet par ce callback (SmartInputBar l'ignore s'il manque).
+  const handleImageSubmit = (
+    images: ImageFile[],
+    title?: string,
+    context?: string,
+  ) => {
+    savePendingSmartInput({
+      ...smartInput,
+      mode: "image",
+      images,
+      imageTitle: title,
+      imageContext: context,
+    });
+    navigate(LEGACY_DASHBOARD_PATH);
   };
 
   const handleRecentSelect = (summaryId: number) => {
@@ -110,6 +125,7 @@ const DashboardPageMinimal: React.FC = () => {
             value={smartInput}
             onChange={setSmartInput}
             onSubmit={handleSmartSubmit}
+            onImageSubmit={handleImageSubmit}
             loading={analyzing}
             disabled={analyzing}
             language={language}
