@@ -833,7 +833,7 @@ def _parse_subtitle_files(tmpdir: str, video_id: str) -> Tuple[Optional[str], Op
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-def _supadata_segments_to_texts(segments: List[Any]) -> Tuple[str, Optional[str]]:
+def _supadata_segments_to_texts(segments: list[Any]) -> tuple[str, str | None]:
     """Convertit une liste de segments Supadata en (texte simple, texte horodaté).
 
     Formats acceptés :
@@ -845,8 +845,8 @@ def _supadata_segments_to_texts(segments: List[Any]) -> Tuple[str, Optional[str]
     Les ancres `[MM:SS]` sont posées au plus toutes les 30 s, comme pour les
     autres méthodes. Retourne `("", None)` si aucun texte exploitable.
     """
-    simple_parts: List[str] = []
-    timestamped_parts: List[str] = []
+    simple_parts: list[str] = []
+    timestamped_parts: list[str] = []
     has_timing = False
     last_ts = -30.0
 
@@ -2542,7 +2542,7 @@ async def _get_transcript_with_timestamps_inner(
     # Texte Supadata sans horodatage : gardé en réserve pendant que Phase 1 cherche
     # des timestamps. Sans cette réserve, un serveur bloqué par YouTube (Phase 1-3
     # en échec) jetait une transcription complète et l'analyse échouait.
-    supadata_plain: Optional[Tuple[str, str]] = None
+    supadata_plain: tuple[str, str] | None = None
 
     supadata_cb = get_circuit_breaker("supadata")
     if supadata_cb.can_execute():
@@ -2675,7 +2675,7 @@ async def _get_transcript_with_timestamps_inner(
     # horodatée (visual analysis retombe alors sur duration_hint).
     if supadata_plain is not None:
         sp_simple, sp_lang = supadata_plain
-        print("", flush=True)
+        print(flush=True)
         print("✅ SUCCESS with Supadata API (plain text, no timestamps available)", flush=True)
         print(f"{'=' * 70}", flush=True)
         await _cache_success(video_id, sp_simple, sp_simple, sp_lang, "Supadata API (plain)")
