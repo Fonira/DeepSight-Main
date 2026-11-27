@@ -93,10 +93,71 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
  */
 type RefreshResult = "ok" | "invalid_token" | "transient";
 
+// ── Rate limiting (429) ──
+//
+// L'API limite à 300 req/min par IP (5/min sur /auth/login, 10/min sur
+// /videos/analyze) et renvoie `Retry-After`. Après une 429, on n'appelle plus
+// le même endpoint avant l'échéance : l'appelant reçoit immédiatement la même
+// erreur `rate_limited` (avec le délai restant) au lieu de relancer une
+// requête — sinon le polling du side panel enchaînait les 429 en boucle.
+// Mémoire du SW uniquement : s'il est tué, on refait au pire une requête.
+const DEFAULT_RATE_LIMIT_S = 60;
+const rateLimitedUntil = new Map<string, number>();
+
+/** `/videos/status/abc?x=1` → `/videos/status` (granularité du cooldown). */
+export function rateLimitKey(endpoint: string): string {
+  return endpoint.split("?")[0].split("/").slice(0, 3).join("/");
+}
+
+function rateLimitedMessage(seconds: number): string {
+  // Même formulation que le backend (messages API en français) ; l'UI
+  // traduit via errorCode = rate_limited.
+  return `Trop de requêtes. Réessayez dans ${seconds} secondes.`;
+}
+
+function assertNotRateLimited(endpoint: string): void {
+  const key = rateLimitKey(endpoint);
+  const until = rateLimitedUntil.get(key);
+  if (until === undefined) return;
+  const remainingMs = until - Date.now();
+  if (remainingMs <= 0) {
+    rateLimitedUntil.delete(key);
+    return;
+  }
+  const seconds = Math.ceil(remainingMs / 1000);
+  throw new ApiError({
+    status: 429,
+    code: ERROR_CODES.RATE_LIMITED,
+    message: rateLimitedMessage(seconds),
+    retryAfter: seconds,
+  });
+}
+
+/** Enregistre le cooldown d'une 429 ; renvoie l'erreur à lever. */
+function noteRateLimit(endpoint: string, error: ApiError): ApiError {
+  if (error.status !== 429) return error;
+  const seconds = error.retryAfter ?? DEFAULT_RATE_LIMIT_S;
+  rateLimitedUntil.set(rateLimitKey(endpoint), Date.now() + seconds * 1000);
+  if (error.retryAfter !== undefined) return error;
+  return new ApiError({
+    status: 429,
+    code: ERROR_CODES.RATE_LIMITED,
+    message: error.message,
+    retryAfter: seconds,
+    detail: error.detail,
+  });
+}
+
+/** Réservé aux tests : vide les cooldowns 429. */
+export function resetRateLimitsForTests(): void {
+  rateLimitedUntil.clear();
+}
+
 async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {},
 ): Promise<T> {
+  assertNotRateLimited(endpoint);
   const { accessToken } = await getStoredTokens();
 
   const headers: Record<string, string> = {
@@ -141,7 +202,7 @@ async function apiRequest<T>(
       headers["Authorization"] = `Bearer ${newToken}`;
       const retryResponse = await fetchApi(endpoint, { ...options, headers });
       if (!retryResponse.ok) {
-        throw await apiErrorFromResponse(retryResponse);
+        throw noteRateLimit(endpoint, await apiErrorFromResponse(retryResponse));
       }
       return parseJsonBody<T>(retryResponse);
     }
@@ -164,7 +225,7 @@ async function apiRequest<T>(
   }
 
   if (!response.ok) {
-    throw await apiErrorFromResponse(response);
+    throw noteRateLimit(endpoint, await apiErrorFromResponse(response));
   }
 
   return parseJsonBody<T>(response);
@@ -309,6 +370,7 @@ async function doRefreshToken(): Promise<RefreshResult> {
 }
 
 async function login(email: string, password: string): Promise<User> {
+  assertNotRateLimited("/auth/login");
   const response = await fetchApi("/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -318,7 +380,10 @@ async function login(email: string, password: string): Promise<User> {
   if (!response.ok) {
     // 401 identifiants, 403 EMAIL_NOT_VERIFIED ou {code:"private_mode"},
     // 429 (5 tentatives/min) : toujours un message lisible.
-    throw await apiErrorFromResponse(response, "Login failed");
+    throw noteRateLimit(
+      "/auth/login",
+      await apiErrorFromResponse(response, "Login failed"),
+    );
   }
 
   const data: LoginResponse = await response.json();
@@ -343,6 +408,7 @@ async function loginWithGoogle(): Promise<User> {
     throw new Error("Google OAuth not configured. Use email/password login.");
   }
 
+  assertNotRateLimited("/auth/google/token");
   const redirectUrl = Browser.identity.getRedirectURL();
   const nonce = generateOidcNonce();
 
@@ -381,7 +447,10 @@ async function loginWithGoogle(): Promise<User> {
   });
 
   if (!response.ok) {
-    throw await apiErrorFromResponse(response, "Google login failed on server");
+    throw noteRateLimit(
+      "/auth/google/token",
+      await apiErrorFromResponse(response, "Google login failed on server"),
+    );
   }
 
   const data: LoginResponse = await response.json();

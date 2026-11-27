@@ -59,6 +59,7 @@
     "processing": "Traitement en cours...",
     "failed": "Analyse échouée",
     "startFailed": "Impossible de démarrer l'analyse",
+    "timeout": "L'analyse prend plus de temps que prévu. Retrouvez-la plus tard dans l'app web.",
     "recent": "Analyses récentes",
     "quotaExceeded": "Quota atteint",
     "quotaExceededText": "Passez au plan supérieur",

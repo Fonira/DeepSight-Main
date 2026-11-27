@@ -33,6 +33,11 @@ import { RevokeAllDevicesButton } from "../components/RevokeAllDevicesButton";
 import { DeepSightSpinner } from "../shared/DeepSightSpinner";
 import { useTranslation } from "../../i18n/useTranslation";
 import { localizeError } from "../../i18n/errorMessages";
+import {
+  POLL_INTERVAL_MS,
+  MAX_POLL_DURATION_MS,
+  decidePollAfterError,
+} from "../pollingPolicy";
 
 interface MainViewProps {
   user: User | null;
@@ -77,7 +82,16 @@ export const MainView: React.FC<MainViewProps> = ({
   const [guestUsed, setGuestUsed] = useState(false);
   const [quickChatLoading, setQuickChatLoading] = useState(false);
   const [showYtBanner, setShowYtBanner] = useState(false);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Incrémenté à chaque démarrage/arrêt : un poll en vol d'une génération
+  // précédente (annulation, démontage) n'a plus le droit de toucher l'état.
+  const pollGenerationRef = useRef(0);
+
+  const stopPolling = useCallback((): void => {
+    pollGenerationRef.current += 1;
+    if (pollRef.current) clearTimeout(pollRef.current);
+    pollRef.current = null;
+  }, []);
 
   useEffect(() => {
     if (isGuest) {
@@ -150,9 +164,9 @@ export const MainView: React.FC<MainViewProps> = ({
       cancelled = true;
       Browser.tabs.onActivated.removeListener(handleTabActivated);
       Browser.tabs.onUpdated.removeListener(handleTabUpdated);
-      if (pollRef.current) clearInterval(pollRef.current);
+      stopPolling();
     };
-  }, [isGuest]);
+  }, [isGuest, stopPolling]);
 
   async function loadRecentAnalyses(): Promise<void> {
     const items = await getRecentAnalyses();
@@ -271,70 +285,142 @@ export const MainView: React.FC<MainViewProps> = ({
         taskId,
       });
 
-      pollRef.current = setInterval(async () => {
+      stopPolling();
+      const generation = pollGenerationRef.current;
+      const isCurrent = (): boolean => generation === pollGenerationRef.current;
+      const startedAt = Date.now();
+      let failures = 0;
+
+      const fail = (source: MessageResponse, fallback: string): void => {
+        if (!isCurrent()) return;
+        stopPolling();
+        if (source.errorCode === "session_expired") {
+          onLogout();
+          return;
+        }
+        setAnalysis({
+          phase: "error",
+          message: localizeError(t.errors, source, fallback),
+          code: source.errorCode,
+        });
+      };
+
+      const schedule = (delayMs: number): void => {
+        if (!isCurrent()) return;
+        if (Date.now() - startedAt > MAX_POLL_DURATION_MS) {
+          stopPolling();
+          setAnalysis({ phase: "error", message: t.analysis.timeout });
+          return;
+        }
+        pollRef.current = setTimeout(() => void poll(), delayMs);
+      };
+
+      const poll = async (): Promise<void> => {
+        pollRef.current = null;
+        let statusRes: MessageResponse;
         try {
-          const statusRes = await Browser.runtime.sendMessage<
+          statusRes = await Browser.runtime.sendMessage<
             unknown,
             MessageResponse
           >({
             action: "GET_TASK_STATUS",
             data: { taskId },
           });
+        } catch {
+          // SW endormi / injoignable : traité comme une erreur réseau.
+          statusRes = {
+            success: false,
+            error: "NETWORK_ERROR",
+            errorCode: "network_error",
+          };
+        }
+        if (!isCurrent()) return;
 
-          if (!statusRes.success || !statusRes.status) return;
-          const status = statusRes.status;
+        if (!statusRes?.success || !statusRes.status) {
+          const response: MessageResponse = statusRes ?? { success: false };
+          if (response.errorCode !== "rate_limited") failures += 1;
+          const decision = decidePollAfterError(response, failures);
+          if (decision.kind === "stop") {
+            fail(response, t.analysis.failed);
+          } else {
+            schedule(decision.delayMs);
+          }
+          return;
+        }
+        failures = 0;
+        const status = statusRes.status;
 
-          if (status.status === "completed" && status.result?.summary_id) {
-            if (pollRef.current) clearInterval(pollRef.current);
+        if (status.status === "completed" && status.result?.summary_id) {
+          stopPolling();
 
-            if (isGuest) {
-              await incrementFreeAnalysisCount();
-              setGuestUsed(true);
-            }
+          if (isGuest) {
+            await incrementFreeAnalysisCount();
+            setGuestUsed(true);
+          }
 
-            await addRecentAnalysis({
-              videoId: video.videoId,
-              summaryId: status.result.summary_id,
-              title: status.result.video_title || video.title,
-            });
+          await addRecentAnalysis({
+            videoId: video.videoId,
+            summaryId: status.result.summary_id,
+            title: status.result.video_title || video.title,
+          });
 
-            const summaryRes = await Browser.runtime.sendMessage<
+          let summaryRes: MessageResponse;
+          try {
+            summaryRes = await Browser.runtime.sendMessage<
               unknown,
               MessageResponse
             >({
               action: "GET_SUMMARY",
               data: { summaryId: status.result.summary_id },
             });
+          } catch {
+            summaryRes = { success: false, errorCode: "network_error" };
+          }
 
-            if (summaryRes.success && summaryRes.summary) {
-              setAnalysis({
-                phase: "complete",
-                summaryId: status.result.summary_id,
-                summary: summaryRes.summary,
-              });
-              loadRecentAnalyses();
+          if (summaryRes.success && summaryRes.summary) {
+            setAnalysis({
+              phase: "complete",
+              summaryId: status.result.summary_id,
+              summary: summaryRes.summary,
+            });
+            loadRecentAnalyses();
+          } else {
+            // Sans ça, le side panel restait bloqué sur le spinner.
+            if (summaryRes.errorCode === "session_expired") {
+              onLogout();
+              return;
             }
-          } else if (status.status === "failed") {
-            if (pollRef.current) clearInterval(pollRef.current);
             setAnalysis({
               phase: "error",
-              message: status.error || t.analysis.failed,
-            });
-          } else if (status.status === "cancelled") {
-            if (pollRef.current) clearInterval(pollRef.current);
-            setAnalysis({ phase: "idle" });
-          } else {
-            setAnalysis({
-              phase: "analyzing",
-              progress: status.progress || 0,
-              message: status.message || t.analysis.processing,
-              taskId,
+              message: localizeError(t.errors, summaryRes, t.analysis.failed),
+              code: summaryRes.errorCode,
             });
           }
-        } catch {
-          // Polling error — will retry
+        } else if (
+          status.status === "failed" ||
+          status.status === "completed"
+        ) {
+          // "completed" sans summary_id : rien à afficher, on n'insiste pas.
+          stopPolling();
+          setAnalysis({
+            phase: "error",
+            message: status.error || t.analysis.failed,
+          });
+        } else if (status.status === "cancelled") {
+          stopPolling();
+          setAnalysis({ phase: "idle" });
+        } else {
+          setAnalysis({
+            phase: "analyzing",
+            progress: status.progress || 0,
+            message: status.message || t.analysis.processing,
+            taskId,
+          });
+          schedule(POLL_INTERVAL_MS);
         }
-      }, 2500);
+      };
+
+      schedule(POLL_INTERVAL_MS);
     } catch (e) {
       setAnalysis({
         phase: "error",
@@ -345,11 +431,11 @@ export const MainView: React.FC<MainViewProps> = ({
         ),
       });
     }
-  }, [video, mode, lang, isGuest, t, onLogout]);
+  }, [video, mode, lang, isGuest, t, onLogout, stopPolling]);
 
   const cancelAnalysis = useCallback(async () => {
     if (analysis.phase !== "analyzing" || !analysis.taskId) return;
-    if (pollRef.current) clearInterval(pollRef.current);
+    stopPolling();
     try {
       await Browser.runtime.sendMessage({
         action: "CANCEL_ANALYSIS",
@@ -361,7 +447,7 @@ export const MainView: React.FC<MainViewProps> = ({
       }
     }
     setAnalysis({ phase: "idle" });
-  }, [analysis]);
+  }, [analysis, stopPolling]);
 
   // Full-screen digest short-circuit — renders SynthesisFull above the
   // rest of the MainView body. Back button restores the compact view ;

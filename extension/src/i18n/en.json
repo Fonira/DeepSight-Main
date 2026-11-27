@@ -59,6 +59,7 @@
     "processing": "Processing...",
     "failed": "Analysis failed",
     "startFailed": "Could not start analysis",
+    "timeout": "The analysis is taking longer than expected. Find it later in the web app.",
     "recent": "Recent analyses",
     "quotaExceeded": "Quota reached",
     "quotaExceededText": "Upgrade to a higher plan",
