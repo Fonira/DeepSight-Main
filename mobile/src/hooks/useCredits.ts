@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useAuthStore } from "../stores/authStore";
+import { normalizePlanId } from "../config/planPrivileges";
 import type { PlanType } from "../constants/config";
 
 /** Credit limits per plan (mirrors backend config) */
@@ -25,7 +26,8 @@ export function useCredits() {
       };
     }
 
-    const total = PLAN_CREDITS[user.plan] || 150;
+    // "unlimited" (admin) et plans legacy → plan v2 équivalent
+    const total = PLAN_CREDITS[normalizePlanId(user.plan)] || 150;
     const used = user.credits_monthly || 0;
     const remaining = Math.max(total - used, 0);
     const percent = total > 0 ? Math.round((used / total) * 100) : 0;

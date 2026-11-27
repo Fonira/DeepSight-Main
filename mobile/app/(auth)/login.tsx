@@ -28,6 +28,8 @@ import { fontFamily, fontSize, textStyles } from "@/theme/typography";
 import { palette } from "@/theme/colors";
 import { DoodleBackground } from "@/components/ui/DoodleBackground";
 import {
+  APPLE_AUTH_ENABLED,
+  GOOGLE_AUTH_ENABLED,
   GOOGLE_CLIENT_ID,
   GOOGLE_ANDROID_CLIENT_ID,
   GOOGLE_IOS_CLIENT_ID,
@@ -147,11 +149,15 @@ export default function LoginScreen() {
   // Sign in with Apple — iOS only. Indispo sur Android & Expo Go web,
   // donc on check `isAvailableAsync` au mount + on cache le bouton sinon.
   React.useEffect(() => {
-    if (Platform.OS !== "ios") return;
+    if (!APPLE_AUTH_ENABLED || Platform.OS !== "ios") return;
     AppleAuthentication.isAvailableAsync()
       .then((available) => setAppleAvailable(available))
       .catch(() => setAppleAvailable(false));
   }, []);
+
+  const showGoogleButton = GOOGLE_AUTH_ENABLED;
+  const showAppleButton =
+    APPLE_AUTH_ENABLED && Platform.OS === "ios" && appleAvailable;
 
   const handleApplePress = useCallback(async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -341,45 +347,52 @@ export default function LoginScreen() {
               onPress={handleLogin}
             />
 
-            {/* Separator */}
-            <View style={styles.separator}>
-              <View
-                style={[
-                  styles.separatorLine,
-                  { backgroundColor: colors.border },
-                ]}
-              />
-              <Text style={[styles.separatorText, { color: colors.textMuted }]}>
-                ou
-              </Text>
-              <View
-                style={[
-                  styles.separatorLine,
-                  { backgroundColor: colors.border },
-                ]}
-              />
-            </View>
-
-            {/* Google button */}
-            <Button
-              title="Continuer avec Google"
-              variant="secondary"
-              size="lg"
-              fullWidth
-              loading={googleLoading}
-              disabled={loading || googleLoading || appleLoading}
-              onPress={handleGooglePress}
-              icon={
-                <Ionicons
-                  name="logo-google"
-                  size={20}
-                  color={colors.textPrimary}
+            {/* Separator — seulement si au moins une connexion sociale est proposée */}
+            {(showGoogleButton || showAppleButton) && (
+              <View style={styles.separator}>
+                <View
+                  style={[
+                    styles.separatorLine,
+                    { backgroundColor: colors.border },
+                  ]}
                 />
-              }
-            />
+                <Text
+                  style={[styles.separatorText, { color: colors.textMuted }]}
+                >
+                  ou
+                </Text>
+                <View
+                  style={[
+                    styles.separatorLine,
+                    { backgroundColor: colors.border },
+                  ]}
+                />
+              </View>
+            )}
 
-            {/* Apple button — iOS only (Apple Authentication SDK indispo Android) */}
-            {Platform.OS === "ios" && appleAvailable && (
+            {/* Google button — masqué tant que Google OAuth n'est pas configuré côté serveur */}
+            {showGoogleButton && (
+              <Button
+                title="Continuer avec Google"
+                variant="secondary"
+                size="lg"
+                fullWidth
+                loading={googleLoading}
+                disabled={loading || googleLoading || appleLoading}
+                onPress={handleGooglePress}
+                icon={
+                  <Ionicons
+                    name="logo-google"
+                    size={20}
+                    color={colors.textPrimary}
+                  />
+                }
+              />
+            )}
+
+            {/* Apple button — iOS only (Apple Authentication SDK indispo Android),
+                masqué tant que Sign in with Apple n'est pas activé côté serveur */}
+            {showAppleButton && (
               <View style={styles.appleButtonWrap} pointerEvents="box-none">
                 <AppleAuthentication.AppleAuthenticationButton
                   buttonType={

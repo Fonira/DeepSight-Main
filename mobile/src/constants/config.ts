@@ -1,6 +1,11 @@
 // API Configuration
 export const API_BASE_URL = "https://api.deepsightsynthesis.com";
 
+// Site web (paiements et gestion d'abonnement quand ils sont indisponibles dans l'app)
+export const WEB_APP_URL = "https://www.deepsightsynthesis.com";
+export const WEB_UPGRADE_URL = `${WEB_APP_URL}/upgrade`;
+export const WEB_ACCOUNT_URL = `${WEB_APP_URL}/account`;
+
 // Google OAuth Configuration
 // Web Client ID (used for Expo Go and web)
 export const GOOGLE_CLIENT_ID =
@@ -14,6 +19,16 @@ export const GOOGLE_IOS_CLIENT_ID =
 // Expo Client ID (same as web for Expo Go)
 export const GOOGLE_EXPO_CLIENT_ID = GOOGLE_CLIENT_ID;
 
+// Connexions sociales : masquées tant qu'elles ne sont pas configurées côté serveur
+// (API relancée sans Google OAuth → 401 « Invalid Google ID token » ; Apple → 400 si
+// APPLE_OAUTH_ENABLED est faux). Pour les réactiver sans toucher au code, définir
+// EXPO_PUBLIC_GOOGLE_AUTH_ENABLED=true / EXPO_PUBLIC_APPLE_AUTH_ENABLED=true
+// (env d'un profil eas.json ou fichier .env), puis rebuild / relancer Metro.
+export const GOOGLE_AUTH_ENABLED =
+  process.env.EXPO_PUBLIC_GOOGLE_AUTH_ENABLED === "true";
+export const APPLE_AUTH_ENABLED =
+  process.env.EXPO_PUBLIC_APPLE_AUTH_ENABLED === "true";
+
 // App Configuration
 export const APP_NAME = "Deep Sight";
 export const APP_VERSION = "1.0.0";
@@ -22,6 +37,8 @@ export const APP_BUNDLE_ID = "com.deepsight.app";
 // Timeouts (in milliseconds)
 export const TIMEOUTS = {
   DEFAULT: 30000,
+  // Quick Chat d'une vidéo jamais vue : extraction Supadata asynchrone (~25 s + 60 s de polling)
+  QUICK_CHAT: 120000,
   ANALYSIS: 120000,
   PLAYLIST: 600000,
   FACT_CHECK: 120000,

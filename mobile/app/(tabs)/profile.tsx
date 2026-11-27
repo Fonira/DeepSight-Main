@@ -8,7 +8,10 @@ import * as WebBrowser from "expo-web-browser";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { billingApi, ApiError } from "@/services/api";
+import { billingApi } from "@/services/api";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { showBillingError } from "@/utils/billingErrors";
+import { WEB_ACCOUNT_URL } from "@/constants/config";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -18,38 +21,34 @@ import { AccountSection } from "@/components/profile/AccountSection";
 import { sp } from "@/theme/spacing";
 import { fontFamily, fontSize, textStyles } from "@/theme/typography";
 import { DoodleBackground } from "@/components/ui/DoodleBackground";
-import type { PlanType } from "@/constants/config";
+import {
+  getPlanInfo,
+  normalizePlanId,
+  type PlanId,
+} from "@/config/planPrivileges";
 
-const PLAN_LABELS: Record<string, string> = {
-  free: "Gratuit",
-  student: "Student",
-  starter: "Starter",
-  pro: "Pro",
-  team: "Team",
-};
-
+// Plans v2 (free/pro/expert) : "unlimited"/"admin" et les plans legacy sont
+// normalisés (avant : l'admin "unlimited" apparaissait « Gratuit »).
 const PLAN_BADGE_VARIANT: Record<
-  string,
+  PlanId,
   "default" | "primary" | "success" | "warning" | "error" | "info"
 > = {
   free: "default",
-  student: "info",
-  starter: "success",
   pro: "primary",
-  team: "warning",
+  expert: "warning",
 };
-
-const isPaidPlan = (plan: PlanType): boolean => plan !== "free";
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const tabBarFootprint = useTabBarFootprint();
   const { colors } = useTheme();
   const { user, logout } = useAuth();
+  const { tr, language } = useLanguage();
   const router = useRouter();
   const [manageLoading, setManageLoading] = useState(false);
 
-  const plan = user?.plan ?? "free";
+  const planId = normalizePlanId(user?.plan);
+  const planLabel = getPlanInfo(planId).name[language];
 
   const handleManageSubscription = async () => {
     setManageLoading(true);
@@ -57,11 +56,16 @@ export default function ProfileScreen() {
       const { url } = await billingApi.getPortalUrl();
       await WebBrowser.openBrowserAsync(url);
     } catch (err) {
-      const message =
-        err instanceof ApiError
-          ? err.message
-          : "Impossible d'ouvrir le portail";
-      Alert.alert("Erreur", message);
+      showBillingError({
+        error: err,
+        tr,
+        fallbackTitle: tr("Erreur", "Error"),
+        fallbackMessage: tr(
+          "Impossible d'ouvrir le portail",
+          "Could not open the billing portal",
+        ),
+        webUrl: WEB_ACCOUNT_URL,
+      });
     } finally {
       setManageLoading(false);
     }
@@ -114,18 +118,18 @@ export default function ProfileScreen() {
               {user?.email ?? ""}
             </Text>
             <Badge
-              label={PLAN_LABELS[plan] ?? "Gratuit"}
-              variant={PLAN_BADGE_VARIANT[plan] ?? "default"}
+              label={planLabel}
+              variant={PLAN_BADGE_VARIANT[planId]}
               size="sm"
               style={
-                plan === "pro"
+                planId === "pro"
                   ? {
                       backgroundColor: "#8b5cf620",
                     }
                   : undefined
               }
               textStyle={
-                plan === "pro"
+                planId === "pro"
                   ? {
                       color: "#8b5cf6",
                     }
@@ -136,7 +140,7 @@ export default function ProfileScreen() {
         </View>
 
         {/* Action abonnement */}
-        {isPaidPlan(plan) ? (
+        {planId !== "free" ? (
           <Button
             title="Gérer l'abonnement"
             variant="secondary"

@@ -24,36 +24,76 @@ import { API_BASE_URL } from "../constants/config";
 // Types
 // ─────────────────────────────────────────────────────────
 
-export type AnalyticsEventName =
-  | "app_opened"
-  | "app_backgrounded"
-  | "screen_viewed"
-  | "analysis_started"
-  | "analysis_completed"
-  | "analysis_failed"
-  | "analysis_deleted"
-  | "chat_message_sent"
-  | "tab_switched"
-  | "share_intent_received"
-  | "upgrade_cta_viewed"
-  | "upgrade_cta_clicked"
-  | "upgrade_plan_selected"
-  | "upgrade_checkout_started"
-  | "search_performed"
-  | "flashcard_generated"
-  | "quiz_generated"
-  | "study_content_generated"
-  | "mindmap_generated"
-  | "factcheck_requested"
-  | "export_requested"
-  | "favorite_toggled"
-  | "video_deleted"
-  | "notification_received"
-  | "notification_tapped"
-  | "share_link_created"
-  | "login"
-  | "register"
-  | "logout";
+/**
+ * Miroir de la liste autorisée par POST /api/analytics/events
+ * (backend/src/analytics/router.py, EventPayload.validate_name).
+ * Un seul nom inconnu fait rejeter tout le lot en 422 : ne rien envoyer d'autre.
+ */
+export const ANALYTICS_EVENT_NAMES = [
+  "app_opened",
+  "app_backgrounded",
+  "screen_viewed",
+  "analysis_started",
+  "analysis_completed",
+  "analysis_failed",
+  "analysis_deleted",
+  "chat_message_sent",
+  "tab_switched",
+  "share_intent_received",
+  "upgrade_cta_viewed",
+  "upgrade_cta_clicked",
+  "upgrade_plan_selected",
+  "upgrade_checkout_started",
+  "search_performed",
+  "flashcard_generated",
+  "quiz_generated",
+  "study_content_generated",
+  "mindmap_generated",
+  "factcheck_requested",
+  "export_requested",
+  "favorite_toggled",
+  "video_deleted",
+  "notification_received",
+  "notification_tapped",
+  "share_link_created",
+  "login",
+  "register",
+  "logout",
+  "payment_cancel_reason",
+] as const;
+
+export type AnalyticsEventName = (typeof ANALYTICS_EVENT_NAMES)[number];
+
+const ALLOWED_EVENT_NAMES: ReadonlySet<string> = new Set(ANALYTICS_EVENT_NAMES);
+
+export function isAllowedAnalyticsEvent(
+  name: string,
+): name is AnalyticsEventName {
+  return ALLOWED_EVENT_NAMES.has(name);
+}
+
+/** Limite du backend : EventBatch.limit_batch (max 100 événements par requête). */
+export const MAX_EVENTS_PER_REQUEST = 100;
+
+export function chunkEvents<T>(
+  events: ReadonlyArray<T>,
+  size: number = MAX_EVENTS_PER_REQUEST,
+): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < events.length; i += size) {
+    chunks.push(events.slice(i, i + size));
+  }
+  return chunks;
+}
+
+/**
+ * Un lot refusé pour une raison définitive (4xx hors 408/429) est abandonné :
+ * le remettre en file le renverrait en échec indéfiniment.
+ */
+export function shouldRequeueAfterStatus(status: number): boolean {
+  if (status === 408 || status === 429) return true;
+  return status < 400 || status >= 500;
+}
 
 interface AnalyticsEvent {
   name: AnalyticsEventName;
@@ -84,7 +124,7 @@ const MAX_QUEUE_SIZE = 200;
 // Analytics Engine
 // ─────────────────────────────────────────────────────────
 
-class AnalyticsEngine {
+export class AnalyticsEngine {
   private queue: AnalyticsEvent[] = [];
   private sessionId: string = "";
   private flushTimer: ReturnType<typeof setInterval> | null = null;
@@ -121,7 +161,10 @@ class AnalyticsEngine {
       if (stored) {
         try {
           const parsed = JSON.parse(stored) as AnalyticsEvent[];
-          this.queue = parsed.slice(-MAX_QUEUE_SIZE);
+          // Une file persistée par une ancienne version peut contenir des noms refusés
+          this.queue = parsed
+            .filter((event) => isAllowedAnalyticsEvent(event.name))
+            .slice(-MAX_QUEUE_SIZE);
         } catch {
           this.queue = [];
         }
@@ -167,6 +210,11 @@ class AnalyticsEngine {
     properties?: Record<string, string | number | boolean | null>,
   ): void {
     if (!this.config.enabled) return;
+    // Garde d'exécution : un nom hors liste ferait rejeter tout le lot (422)
+    if (!isAllowedAnalyticsEvent(name)) {
+      this.log(`Event ignored (not allowed by the backend): ${name}`);
+      return;
+    }
 
     const event: AnalyticsEvent = {
       name,
@@ -208,26 +256,39 @@ class AnalyticsEngine {
   async flush(): Promise<void> {
     if (!this.config.enabled || this.queue.length === 0) return;
 
-    const events = [...this.queue];
+    const events = this.queue.filter((event) =>
+      isAllowedAnalyticsEvent(event.name),
+    );
     this.queue = [];
 
-    try {
-      // Envoyer au backend (fire-and-forget, ne bloque pas l'UX)
-      const response = await fetch(`${API_BASE_URL}/api/analytics/events`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ events, platform: "mobile" }),
-      });
+    // Lots de 100 max (limite backend), envoyés dans l'ordre
+    const chunks = chunkEvents(events);
+    for (let index = 0; index < chunks.length; index++) {
+      const chunk = chunks[index];
+      try {
+        // Envoyer au backend (fire-and-forget, ne bloque pas l'UX)
+        const response = await fetch(`${API_BASE_URL}/api/analytics/events`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ events: chunk, platform: "mobile" }),
+        });
 
-      if (!response.ok) {
-        // Remettre les événements dans la queue si erreur serveur
-        this.queue = [...events, ...this.queue].slice(-MAX_QUEUE_SIZE);
-      } else {
-        this.log(`Flushed ${events.length} events`);
+        if (response.ok) {
+          this.log(`Flushed ${chunk.length} events`);
+          continue;
+        }
+        if (!shouldRequeueAfterStatus(response.status)) {
+          // Lot invalide (ex. 422) : abandonné pour ne pas bloquer la file
+          this.log(`Dropped ${chunk.length} events (HTTP ${response.status})`);
+          continue;
+        }
+      } catch {
+        // Offline — on remet ce lot et les suivants dans la queue
       }
-    } catch {
-      // Offline — remettre dans la queue
-      this.queue = [...events, ...this.queue].slice(-MAX_QUEUE_SIZE);
+      // Erreur serveur/limite/réseau : remettre ce lot et les suivants, réessayer plus tard
+      const pending = chunks.slice(index).flat();
+      this.queue = [...pending, ...this.queue].slice(-MAX_QUEUE_SIZE);
+      break;
     }
 
     await this.persistQueue();

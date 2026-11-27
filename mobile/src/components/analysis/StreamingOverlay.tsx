@@ -12,11 +12,13 @@ import Animated, {
 import Svg, { Circle } from "react-native-svg";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useLanguage } from "../../contexts/LanguageContext";
 import { sp, borderRadius } from "../../theme/spacing";
 import { fontFamily, fontSize } from "../../theme/typography";
 import { palette } from "../../theme/colors";
 import { videoApi } from "../../services/api";
 import { useAnalysisStore } from "../../stores/analysisStore";
+import { createStatusPoller } from "./statusPoller";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -121,7 +123,10 @@ export const StreamingOverlay: React.FC<StreamingOverlayProps> = ({
   onComplete,
 }) => {
   const { colors } = useTheme();
-  const store = useAnalysisStore();
+  const { t, tr } = useLanguage();
+  // Sélecteur stable : sans lui, chaque mise à jour du store relançait l'effet de
+  // polling (un sondage supplémentaire immédiat à chaque progression).
+  const setStoreProgress = useAnalysisStore((s) => s.setProgress);
   const animProgress = useSharedValue(0);
   const fadeAnim = useSharedValue(1);
   const scaleAnim = useSharedValue(1);
@@ -131,10 +136,11 @@ export const StreamingOverlay: React.FC<StreamingOverlayProps> = ({
   const [messageIndex, setMessageIndex] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
   const [failedError, setFailedError] = useState<string | null>(null);
-  const failCountRef = useRef(0);
+  // true quand l'échec vient du réseau (l'analyse continue côté serveur) → bouton Réessayer
+  const [canRetryPolling, setCanRetryPolling] = useState(false);
+  const [pollAttempt, setPollAttempt] = useState(0);
 
   const startTimeRef = useRef(Date.now());
-  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const fakeProgressRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const realProgressRef = useRef(0);
   const completedRef = useRef(false);
@@ -194,112 +200,94 @@ export const StreamingOverlay: React.FC<StreamingOverlayProps> = ({
     return () => clearTimeout(timer);
   }, [updateProgress, fadeAnim, scaleAnim, onComplete]);
 
-  // Poll backend for real status
+  // Callbacks lus via refs : leur identité change à chaque rendu du parent, ils ne
+  // doivent pas relancer le polling.
+  const onCancelRef = useRef(onCancel);
+  const handleCompleteRef = useRef(handleComplete);
+  const messagesRef = useRef({
+    failed: "",
+    notFound: "",
+    connectionLost: "",
+  });
+  onCancelRef.current = onCancel;
+  handleCompleteRef.current = handleComplete;
+  messagesRef.current = {
+    failed: tr(
+      "L'analyse a échoué. Veuillez réessayer.",
+      "The analysis failed. Please try again.",
+    ),
+    notFound: tr(
+      "La tâche d'analyse n'a pas été trouvée. Le serveur a peut-être redémarré. Veuillez relancer l'analyse.",
+      "The analysis task was not found. The server may have restarted. Please start the analysis again.",
+    ),
+    connectionLost: tr(
+      "Connexion au serveur perdue. L'analyse continue de son côté : réessaie dans un instant.",
+      "Lost connection to the server. The analysis keeps running there: try again in a moment.",
+    ),
+  };
+
+  // Poll backend for real status — une requête à la fois, 429/Retry-After respectés
+  // (voir ./statusPoller). « Réessayer » relance un nouveau cycle via pollAttempt.
   useEffect(() => {
     if (!taskId || completedRef.current) return;
 
-    const poll = async () => {
-      try {
-        const status = await videoApi.getStatus(taskId);
-
-        if (completedRef.current) return;
-
-        // Successful poll — reset failure counter
-        failCountRef.current = 0;
-
-        // Update real progress from backend
-        if (status.progress > realProgressRef.current) {
-          realProgressRef.current = status.progress;
-          store.setProgress(status.progress);
-        }
-
-        if (status.summary_id) {
-          summaryIdRef.current = status.summary_id;
-        }
-
-        if (status.status === "cancelled") {
-          if (pollingRef.current) clearInterval(pollingRef.current);
-          if (fakeProgressRef.current) clearInterval(fakeProgressRef.current);
-          onCancel();
-          return;
-        }
-
-        if (status.status === "completed") {
-          summaryIdRef.current = status.summary_id || summaryIdRef.current;
-          handleComplete();
-        } else if (status.status === "failed") {
-          // On ne propage PAS l'échec au store immédiatement pour éviter que
-          // [id].tsx tente de fetcher avec le task_id (≠ summary_id) et affiche une erreur.
-          // On affiche l'erreur dans l'overlay après 3 échecs consécutifs.
-          failCountRef.current += 1;
-          if (failCountRef.current >= 3) {
-            setFailedError(
-              status.error || "L'analyse a échoué. Veuillez réessayer.",
-            );
-            if (pollingRef.current) clearInterval(pollingRef.current);
-            if (fakeProgressRef.current) clearInterval(fakeProgressRef.current);
-          }
-        }
-      } catch (error: unknown) {
-        // Log detailed error info for debugging
-        if (__DEV__) {
-          const apiErr = error as {
-            status?: number;
-            code?: string;
-            message?: string;
-          };
-          console.warn(
-            "[Polling] Status check failed:",
-            JSON.stringify({
-              status: apiErr.status,
-              code: apiErr.code,
-              message: apiErr.message ?? String(error),
-              taskId,
-            }),
-          );
-        }
-
-        // If 401/session expired, don't count as poll failure — token refresh will handle it
-        const apiErr = error as { status?: number; code?: string };
-        if (apiErr.status === 401 || apiErr.code === "SESSION_EXPIRED") {
-          return; // Let RetryService/token refresh handle it
-        }
-
-        // If 404, the task doesn't exist (server restarted or wrong user)
-        if (apiErr.status === 404) {
-          failCountRef.current += 1;
-          if (failCountRef.current >= 3) {
-            setFailedError(
-              "La tâche d'analyse n'a pas été trouvée. Le serveur a peut-être redémarré. Veuillez relancer l'analyse.",
-            );
-            if (pollingRef.current) clearInterval(pollingRef.current);
-            if (fakeProgressRef.current) clearInterval(fakeProgressRef.current);
-          }
-          return;
-        }
-
-        // Network/timeout errors — silently retry next cycle (transient)
-        failCountRef.current += 1;
-        if (failCountRef.current >= 10) {
-          setFailedError("Connexion perdue — on réessaie dans un instant");
-          if (pollingRef.current) clearInterval(pollingRef.current);
-          if (fakeProgressRef.current) clearInterval(fakeProgressRef.current);
-        }
-      }
+    const stopFakeProgress = () => {
+      if (fakeProgressRef.current) clearInterval(fakeProgressRef.current);
     };
 
-    // First poll immediately
-    poll();
+    const poller = createStatusPoller({
+      taskId,
+      getStatus: (id) => videoApi.getStatus(id),
+      onProgress: (progress, summaryId) => {
+        if (progress > realProgressRef.current) {
+          realProgressRef.current = progress;
+          setStoreProgress(progress);
+        }
+        if (summaryId) summaryIdRef.current = summaryId;
+      },
+      onOutcome: (outcome) => {
+        switch (outcome.type) {
+          case "completed":
+            summaryIdRef.current = outcome.summaryId || summaryIdRef.current;
+            handleCompleteRef.current();
+            break;
+          case "cancelled":
+            stopFakeProgress();
+            onCancelRef.current();
+            break;
+          case "failed":
+            // On ne propage PAS l'échec au store pour éviter que [id].tsx tente de
+            // fetcher avec le task_id (≠ summary_id) et affiche une erreur.
+            stopFakeProgress();
+            setCanRetryPolling(false);
+            setFailedError(outcome.message || messagesRef.current.failed);
+            break;
+          case "notFound":
+            stopFakeProgress();
+            setCanRetryPolling(false);
+            setFailedError(messagesRef.current.notFound);
+            break;
+          case "connectionLost":
+            stopFakeProgress();
+            setCanRetryPolling(true);
+            setFailedError(messagesRef.current.connectionLost);
+            break;
+        }
+      },
+    });
 
-    // Then every 3 seconds
-    pollingRef.current = setInterval(poll, 3000);
+    poller.start();
+    return () => poller.stop();
+  }, [taskId, pollAttempt, setStoreProgress]);
 
-    return () => {
-      if (pollingRef.current) clearInterval(pollingRef.current);
-    };
-  }, [taskId, store, handleComplete]);
+  const handleRetryPolling = useCallback(() => {
+    setFailedError(null);
+    setCanRetryPolling(false);
+    setPollAttempt((n) => n + 1);
+  }, []);
 
   // Fake progress ticker — runs every 500ms, always moves forward
+  // (relancé avec le polling après « Réessayer »)
   useEffect(() => {
     if (completedRef.current) return;
 
@@ -321,7 +309,7 @@ export const StreamingOverlay: React.FC<StreamingOverlayProps> = ({
     return () => {
       if (fakeProgressRef.current) clearInterval(fakeProgressRef.current);
     };
-  }, [updateProgress]);
+  }, [updateProgress, pollAttempt]);
 
   const activeStep = getActiveStep(displayProgress);
 
@@ -348,22 +336,43 @@ export const StreamingOverlay: React.FC<StreamingOverlayProps> = ({
           color={palette.red ?? "#ef4444"}
         />
         <Text style={[styles.errorTitle, { color: colors.textPrimary }]}>
-          Analyse échouée
+          {canRetryPolling
+            ? tr("Connexion perdue", "Connection lost")
+            : tr("Analyse échouée", "Analysis failed")}
         </Text>
         <Text style={[styles.errorMessage, { color: colors.textSecondary }]}>
           {failedError}
         </Text>
+        {canRetryPolling && (
+          <Pressable
+            onPress={handleRetryPolling}
+            style={[
+              styles.cancelButton,
+              { borderColor: colors.accentPrimary, marginTop: sp["2xl"] },
+            ]}
+            accessibilityLabel={t.errors.tryAgain}
+            accessibilityRole="button"
+            testID="streaming-overlay-retry"
+          >
+            <Text style={[styles.cancelText, { color: colors.accentPrimary }]}>
+              {t.errors.tryAgain}
+            </Text>
+          </Pressable>
+        )}
         <Pressable
           onPress={onCancel}
           style={[
             styles.cancelButton,
-            { borderColor: colors.border, marginTop: sp["2xl"] },
+            {
+              borderColor: colors.border,
+              marginTop: canRetryPolling ? sp.md : sp["2xl"],
+            },
           ]}
-          accessibilityLabel="Retour"
+          accessibilityLabel={tr("Retour", "Back")}
           accessibilityRole="button"
         >
           <Text style={[styles.cancelText, { color: colors.textTertiary }]}>
-            Retour
+            {tr("Retour", "Back")}
           </Text>
         </Pressable>
       </View>

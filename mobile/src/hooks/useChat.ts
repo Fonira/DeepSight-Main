@@ -1,6 +1,10 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useContext } from "react";
 import type { ChatMessage } from "../types";
 import { chatApi } from "../services/api";
+import LanguageContext from "../contexts/LanguageContext";
+import { chatErrorMessage } from "../utils/chatErrors";
+
+const frenchOnly = (frText: string) => frText;
 
 /** Génère un ID unique sans collision (base36 + counter) */
 let _idCounter = 0;
@@ -12,6 +16,9 @@ function uniqueId(): string {
 export function useChat(summaryId: string) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  // Contexte lu sans exiger le provider (repli en français)
+  const language = useContext(LanguageContext);
+  const tr = language?.tr ?? frenchOnly;
 
   const sendMessage = useCallback(
     async (content: string) => {
@@ -36,11 +43,11 @@ export function useChat(summaryId: string) {
         };
 
         setMessages((prev) => [...prev, assistantMessage]);
-      } catch {
+      } catch (error: unknown) {
         const errorMessage: ChatMessage = {
           id: uniqueId(),
           role: "assistant",
-          content: "Désolé, une erreur est survenue. Réessayez.",
+          content: chatErrorMessage(error, tr),
           timestamp: new Date().toISOString(),
         };
         setMessages((prev) => [...prev, errorMessage]);
@@ -48,7 +55,7 @@ export function useChat(summaryId: string) {
         setIsLoading(false);
       }
     },
-    [summaryId],
+    [summaryId, tr],
   );
 
   const loadHistory = useCallback(async () => {

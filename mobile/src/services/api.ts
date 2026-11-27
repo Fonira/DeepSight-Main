@@ -4,6 +4,8 @@ import { tokenStorage } from "../utils/storage";
 import NetInfo from "@react-native-community/netinfo";
 import { withRetryPreset } from "./RetryService";
 import { tokenManager } from "./TokenManager";
+import { ApiError, apiErrorFromResponse } from "./apiErrors";
+import { resolveThumbnailUrl } from "../utils/thumbnails";
 import type {
   User,
   AnalysisSummary,
@@ -48,61 +50,92 @@ const checkConnectivity = async (): Promise<boolean> => {
 // Retry helper with exponential backoff
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// API Error class
-export class ApiError extends Error {
-  constructor(
-    message: string,
-    public status: number,
-    public code?: string,
-    public detail?: string,
-  ) {
-    super(message);
-    this.name = "ApiError";
-  }
-
-  // Helper to check if this is an email verification required error
-  get isEmailNotVerified(): boolean {
-    return (
-      this.status === 403 &&
-      (this.code === "EMAIL_NOT_VERIFIED" ||
-        this.detail === "EMAIL_NOT_VERIFIED")
-    );
-  }
-}
+// API Error class — définie dans ./apiErrors (lecture de `detail` objet/tableau/chaîne)
+export { ApiError };
 
 // Token refresh lock — shared promise prevents race conditions when multiple
 // requests get 401 simultaneously: all await the same refresh attempt.
-let refreshPromise: Promise<string | null> | null = null;
+// Résultat d'un refresh. Seul un refus explicite du serveur purge les jetons :
+// un 429 ou un 5xx (redéploiement, limite de requêtes) ne doit pas déconnecter.
+type RefreshResult =
+  | { kind: "refreshed"; accessToken: string }
+  | { kind: "rejected" }
+  | { kind: "unavailable"; error: ApiError };
+
+const REFRESH_REJECTED_STATUSES: ReadonlyArray<number> = [400, 401, 403, 422];
+
+let refreshPromise: Promise<RefreshResult> | null = null;
 
 // Refresh token function
-const refreshAccessToken = async (): Promise<string | null> => {
+const refreshAccessToken = async (): Promise<RefreshResult> => {
   const refreshToken = await tokenStorage.getRefreshToken();
-  if (!refreshToken) return null;
+  if (!refreshToken) return { kind: "rejected" };
 
+  let response: Response;
   try {
-    const response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+    response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refresh_token: refreshToken }),
     });
-
-    if (!response.ok) {
-      // Server explicitly rejected the refresh token - clear tokens
-      await tokenStorage.clearTokens();
-      return null;
-    }
-
-    const data = await response.json();
-    await tokenStorage.setTokens(data.access_token, data.refresh_token);
-    return data.access_token;
   } catch (error) {
     // Network error during refresh - do NOT clear tokens
     // The tokens may still be valid, just a temporary connectivity issue
     if (__DEV__) {
       console.warn("[Auth] Network error during token refresh:", error);
     }
-    return null;
+    return {
+      kind: "unavailable",
+      error: new ApiError(
+        error instanceof Error ? error.message : "Network request failed",
+        0,
+        "NETWORK_ERROR",
+      ),
+    };
   }
+
+  if (!response.ok) {
+    if (REFRESH_REJECTED_STATUSES.includes(response.status)) {
+      // Server explicitly rejected the refresh token - clear tokens
+      await tokenStorage.clearTokens();
+      return { kind: "rejected" };
+    }
+    // 429 / 5xx : la session reste valide, on remonte l'erreur passagère
+    return { kind: "unavailable", error: await apiErrorFromResponse(response) };
+  }
+
+  try {
+    const data = await response.json();
+    await tokenStorage.setTokens(data.access_token, data.refresh_token);
+    return { kind: "refreshed", accessToken: data.access_token };
+  } catch (error) {
+    if (__DEV__) {
+      console.warn("[Auth] Invalid token refresh response:", error);
+    }
+    return {
+      kind: "unavailable",
+      error: new ApiError("Invalid refresh response", 0, "NETWORK_ERROR"),
+    };
+  }
+};
+
+/**
+ * Jeton rafraîchi (un seul refresh partagé par toutes les requêtes en 401).
+ * Lève SESSION_EXPIRED (401) si le serveur refuse le refresh token, sinon
+ * l'erreur passagère (429, 5xx, réseau) — qui ne doit pas déconnecter.
+ */
+const getRefreshedAccessToken = async (): Promise<string> => {
+  if (!refreshPromise) {
+    refreshPromise = refreshAccessToken().finally(() => {
+      refreshPromise = null;
+    });
+  }
+  const result = await refreshPromise;
+  if (result.kind === "refreshed") return result.accessToken;
+  if (result.kind === "rejected") {
+    throw new ApiError("Session expired", 401, "SESSION_EXPIRED");
+  }
+  throw result.error;
 };
 
 // Base request function with offline detection and token refresh (no retry — see requestWithRetry)
@@ -161,58 +194,28 @@ const _requestRaw = async <T>(
     clearTimeout(timeoutId);
 
     // Handle 401 - token expired
-    // All concurrent requests share the same refreshPromise to avoid parallel refresh calls.
+    // All concurrent requests share the same refresh to avoid parallel refresh calls.
     if (response.status === 401 && requiresAuth) {
-      if (!refreshPromise) {
-        refreshPromise = refreshAccessToken().finally(() => {
-          refreshPromise = null;
-        });
+      const newToken = await getRefreshedAccessToken();
+
+      // Retry the original request with new token
+      requestHeaders["Authorization"] = `Bearer ${newToken}`;
+      const retryResponse = await fetch(`${API_BASE_URL}${endpoint}`, {
+        ...requestOptions,
+        headers: requestHeaders,
+      });
+
+      if (!retryResponse.ok) {
+        throw await apiErrorFromResponse(retryResponse);
       }
-      const newToken = await refreshPromise;
 
-      if (newToken) {
-        // Retry the original request with new token
-        requestHeaders["Authorization"] = `Bearer ${newToken}`;
-        const retryResponse = await fetch(`${API_BASE_URL}${endpoint}`, {
-          ...requestOptions,
-          headers: requestHeaders,
-        });
-
-        if (!retryResponse.ok) {
-          const errorData = await retryResponse.json().catch(() => ({}));
-          throw new ApiError(
-            errorData.message || "Request failed",
-            retryResponse.status,
-            errorData.code,
-          );
-        }
-
-        return await retryResponse.json();
-      } else {
-        throw new ApiError("Session expired", 401, "SESSION_EXPIRED");
-      }
+      return await retryResponse.json();
     }
 
-    // Handle other errors
+    // Handle other errors — `detail` peut être une chaîne, un objet
+    // {code, message} ou un tableau de validation : voir ./apiErrors
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      // Handle Pydantic validation errors where detail is an array of objects
-      const detail = errorData.detail;
-      const errorMessage =
-        errorData.message ||
-        (Array.isArray(detail)
-          ? detail.map((d: any) => d.msg || String(d)).join(", ")
-          : detail) ||
-        errorData.error ||
-        "Request failed";
-      const errorCode =
-        errorData.code || (Array.isArray(detail) ? "VALIDATION_ERROR" : detail);
-      throw new ApiError(
-        errorMessage,
-        response.status,
-        errorCode,
-        errorData.detail,
-      );
+      throw await apiErrorFromResponse(response);
     }
 
     // Parse response
@@ -239,6 +242,13 @@ const _requestRaw = async <T>(
   }
 };
 
+// POST/PATCH ne sont jamais rejoués automatiquement (sauf 429 avec Retry-After court) :
+// un timeout ou un 5xx ne prouve pas que le serveur n'a pas déjà traité la requête.
+const IDEMPOTENT_METHODS: ReadonlyArray<NonNullable<RequestConfig["method"]>> =
+  ["GET", "PUT", "DELETE"];
+const isIdempotent = (method: RequestConfig["method"] = "GET"): boolean =>
+  IDEMPOTENT_METHODS.includes(method);
+
 // Public request with RetryService (exponential backoff + jitter + circuit breaker)
 const request = async <T>(
   endpoint: string,
@@ -250,6 +260,7 @@ const request = async <T>(
     () => _requestRaw<T>(endpoint, cleanConfig),
     "standard",
     endpoint,
+    { idempotent: isIdempotent(cleanConfig.method) },
   );
 };
 
@@ -264,6 +275,7 @@ const requestPatient = async <T>(
     () => _requestRaw<T>(endpoint, cleanConfig),
     "patient",
     endpoint,
+    { idempotent: isIdempotent(cleanConfig.method) },
   );
 };
 
@@ -549,14 +561,7 @@ export const userApi = {
 
         if (response.status === 401) {
           // Token expired during upload — refresh and retry once
-          if (!refreshPromise) {
-            refreshPromise = refreshAccessToken().finally(() => {
-              refreshPromise = null;
-            });
-          }
-          const newToken = await refreshPromise;
-          if (!newToken)
-            throw new ApiError("Session expired", 401, "SESSION_EXPIRED");
+          const newToken = await getRefreshedAccessToken();
 
           const retryResponse = await fetch(
             `${API_BASE_URL}/api/profile/avatar`,
@@ -567,29 +572,23 @@ export const userApi = {
             },
           );
           if (!retryResponse.ok) {
-            const errorData = await retryResponse.json().catch(() => ({}));
-            throw new ApiError(
-              errorData.message || "Failed to upload avatar",
-              retryResponse.status,
-              errorData.code,
+            throw await apiErrorFromResponse(
+              retryResponse,
+              "Failed to upload avatar",
             );
           }
           return retryResponse.json();
         }
 
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new ApiError(
-            errorData.message || "Failed to upload avatar",
-            response.status,
-            errorData.code,
-          );
+          throw await apiErrorFromResponse(response, "Failed to upload avatar");
         }
 
         return response.json();
       },
       "quick",
       "upload-avatar",
+      { idempotent: false },
     );
   },
 };
@@ -599,9 +598,22 @@ export const userApi = {
 // ============================================
 export const videoApi = {
   async analyze(data: AnalysisRequest): Promise<{ task_id: string }> {
+    // Contrat HybridAnalyzeRequest (aligné sur analyzeHybrid du web) :
+    // - `lang`, pas `language` (ignoré → toutes les analyses sortaient en français) ;
+    // - pas de `model` : le backend prend le modèle du plan (une valeur inconnue
+    //   retombait sur mistral-small, même pour Expert/unlimited) ;
+    // - `category` seulement si imposée : "auto" était pris comme catégorie forcée.
+    const body: Record<string, unknown> = {
+      mode: data.mode,
+      lang: data.language,
+    };
+    if (data.url) body.url = data.url;
+    if (data.category && data.category !== "auto") body.category = data.category;
+    if (data.deep_research !== undefined) body.deep_research = data.deep_research;
+
     return request("/api/videos/analyze/hybrid", {
       method: "POST",
-      body: data,
+      body,
       timeout: TIMEOUTS.ANALYSIS,
     });
   },
@@ -715,9 +727,11 @@ export const videoApi = {
     word_count: number;
     message: string;
   }> {
+    // 120 s : vidéo non analysée → extraction Supadata (jusqu'à ~85 s en mode asynchrone)
     return request("/api/videos/quick-chat", {
       method: "POST",
       body: { url, lang },
+      timeout: TIMEOUTS.QUICK_CHAT,
     });
   },
 
@@ -781,7 +795,10 @@ export const videoApi = {
       createdAt: response.created_at,
       isFavorite: response.is_favorite || false,
       wordCount: response.word_count,
-      thumbnail: response.thumbnail_url,
+      thumbnail: resolveThumbnailUrl(response.thumbnail_url, {
+        videoId: response.video_id,
+        platform: response.platform,
+      }),
       channel: response.video_channel,
       duration: response.video_duration,
       videoInfo: {
@@ -789,10 +806,10 @@ export const videoApi = {
         title: response.video_title || "Sans titre",
         description: "",
         thumbnail:
-          response.thumbnail_url ||
-          (response.platform !== "tiktok"
-            ? `https://img.youtube.com/vi/${response.video_id}/mqdefault.jpg`
-            : ""),
+          resolveThumbnailUrl(response.thumbnail_url, {
+            videoId: response.video_id,
+            platform: response.platform,
+          }) ?? "",
         channel: response.video_channel || "Unknown",
         channelId: "",
         duration: response.video_duration || 0,
@@ -1193,7 +1210,10 @@ export const historyApi = {
       id: String(item.id),
       title: item.video_title || "Sans titre",
       videoId: item.video_id,
-      thumbnail: item.thumbnail_url,
+      thumbnail: resolveThumbnailUrl(item.thumbnail_url, {
+        videoId: item.video_id,
+        platform: item.platform,
+      }),
       isFavorite: item.is_favorite,
       mode: item.mode || "synthesis",
       category: item.category || "general",
@@ -1274,13 +1294,14 @@ export const historyApi = {
       per_page: String(limit),
     });
 
+    // Format backend : PlaylistSummaryItem (backend/src/history/history_router.py)
     const response = await request<{
       items: Array<{
-        id: number;
-        name: string;
-        video_count: number;
-        created_at: string;
-        thumbnail_urls: string[];
+        playlist_id: string;
+        playlist_title?: string | null;
+        num_videos?: number;
+        thumbnail_url?: string | null;
+        created_at?: string | null;
       }>;
       total: number;
       page: number;
@@ -1290,8 +1311,13 @@ export const historyApi = {
 
     return {
       items: response.items.map((item) => ({
-        ...item,
-        id: String(item.id),
+        id: item.playlist_id,
+        name: item.playlist_title || "Playlist",
+        video_count: item.num_videos ?? 0,
+        created_at: item.created_at ?? "",
+        thumbnail_urls: ((url) => (url ? [url] : []))(
+          resolveThumbnailUrl(item.thumbnail_url),
+        ),
       })),
       total: response.total,
       page: response.page,
@@ -2603,17 +2629,46 @@ import type {
   SessionEndResponse as TutorSessionEndResponse,
 } from "../types/tutor";
 
+// Limites de SessionStartRequest (backend/src/tutor/schemas.py) : au-delà, 422 au
+// démarrage du Tuteur (les titres TikTok enregistrés peuvent faire 255 caractères).
+export const TUTOR_LIMITS = {
+  conceptTerm: 200,
+  conceptDef: 2000,
+  sourceVideoTitle: 300,
+} as const;
+
+/** Tronque par caractères (pas d'unité UTF-16 coupée en deux), avec « … ». */
+export function truncateForApi(text: string, max: number): string {
+  const chars = Array.from(text);
+  if (chars.length <= max) return text;
+  return `${chars.slice(0, max - 1).join("").trimEnd()}…`;
+}
+
 export const tutorApi = {
   /**
-   * Démarre une session Tutor : crée la session Redis + génère le 1er prompt Magistral.
+   * Démarre une session Tutor : crée la session Redis + génère le 1er prompt
+   * (Mistral, modèle choisi par le backend selon le plan).
    * Endpoint: POST /api/tutor/session/start
    */
   async sessionStart(
     payload: TutorSessionStartRequest,
   ): Promise<TutorSessionStartResponse> {
+    const body: TutorSessionStartRequest = {
+      ...payload,
+      concept_term: truncateForApi(payload.concept_term, TUTOR_LIMITS.conceptTerm),
+      concept_def: truncateForApi(payload.concept_def, TUTOR_LIMITS.conceptDef),
+      ...(payload.source_video_title
+        ? {
+            source_video_title: truncateForApi(
+              payload.source_video_title,
+              TUTOR_LIMITS.sourceVideoTitle,
+            ),
+          }
+        : {}),
+    };
     return request<TutorSessionStartResponse>("/api/tutor/session/start", {
       method: "POST",
-      body: payload as unknown as Record<string, unknown>,
+      body: body as unknown as Record<string, unknown>,
       timeout: 60000,
     });
   },

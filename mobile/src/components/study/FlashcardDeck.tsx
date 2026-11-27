@@ -22,7 +22,10 @@ import {
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useLanguage } from "../../contexts/LanguageContext";
 import { useStudy } from "../../hooks/useStudy";
+import { studyErrorMessage } from "../../utils/studyErrors";
+import { StudyLoadError } from "./StudyLoadError";
 import { sp, borderRadius } from "../../theme/spacing";
 import { fontFamily, fontSize } from "../../theme/typography";
 import { springs, duration } from "../../theme/animations";
@@ -43,12 +46,15 @@ export const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
   onClose,
 }) => {
   const { colors } = useTheme();
+  const { t, tr } = useLanguage();
   const { generateFlashcards, saveProgress } = useStudy(summaryId);
 
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [index, setIndex] = useState(0);
   const [known, setKnown] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [finished, setFinished] = useState(false);
   const [isFlipped, setIsFlipped] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
@@ -61,18 +67,27 @@ export const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
 
   useEffect(() => {
     let mounted = true;
+    setLoading(true);
+    setLoadError(null);
     (async () => {
-      const result = await generateFlashcards();
-      if (mounted) {
-        setCards(result);
-        setLoading(false);
-        entryY.value = withSpring(0, springs.bouncy);
+      try {
+        const result = await generateFlashcards();
+        if (mounted) {
+          setCards(result);
+          entryY.value = withSpring(0, springs.bouncy);
+        }
+      } catch (error: unknown) {
+        if (mounted) setLoadError(studyErrorMessage(error, tr));
+      } finally {
+        if (mounted) setLoading(false);
       }
     })();
     return () => {
       mounted = false;
     };
-  }, [generateFlashcards, entryY]);
+    // tr volontairement hors dépendances : changer de langue ne relance pas la génération
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [generateFlashcards, entryY, loadAttempt]);
 
   const advanceCard = useCallback(
     (isKnown: boolean) => {
@@ -257,6 +272,19 @@ export const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
             Génération des flashcards...
           </Text>
         </View>
+      </View>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
+        <CloseButton onClose={onClose} />
+        <StudyLoadError
+          message={loadError}
+          retryLabel={t.errors.tryAgain}
+          onRetry={() => setLoadAttempt((n) => n + 1)}
+        />
       </View>
     );
   }

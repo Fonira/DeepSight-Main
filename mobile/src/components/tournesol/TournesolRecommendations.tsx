@@ -12,6 +12,7 @@ import {
   StyleSheet,
   Pressable,
   ActivityIndicator,
+  Alert,
   Linking,
 } from "react-native";
 import { FlashList } from "@shopify/flash-list";
@@ -21,6 +22,8 @@ import { useRouter } from "expo-router";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "@/contexts/ThemeContext";
+import { videoApi } from "@/services/api";
+import { useAnalysisStore } from "@/stores/analysisStore";
 import { OfflineCache, CachePriority } from "@/services/OfflineCache";
 import { useIsOffline } from "@/hooks/useNetworkStatus";
 import { sp, borderRadius } from "@/theme/spacing";
@@ -72,6 +75,9 @@ export function TournesolRecommendations({
   const [results, setResults] = useState<TournesolResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [launchingVideoId, setLaunchingVideoId] = useState<string | null>(null);
+  const analysisOptions = useAnalysisStore((s) => s.options);
+  const startAnalysis = useAnalysisStore((s) => s.startAnalysis);
 
   const fetchRecommendations = useCallback(async () => {
     setLoading(true);
@@ -130,18 +136,47 @@ export function TournesolRecommendations({
     fetchRecommendations();
   }, [fetchRecommendations]);
 
+  // Lance une vraie analyse de la vidéo (comme le web), puis ouvre l'écran de suivi
+  // avec le task_id. Avant : navigation vers /analysis/yt:<id>, que le backend
+  // refuse (422) → « Impossible de charger l'analyse ».
   const handleVideoPress = useCallback(
-    (videoId: string) => {
+    async (videoId: string) => {
+      if (launchingVideoId) return;
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      router.push({
-        pathname: "/(tabs)/analysis/[id]",
-        params: {
-          id: `yt:${videoId}`,
-          videoUrl: `https://www.youtube.com/watch?v=${videoId}`,
-        },
-      } as any);
+      setLaunchingVideoId(videoId);
+      try {
+        const response = await videoApi.analyze({
+          url: `https://www.youtube.com/watch?v=${videoId}`,
+          mode: analysisOptions.mode,
+          language: analysisOptions.language,
+          category: "auto",
+        });
+        if (!response.task_id) {
+          throw new Error(
+            language === "fr"
+              ? "Le serveur n'a pas renvoyé de tâche d'analyse."
+              : "The server did not return an analysis task.",
+          );
+        }
+        startAnalysis(response.task_id);
+        router.push({
+          pathname: "/(tabs)/analysis/[id]",
+          params: { id: response.task_id },
+        });
+      } catch (err: unknown) {
+        Alert.alert(
+          language === "fr" ? "Analyse impossible" : "Analysis unavailable",
+          err instanceof Error && err.message
+            ? err.message
+            : language === "fr"
+              ? "Réessaie dans un instant."
+              : "Please try again in a moment.",
+        );
+      } finally {
+        setLaunchingVideoId(null);
+      }
     },
-    [router],
+    [launchingVideoId, analysisOptions, startAnalysis, router, language],
   );
 
   const handleTournesolPress = useCallback(() => {
@@ -174,6 +209,7 @@ export function TournesolRecommendations({
             { backgroundColor: colors.bgElevated, borderColor: colors.border },
           ]}
           onPress={() => handleVideoPress(videoId)}
+          disabled={launchingVideoId !== null}
           accessibilityLabel={`Analyser: ${item.entity.metadata.name}`}
         >
           {/* Thumbnail */}
@@ -238,7 +274,11 @@ export function TournesolRecommendations({
               { backgroundColor: palette.indigo + "15" },
             ]}
           >
-            <Ionicons name="sparkles" size={12} color={palette.indigo} />
+            {launchingVideoId === videoId ? (
+              <ActivityIndicator size="small" color={palette.indigo} />
+            ) : (
+              <Ionicons name="sparkles" size={12} color={palette.indigo} />
+            )}
             <Text style={[styles.analyzeText, { color: palette.indigo }]}>
               {language === "fr" ? "Analyser" : "Analyze"}
             </Text>
@@ -253,6 +293,7 @@ export function TournesolRecommendations({
       colors.textTertiary,
       colors.textMuted,
       handleVideoPress,
+      launchingVideoId,
       language,
     ],
   );

@@ -16,8 +16,15 @@
  * Spec : `docs/superpowers/specs/2026-05-04-mobile-hub-tab-unified-design.md` §4.2
  */
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import {
+  Alert,
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
@@ -26,7 +33,14 @@ import {
 import * as Haptics from "expo-haptics";
 import type BottomSheet from "@gorhom/bottom-sheet";
 import { useConversation } from "../../hooks/useConversation";
+import LanguageContext from "../../contexts/LanguageContext";
+import { useAuthStore } from "../../stores/authStore";
+import { getLimit } from "../../config/planPrivileges";
 import { historyApi } from "../../services/api";
+import {
+  voiceErrorMessage,
+  voiceErrorTitle,
+} from "../voice/voiceErrorMessages";
 import { VoiceSettings } from "../voice/VoiceSettings";
 import VoiceAddonModal from "../voice/VoiceAddonModal";
 import { HubAnalysisSheet } from "../hub/HubAnalysisSheet";
@@ -96,12 +110,19 @@ export const ConversationContent: React.FC<ConversationContentProps> = ({
     }
   }, [prefillQuery, onPrefillConsumed]);
 
+  // Contexte lu sans exiger le provider (repli en français, ex. dans les tests)
+  const language = useContext(LanguageContext);
+  const tr = language?.tr ?? ((frText: string) => frText);
+
   const conv = useConversation({
     summaryId,
     videoUrl,
     initialMode,
-    onError: (msg) => {
+    // Les erreurs de l'appel vocal n'étaient affichées nulle part (console seulement) :
+    // micro refusé, quota, et surtout service vocal indisponible (503) restaient muets.
+    onError: (msg, code) => {
       if (__DEV__) console.warn("[ConversationContent] error:", msg);
+      Alert.alert(voiceErrorTitle(code, tr), voiceErrorMessage(code, msg, tr));
     },
   });
 
@@ -174,13 +195,19 @@ export const ConversationContent: React.FC<ConversationContentProps> = ({
   }, []);
 
   // ─── Quota label ───
+  // Limite de questions par vidéo selon le plan (Free 5, Pro 25, Expert/unlimited
+  // illimité) — avant : « x/15 » codé en dur, faux pour tous les plans.
+  const userPlan = useAuthStore((s) => s.user?.plan);
+  const questionLimit = getLimit(userPlan, "chatQuestionsPerVideo");
   const userMessageCount = conv.messages.filter(
     (m) => m.role === "user",
   ).length;
   const quotaText =
     conv.voiceMode === "live"
       ? `${Math.max(0, Math.floor(conv.remainingMinutes))} min restantes`
-      : `${userMessageCount}/15 questions`;
+      : questionLimit > 0
+        ? `${userMessageCount}/${questionLimit} questions`
+        : `${userMessageCount} question${userMessageCount > 1 ? "s" : ""}`;
 
   // Detect platform pour header (Live si Quick Call sans summary résolu)
   const headerPlatform: "youtube" | "tiktok" | "live" =

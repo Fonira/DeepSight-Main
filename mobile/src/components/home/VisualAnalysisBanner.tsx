@@ -14,6 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuthStore } from "@/stores/authStore";
+import { normalizePlanId } from "@/config/planPrivileges";
 import { palette } from "@/theme/colors";
 import { spacing, borderRadius } from "@/theme/spacing";
 import { fontFamily, fontSize } from "@/theme/typography";
@@ -21,8 +22,8 @@ import { fontFamily, fontSize } from "@/theme/typography";
 export const VisualAnalysisBanner: React.FC = () => {
   const { colors } = useTheme();
   const user = useAuthStore((s) => s.user);
-  const plan = (user?.plan ?? "free").toLowerCase();
-  const isPaid = plan === "pro" || plan === "expert";
+  // normalizePlanId : "unlimited"/"admin" → expert, plans legacy → pro
+  const isPaid = normalizePlanId(user?.plan) !== "free";
 
   const handlePress = useCallback(async () => {
     await Haptics.selectionAsync();

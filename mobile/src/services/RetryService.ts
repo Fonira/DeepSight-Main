@@ -12,6 +12,7 @@
 
 import React from "react";
 import NetInfo from "@react-native-community/netinfo";
+import { ApiError } from "./apiErrors";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📊 TYPES & CONFIGURATION
@@ -226,6 +227,94 @@ function shouldRetry(error: unknown, config: RetryConfig): boolean {
   return false;
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// 🚦 RETRY POLICY (idempotence, 429 Retry-After, services non configurés)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** Attente maximale acceptée pour rejouer automatiquement un 429 ; au-delà, l'erreur remonte. */
+export const MAX_RATE_LIMIT_WAIT_MS = 10_000;
+/** Code de l'ApiError levée quand le disjoncteur d'un endpoint est ouvert. */
+export const CIRCUIT_OPEN_CODE = "CIRCUIT_OPEN";
+
+export interface RetryDecision {
+  retry: boolean;
+  /** Délai imposé (Retry-After) ; sinon backoff exponentiel. */
+  delayMs?: number;
+  rateLimited?: boolean;
+}
+
+interface ErrorShape {
+  status?: number;
+  code?: string;
+  retryAfterMs?: number;
+}
+
+function errorShape(error: unknown): ErrorShape {
+  if (error instanceof ApiError) {
+    return {
+      status: error.status,
+      code: error.code,
+      retryAfterMs: error.retryAfterMs,
+    };
+  }
+  if (typeof error !== "object" || error === null) return {};
+  const record = error as Record<string, unknown>;
+  return {
+    status: typeof record.status === "number" ? record.status : undefined,
+    code: typeof record.code === "string" ? record.code : undefined,
+    retryAfterMs:
+      typeof record.retryAfterMs === "number" ? record.retryAfterMs : undefined,
+  };
+}
+
+/**
+ * Décide si une erreur doit être rejouée.
+ * - 429 : le serveur n'a pas traité la requête → rejouable même en POST, une seule
+ *   fois, uniquement si Retry-After est connu et ≤ MAX_RATE_LIMIT_WAIT_MS.
+ * - Requêtes non idempotentes (POST/PATCH) : jamais rejouées sur timeout/5xx/réseau
+ *   (doublons de Quick Chat, crédits débités deux fois, sessions voix en double).
+ * - 503 avec un code métier (payments_unavailable, voice_service_unavailable…) :
+ *   déterministe, pas de relance.
+ */
+export function getRetryDecision(
+  error: unknown,
+  config: RetryConfig,
+  context: { idempotent: boolean; rateLimitRetried: boolean },
+): RetryDecision {
+  const { status, code, retryAfterMs } = errorShape(error);
+
+  if (status === 429) {
+    const canWait =
+      !config.retryNetworkOnly &&
+      config.retryOnStatus.includes(429) &&
+      !context.rateLimitRetried &&
+      retryAfterMs !== undefined &&
+      retryAfterMs <= MAX_RATE_LIMIT_WAIT_MS;
+    return canWait
+      ? {
+          retry: true,
+          delayMs: retryAfterMs + Math.floor(Math.random() * 250),
+          rateLimited: true,
+        }
+      : { retry: false };
+  }
+
+  if (!context.idempotent) return { retry: false };
+  if (status === 503 && code) return { retry: false };
+
+  return { retry: shouldRetry(error, config) };
+}
+
+/** Seules les pannes réseau/serveur comptent pour le disjoncteur (pas les 4xx ni les 503 métier). */
+export function countsAsCircuitFailure(error: unknown): boolean {
+  const { status, code } = errorShape(error);
+  if (status === undefined) return true;
+  if (status === 0) return code !== "OFFLINE" && code !== CIRCUIT_OPEN_CODE;
+  if (status === 408) return true;
+  if (status === 503 && code) return false;
+  return status >= 500;
+}
+
 /**
  * Wait for a specified duration
  */
@@ -262,17 +351,25 @@ export async function withRetry<T>(
   options: Partial<RetryConfig> & {
     circuitBreakerKey?: string;
     onRetry?: RetryCallback;
+    /** false pour POST/PATCH : jamais rejoués sur timeout/5xx (défaut : true). */
+    idempotent?: boolean;
   } = {},
 ): Promise<T> {
   const config: RetryConfig = { ...DEFAULT_CONFIG, ...options };
   const { circuitBreakerKey, onRetry } = options;
+  const idempotent = options.idempotent ?? true;
 
   // Check circuit breaker
   if (circuitBreakerKey && isCircuitOpen(circuitBreakerKey)) {
-    throw new Error(`Circuit breaker is open for: ${circuitBreakerKey}`);
+    throw new ApiError(
+      "Service temporarily unavailable, please retry shortly",
+      0,
+      CIRCUIT_OPEN_CODE,
+    );
   }
 
   let lastError: Error | null = null;
+  let rateLimitRetried = false;
 
   for (let attempt = 0; attempt <= config.maxRetries; attempt++) {
     try {
@@ -311,19 +408,23 @@ export async function withRetry<T>(
       lastError = error instanceof Error ? error : new Error(String(error));
 
       // Check if we should retry
-      const canRetry =
-        attempt < config.maxRetries && shouldRetry(error, config);
+      const decision: RetryDecision =
+        attempt < config.maxRetries
+          ? getRetryDecision(error, config, { idempotent, rateLimitRetried })
+          : { retry: false };
 
-      if (!canRetry) {
-        // Record failure for circuit breaker
-        if (circuitBreakerKey) {
+      if (!decision.retry) {
+        // Record failure for circuit breaker (network/server failures only)
+        if (circuitBreakerKey && countsAsCircuitFailure(error)) {
           recordFailure(circuitBreakerKey);
         }
         throw lastError;
       }
 
-      // Calculate delay
-      const delayMs = calculateDelay(attempt, config);
+      if (decision.rateLimited) rateLimitRetried = true;
+
+      // Calculate delay (Retry-After imposed by the server, else exponential backoff)
+      const delayMs = decision.delayMs ?? calculateDelay(attempt, config);
 
       // Notify callback
       if (onRetry) {
@@ -423,6 +524,7 @@ export async function withRetryPreset<T>(
   fn: () => Promise<T>,
   preset: keyof typeof RETRY_PRESETS = "standard",
   context?: string,
+  options: { idempotent?: boolean } = {},
 ): Promise<T> {
   return withRetry(fn, {
     ...RETRY_PRESETS[preset],
@@ -430,6 +532,7 @@ export async function withRetryPreset<T>(
     // so skip the Promise.race timeout to avoid double-timeout race conditions
     skipTimeout: true,
     circuitBreakerKey: context || "api-call",
+    idempotent: options.idempotent,
   });
 }
 

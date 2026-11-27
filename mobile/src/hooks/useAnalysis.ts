@@ -25,7 +25,6 @@ export function useAnalysis() {
           url,
           mode: mergedOptions.mode,
           language: mergedOptions.language,
-          model: "mistral",
           category: "auto",
         });
 

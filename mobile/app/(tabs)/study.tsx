@@ -38,6 +38,7 @@ import { palette } from "@/theme/colors";
 import { DoodleBackground } from "@/components/ui/DoodleBackground";
 import { DeepSightSpinner } from "@/components/ui/DeepSightSpinner";
 import { VoiceButton } from "@/components/voice/VoiceButton";
+import { hubChatRoute } from "@/utils/studyNavigation";
 import type { AnalysisSummary } from "@/types";
 
 type SubTab = "chat" | "reviser";
@@ -434,14 +435,7 @@ export default function StudyScreen() {
                       ]}
                       onPress={() => {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        router.push({
-                          pathname: "/(tabs)/analysis/[id]",
-                          params: {
-                            id: summary.id,
-                            backTo: "study",
-                            initialTab: "1",
-                          },
-                        } as any);
+                        router.push(hubChatRoute(summary.id));
                       }}
                     >
                       {/* Miniature vidéo */}
@@ -662,16 +656,7 @@ export default function StudyScreen() {
                             },
                           } as any)
                         }
-                        onChatIA={() =>
-                          router.push({
-                            pathname: "/(tabs)/analysis/[id]",
-                            params: {
-                              id: summary.id,
-                              backTo: "study",
-                              initialTab: "1",
-                            },
-                          } as any)
-                        }
+                        onChatIA={() => router.push(hubChatRoute(summary.id))}
                         locked={isFree}
                         onLockedPress={handleLockedPress}
                       />

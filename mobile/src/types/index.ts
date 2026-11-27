@@ -240,8 +240,9 @@ export interface AnalysisRequest {
   url?: string;
   text?: string;
   mode: string;
+  /** "auto" = détection par le backend (non envoyé). */
   category: string;
-  model: string;
+  /** Langue de la synthèse, envoyée au backend sous le nom `lang`. */
   language: string;
   deep_research?: boolean;
 }

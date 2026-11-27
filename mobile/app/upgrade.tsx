@@ -26,7 +26,10 @@ import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { billingApi, ApiError, type BillingCycle } from "@/services/api";
+import { billingApi, type BillingCycle } from "@/services/api";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { showBillingError } from "@/utils/billingErrors";
+import { WEB_UPGRADE_URL } from "@/constants/config";
 import { PlanCard } from "@/components/upgrade/PlanCard";
 import { sp, borderRadius } from "@/theme/spacing";
 import { fontFamily, fontSize, textStyles } from "@/theme/typography";
@@ -96,6 +99,7 @@ export default function UpgradeScreen() {
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const { user } = useAuth();
+  const { tr } = useLanguage();
   const router = useRouter();
   const { width: screenWidth } = useWindowDimensions();
 
@@ -121,14 +125,19 @@ export default function UpgradeScreen() {
         const { url } = await billingApi.createCheckout(planId, cycle);
         await WebBrowser.openBrowserAsync(url);
       } catch (err) {
-        const message =
-          err instanceof ApiError
-            ? err.message
-            : "Impossible de créer la session de paiement";
-        Alert.alert("Erreur", message);
+        showBillingError({
+          error: err,
+          tr,
+          fallbackTitle: tr("Erreur", "Error"),
+          fallbackMessage: tr(
+            "Impossible de créer la session de paiement",
+            "Could not create the payment session",
+          ),
+          webUrl: WEB_UPGRADE_URL,
+        });
       }
     },
-    [cycle],
+    [cycle, tr],
   );
 
   const handleStartTrial = useCallback(
@@ -149,16 +158,21 @@ export default function UpgradeScreen() {
         const { checkout_url } = await billingApi.startTrial(planId, cycle);
         await WebBrowser.openBrowserAsync(checkout_url);
       } catch (err) {
-        const message =
-          err instanceof ApiError
-            ? err.message
-            : "Impossible de démarrer l'essai";
-        Alert.alert("Erreur", message);
+        showBillingError({
+          error: err,
+          tr,
+          fallbackTitle: tr("Erreur", "Error"),
+          fallbackMessage: tr(
+            "Impossible de démarrer l'essai",
+            "Could not start the trial",
+          ),
+          webUrl: WEB_UPGRADE_URL,
+        });
       } finally {
         setTrialLoading(null);
       }
     },
-    [cycle],
+    [cycle, tr],
   );
 
   const activePlan = planViews[activePage];

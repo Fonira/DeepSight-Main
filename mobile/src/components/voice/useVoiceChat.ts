@@ -19,7 +19,8 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { AppState, type AppStateStatus } from "react-native";
 import { Audio, InterruptionModeIOS, InterruptionModeAndroid } from "expo-av";
 import * as Haptics from "expo-haptics";
-import { useConversation } from "@elevenlabs/react-native";
+// Via ./elevenlabs : SDK réel dans les builds EAS, hook inerte dans Expo Go
+import { useConversation, VOICE_SDK_AVAILABLE } from "./elevenlabs";
 import { voiceApi } from "../../services/api";
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -45,7 +46,8 @@ interface UseVoiceChatOptions {
    *   - `companion` sinon
    */
   agentType?: VoiceAgentType;
-  onError?: (error: string) => void;
+  /** `code` permet à l'UI d'afficher un message traduit (FR/EN). */
+  onError?: (error: string, code?: VoiceErrorCode) => void;
 }
 
 type VoiceChatStatus =
@@ -55,7 +57,9 @@ type VoiceChatStatus =
   | "thinking"
   | "speaking"
   | "error"
-  | "quota_exceeded";
+  | "quota_exceeded"
+  /** Service vocal non configuré côté serveur (503 voice_service_unavailable). */
+  | "unavailable";
 
 interface VoiceChatMessage {
   text: string;
@@ -131,8 +135,43 @@ const ERROR_MESSAGES = {
   SESSION_TIMEOUT: "Session terminée : durée maximale atteinte.",
   APP_BACKGROUNDED:
     "Session arrêtée car l'application est passée en arrière-plan.",
+  SERVICE_UNAVAILABLE:
+    "Le chat vocal est momentanément indisponible. Le chat écrit reste disponible.",
   UNKNOWN: "Une erreur inattendue est survenue. Réessayez.",
 } as const;
+
+export type VoiceErrorCode = keyof typeof ERROR_MESSAGES;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Disponibilité du service vocal
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** Codes de POST /api/voice/session quand le service vocal n'est pas utilisable. */
+const VOICE_UNAVAILABLE_CODES: ReadonlySet<string> = new Set([
+  "voice_service_unavailable",
+  "voice_service_error",
+  "voice_call_disabled",
+]);
+
+/** Après un 503, on ne réessaie pas (ni micro ni requête) pendant 10 minutes. */
+const VOICE_UNAVAILABLE_MEMO_MS = 10 * 60 * 1000;
+let voiceUnavailableUntil = 0;
+
+export function isVoiceServiceUnavailableError(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const { status, code } = error as { status?: unknown; code?: unknown };
+  if (typeof code === "string" && VOICE_UNAVAILABLE_CODES.has(code)) return true;
+  return status === 503;
+}
+
+export function isVoiceKnownUnavailable(now: number = Date.now()): boolean {
+  return now < voiceUnavailableUntil;
+}
+
+/** Pour les tests : oublie l'indisponibilité mémorisée. */
+export function resetVoiceAvailabilityMemo(): void {
+  voiceUnavailableUntil = 0;
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Hook
@@ -166,14 +205,21 @@ export function useVoiceChat(
   // ─────────────────────────────────────────────────────────────────────────
 
   const reportError = useCallback(
-    (msg: string) => {
+    (msg: string, code?: VoiceErrorCode) => {
       if (!isMountedRef.current) return;
       setError(msg);
       setStatus("error");
-      onError?.(msg);
+      onError?.(msg, code);
     },
     [onError],
   );
+
+  const reportUnavailable = useCallback(() => {
+    if (!isMountedRef.current) return;
+    setError(ERROR_MESSAGES.SERVICE_UNAVAILABLE);
+    setStatus("unavailable");
+    onError?.(ERROR_MESSAGES.SERVICE_UNAVAILABLE, "SERVICE_UNAVAILABLE");
+  }, [onError]);
 
   const stopTimer = useCallback(() => {
     if (timerRef.current) {
@@ -311,32 +357,17 @@ export function useVoiceChat(
       setVoiceSummaryId(null);
       setStatus("connecting");
 
-      // 1. Demander la permission micro via expo-av
-      try {
-        const { granted } = await Audio.requestPermissionsAsync();
-        if (!granted) {
-          reportError(ERROR_MESSAGES.MICROPHONE_DENIED);
-          return;
-        }
-
-        // Configurer le mode audio pour l'enregistrement + lecture simultanée.
-        // Acquiert le focus audio exclusif → coupe Spotify/Apple Music
-        // pendant la session voice agent (le user vient de lancer un appel,
-        // il veut entendre l'agent sans bruit de fond).
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: true,
-          playsInSilentModeIOS: true,
-          staysActiveInBackground: false,
-          interruptionModeIOS: InterruptionModeIOS.DoNotMix,
-          interruptionModeAndroid: InterruptionModeAndroid.DoNotMix,
-          shouldDuckAndroid: false,
-        });
-      } catch {
-        reportError(ERROR_MESSAGES.MICROPHONE_GENERIC);
+      // Pas de SDK vocal natif (Expo Go) ou service déjà connu comme indisponible
+      // (503 récent) : ni requête, ni micro
+      if (!VOICE_SDK_AVAILABLE || isVoiceKnownUnavailable()) {
+        reportUnavailable();
         return;
       }
 
-      // 2. Créer la session via notre API backend
+      // 1. Créer la session via notre API backend — AVANT toute demande de micro :
+      //    on ne demande pas l'accès au micro (ni ne coupe la musique) tant qu'on ne
+      //    sait pas si le service vocal est disponible (ElevenLabs peut ne pas être
+      //    configuré → 503 voice_service_unavailable).
       let sessionData: SessionResponse;
       try {
         // summaryId optionnel : présent → mode explorer, absent → mode companion
@@ -344,7 +375,7 @@ export function useVoiceChat(
         if (summaryId !== undefined && summaryId !== null && summaryId !== "") {
           numericId = parseInt(summaryId, 10);
           if (isNaN(numericId)) {
-            reportError(ERROR_MESSAGES.SESSION_FAILED);
+            reportError(ERROR_MESSAGES.SESSION_FAILED, "SESSION_FAILED");
             return;
           }
         }
@@ -375,24 +406,58 @@ export function useVoiceChat(
           setVoiceSummaryId(sessionData.summary_id ?? null);
         }
       } catch (err: unknown) {
+        // Service vocal non configuré / désactivé (503) : état dédié, mémorisé
+        if (isVoiceServiceUnavailableError(err)) {
+          voiceUnavailableUntil = Date.now() + VOICE_UNAVAILABLE_MEMO_MS;
+          reportUnavailable();
+          return;
+        }
+
         // Vérifier si c'est une erreur de quota (403/429)
         const apiError = err as { status?: number; message?: string };
         if (apiError.status === 403 || apiError.status === 429) {
           setStatus("quota_exceeded");
           setError(ERROR_MESSAGES.QUOTA_EXCEEDED);
-          onError?.(ERROR_MESSAGES.QUOTA_EXCEEDED);
+          onError?.(ERROR_MESSAGES.QUOTA_EXCEEDED, "QUOTA_EXCEEDED");
           return;
         }
 
-        // Erreur réseau vs autre
+        // Erreur réseau (ApiError status 0 depuis api.ts, ou TypeError brut) vs autre
         if (
           err instanceof TypeError ||
-          (apiError.message && apiError.message.includes("network"))
+          apiError.status === 0 ||
+          (apiError.message &&
+            apiError.message.toLowerCase().includes("network"))
         ) {
-          reportError(ERROR_MESSAGES.NETWORK);
+          reportError(ERROR_MESSAGES.NETWORK, "NETWORK");
         } else {
-          reportError(ERROR_MESSAGES.SESSION_FAILED);
+          reportError(ERROR_MESSAGES.SESSION_FAILED, "SESSION_FAILED");
         }
+        return;
+      }
+
+      // 2. Permission micro + mode audio, seulement une fois la session obtenue
+      try {
+        const { granted } = await Audio.requestPermissionsAsync();
+        if (!granted) {
+          reportError(ERROR_MESSAGES.MICROPHONE_DENIED, "MICROPHONE_DENIED");
+          return;
+        }
+
+        // Configurer le mode audio pour l'enregistrement + lecture simultanée.
+        // Acquiert le focus audio exclusif → coupe Spotify/Apple Music
+        // pendant la session voice agent (le user vient de lancer un appel,
+        // il veut entendre l'agent sans bruit de fond).
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: true,
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: false,
+          interruptionModeIOS: InterruptionModeIOS.DoNotMix,
+          interruptionModeAndroid: InterruptionModeAndroid.DoNotMix,
+          shouldDuckAndroid: false,
+        });
+      } catch {
+        reportError(ERROR_MESSAGES.MICROPHONE_GENERIC, "MICROPHONE_GENERIC");
         return;
       }
 
@@ -439,10 +504,19 @@ export function useVoiceChat(
           });
         }, 1000);
       } catch {
-        reportError(ERROR_MESSAGES.SDK_INIT_FAILED);
+        reportError(ERROR_MESSAGES.SDK_INIT_FAILED, "SDK_INIT_FAILED");
       }
     },
-    [status, summaryId, agentType, onError, reportError, stop, conversation],
+    [
+      status,
+      summaryId,
+      agentType,
+      onError,
+      reportError,
+      reportUnavailable,
+      stop,
+      conversation,
+    ],
   );
 
   // ─────────────────────────────────────────────────────────────────────────

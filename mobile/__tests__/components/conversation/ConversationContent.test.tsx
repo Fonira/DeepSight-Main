@@ -85,6 +85,8 @@ jest.spyOn(Alert, "alert").mockImplementation(() => {});
 
 import { ConversationContent } from "../../../src/components/conversation/ConversationContent";
 import type { UnifiedMessage } from "../../../src/hooks/useConversation";
+import { useAuthStore } from "../../../src/stores/authStore";
+import type { User } from "../../../src/types";
 
 const baseTimestamp = Date.now();
 
@@ -140,6 +142,44 @@ describe("ConversationContent", () => {
       />,
     );
     expect(getByText("Conversation")).toBeTruthy();
+  });
+
+  describe("compteur de questions selon le plan (avant : « x/15 » codé en dur)", () => {
+    const oneUserMessage = () =>
+      defaultReturn({
+        messages: [
+          {
+            id: "u1",
+            role: "user",
+            content: "Question 1",
+            source: "text",
+            timestamp: baseTimestamp,
+          },
+        ] as UnifiedMessage[],
+      });
+
+    afterEach(() => {
+      useAuthStore.setState({ user: null });
+    });
+
+    it("plan Free : 1/5 questions", () => {
+      useAuthStore.setState({ user: { plan: "free" } as unknown as User });
+      mockUseConversation.mockReturnValue(oneUserMessage());
+      const { getByText } = render(
+        <ConversationContent summaryId="1" initialMode="chat" videoTitle="V" />,
+      );
+      expect(getByText("1/5 questions")).toBeTruthy();
+    });
+
+    it("plan unlimited (admin) : pas de plafond affiché", () => {
+      useAuthStore.setState({ user: { plan: "unlimited" } as unknown as User });
+      mockUseConversation.mockReturnValue(oneUserMessage());
+      const { getByText, queryByText } = render(
+        <ConversationContent summaryId="1" initialMode="chat" videoTitle="V" />,
+      );
+      expect(getByText("1 question")).toBeTruthy();
+      expect(queryByText(/\/15 questions/)).toBeNull();
+    });
   });
 
   it("renders chat bubbles with user/assistant differentiation", () => {
