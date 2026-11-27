@@ -833,6 +833,52 @@ def _parse_subtitle_files(tmpdir: str, video_id: str) -> Tuple[Optional[str], Op
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
+def _supadata_segments_to_texts(segments: List[Any]) -> Tuple[str, Optional[str]]:
+    """Convertit une liste de segments Supadata en (texte simple, texte horodaté).
+
+    Formats acceptés :
+    - API actuelle (`content`, 2026) : `{"text", "offset", "duration"}`, offset
+      en MILLISECONDES ;
+    - ancien format (`segments`) : `{"text", "start", "dur"}`, start en secondes ;
+    - liste de chaînes : pas d'horodatage possible → timestamped = None.
+
+    Les ancres `[MM:SS]` sont posées au plus toutes les 30 s, comme pour les
+    autres méthodes. Retourne `("", None)` si aucun texte exploitable.
+    """
+    simple_parts: List[str] = []
+    timestamped_parts: List[str] = []
+    has_timing = False
+    last_ts = -30.0
+
+    for seg in segments:
+        if isinstance(seg, str):
+            if seg.strip():
+                simple_parts.append(seg.strip())
+            continue
+        if not isinstance(seg, dict):
+            continue
+        text = str(seg.get("text", "")).strip()
+        if not text:
+            continue
+        simple_parts.append(text)
+        if "start" in seg:
+            start = float(seg.get("start") or 0)
+        elif "offset" in seg:
+            start = float(seg.get("offset") or 0) / 1000.0
+        else:
+            continue
+        has_timing = True
+        if start - last_ts >= 30:
+            timestamped_parts.append(f"\n[{format_seconds_to_timestamp(start)}] {text}")
+            last_ts = start
+        else:
+            timestamped_parts.append(f" {text}")
+
+    simple = " ".join(simple_parts)
+    timestamped = "".join(timestamped_parts).strip() if has_timing else ""
+    return simple, (timestamped or None)
+
+
 async def get_transcript_supadata(
     video_id: str, api_key: str = None
 ) -> Tuple[Optional[str], Optional[str], Optional[str]]:
@@ -868,7 +914,9 @@ async def get_transcript_supadata(
                         if isinstance(data, list):
                             segments = data
                         elif isinstance(data, dict):
-                            segments = data.get("segments", data.get("transcript", []))
+                            # L'API actuelle renvoie les segments dans `content` (offset en
+                            # ms) ; `segments` / `transcript` restent lus pour l'ancien format.
+                            segments = data.get("segments") or data.get("content") or data.get("transcript") or []
                             if isinstance(segments, str):
                                 # 🔧 Option A (2026-05-12, follow-up PR #481) — Quand
                                 # l'endpoint YT-specific de Supadata retourne `segments`
@@ -891,28 +939,10 @@ async def get_transcript_supadata(
                                 return segments, None, lang or "fr"
 
                         if segments:
-                            simple_parts = []
-                            timestamped_parts = []
-                            last_ts = -30
-
-                            for seg in segments:
-                                text = seg.get("text", "").strip()
-                                start = seg.get("start", seg.get("offset", 0))
-                                if not text:
-                                    continue
-                                simple_parts.append(text)
-                                if start - last_ts >= 30:
-                                    ts = format_seconds_to_timestamp(start)
-                                    timestamped_parts.append(f"\n[{ts}] {text}")
-                                    last_ts = start
-                                else:
-                                    timestamped_parts.append(f" {text}")
-
-                            simple = " ".join(simple_parts)
-                            timestamped = "".join(timestamped_parts).strip()
-
+                            simple, timestamped = _supadata_segments_to_texts(segments)
                             if simple:
                                 print(f"  ✅ [SUPADATA] YT-specific success: {len(simple)} chars", flush=True)
+                                # Segments sans horodatage → None (pattern Option A).
                                 return simple, timestamped, lang or "fr"
 
                     elif response.status_code == 404:
@@ -942,13 +972,16 @@ async def get_transcript_supadata(
                     detected_lang = data.get("lang", "fr")
                     # ⚡ v7.1: Supadata peut retourner une liste au lieu d'un string
                     if isinstance(content, list):
-                        # Liste de segments [{text: "...", start: ...}, ...]
-                        if content and isinstance(content[0], dict):
-                            content = " ".join(seg.get("text", "") for seg in content if seg.get("text"))
-                        elif content and isinstance(content[0], str):
-                            content = " ".join(content)
-                        else:
-                            content = ""
+                        # Segments horodatés (offset en ms) : vrais timestamps, pas
+                        # besoin de retomber sur Phase 1 pour les obtenir.
+                        seg_simple, seg_timestamped = _supadata_segments_to_texts(content)
+                        if seg_timestamped and len(seg_simple.strip()) >= 20:
+                            print(
+                                f"  ✅ [SUPADATA] Unified timestamped success: {len(seg_simple)} chars",
+                                flush=True,
+                            )
+                            return seg_simple.strip(), seg_timestamped, detected_lang
+                        content = seg_simple
                     if content and isinstance(content, str) and len(content.strip()) >= 20:
                         # 🔧 Option A (2026-05-12) — Endpoint unifié Supadata ne fournit
                         # PAS de timestamps. Retourner `None` pour le canal timestamped
@@ -984,12 +1017,14 @@ async def get_transcript_supadata(
                                 detected_lang = pd.get("lang", "fr")
                                 # ⚡ v7.1: Même protection list → string
                                 if isinstance(content, list):
-                                    if content and isinstance(content[0], dict):
-                                        content = " ".join(seg.get("text", "") for seg in content if seg.get("text"))
-                                    elif content and isinstance(content[0], str):
-                                        content = " ".join(content)
-                                    else:
-                                        content = ""
+                                    seg_simple, seg_timestamped = _supadata_segments_to_texts(content)
+                                    if seg_timestamped and len(seg_simple.strip()) >= 20:
+                                        print(
+                                            f"  ✅ [SUPADATA] Async timestamped success: {len(seg_simple)} chars",
+                                            flush=True,
+                                        )
+                                        return seg_simple.strip(), seg_timestamped, detected_lang
+                                    content = seg_simple
                                 if content and isinstance(content, str) and len(content.strip()) >= 20:
                                     # 🔧 Option A (2026-05-12) — voir commentaire identique
                                     # sur l'endpoint unifié plus haut. L'endpoint async
@@ -2504,6 +2539,11 @@ async def _get_transcript_with_timestamps_inner(
     print("🥇 PHASE 0: Supadata API (PRIORITY)", flush=True)
     print("─" * 50, flush=True)
 
+    # Texte Supadata sans horodatage : gardé en réserve pendant que Phase 1 cherche
+    # des timestamps. Sans cette réserve, un serveur bloqué par YouTube (Phase 1-3
+    # en échec) jetait une transcription complète et l'analyse échouait.
+    supadata_plain: Optional[Tuple[str, str]] = None
+
     supadata_cb = get_circuit_breaker("supadata")
     if supadata_cb.can_execute():
         # ⚡ v7.3: 1 attempt only (was 2) — fallback Phase 1 plus rapide en cas de lenteur Supadata
@@ -2520,10 +2560,16 @@ async def _get_transcript_with_timestamps_inner(
                     print(f"{'=' * 70}", flush=True)
                     await _cache_success(video_id, simple, timestamped, lang, "Supadata API")
                     return simple, timestamped, lang
+                if simple:
+                    supadata_plain = (simple, lang or "fr")
             except Exception as e:
                 print(f"  ⚠️ [Supadata] Attempt {attempt + 1} failed ({type(e).__name__}): {str(e)[:200]}", flush=True)
-        supadata_cb.record_failure()
-        print("  ❌ [Supadata] Failed — falling back to Phase 1", flush=True)
+        if supadata_plain is not None:
+            supadata_cb.record_success()
+            print("  ⏳ [Supadata] Text without timestamps — trying Phase 1 for timestamps", flush=True)
+        else:
+            supadata_cb.record_failure()
+            print("  ❌ [Supadata] Failed — falling back to Phase 1", flush=True)
     else:
         print("  ⏭️ [Supadata] Skipped (circuit OPEN)", flush=True)
 
@@ -2621,6 +2667,19 @@ async def _get_transcript_with_timestamps_inner(
             print(f"{'=' * 70}", flush=True)
             await _cache_success(video_id, simple, timestamped, lang, name)
             return simple, timestamped, lang
+
+    # Phase 1 n'a pas trouvé de timestamps mais Supadata a fourni le texte complet :
+    # on l'utilise plutôt que de lancer yt-dlp / la transcription audio (lents,
+    # payants, et inutiles puisque les sous-titres existent). Même convention que
+    # Phase 3 : à défaut d'horodatage, le texte simple sert aussi de version
+    # horodatée (visual analysis retombe alors sur duration_hint).
+    if supadata_plain is not None:
+        sp_simple, sp_lang = supadata_plain
+        print("", flush=True)
+        print("✅ SUCCESS with Supadata API (plain text, no timestamps available)", flush=True)
+        print(f"{'=' * 70}", flush=True)
+        await _cache_success(video_id, sp_simple, sp_simple, sp_lang, "Supadata API (plain)")
+        return sp_simple, sp_simple, sp_lang
 
     # ═══════════════════════════════════════════════════════════════════════════════
     # PHASE 1.5: VOXTRAL SHORT-CIRCUIT (Mistral-First Phase 1, Task 1.3)
