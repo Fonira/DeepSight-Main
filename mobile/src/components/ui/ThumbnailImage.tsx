@@ -37,9 +37,6 @@ const ThumbnailImageComponent: React.FC<ThumbnailImageProps> = ({
   contentFit = "cover",
   transition = 200,
 }) => {
-  const [fallbackIndex, setFallbackIndex] = useState(0);
-  const [hasError, setHasError] = useState(false);
-
   const urls = useMemo(() => {
     const list: string[] = [];
     // Priority 1: explicit URI
@@ -53,13 +50,25 @@ const ThumbnailImageComponent: React.FC<ThumbnailImageProps> = ({
     return list;
   }, [uri, videoId]);
 
+  // État de repli rattaché à la liste d'URL : quand FlashList recycle la cellule
+  // pour une autre vidéo, on repart de la première URL (avant, l'index et l'échec
+  // de la vidéo précédente restaient → placeholder ou mauvaise miniature).
+  const urlsKey = urls.join("|");
+  const [fallback, setFallback] = useState({
+    key: urlsKey,
+    index: 0,
+    exhausted: false,
+  });
+  const fallbackIndex = fallback.key === urlsKey ? fallback.index : 0;
+  const hasError = fallback.key === urlsKey ? fallback.exhausted : false;
+
   const currentUrl = urls[fallbackIndex];
 
   const handleError = () => {
     if (fallbackIndex < urls.length - 1) {
-      setFallbackIndex((prev) => prev + 1);
+      setFallback({ key: urlsKey, index: fallbackIndex + 1, exhausted: false });
     } else {
-      setHasError(true);
+      setFallback({ key: urlsKey, index: fallbackIndex, exhausted: true });
     }
   };
 

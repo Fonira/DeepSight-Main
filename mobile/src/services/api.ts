@@ -5,6 +5,7 @@ import NetInfo from "@react-native-community/netinfo";
 import { withRetryPreset } from "./RetryService";
 import { tokenManager } from "./TokenManager";
 import { ApiError, apiErrorFromResponse } from "./apiErrors";
+import { resolveThumbnailUrl } from "../utils/thumbnails";
 import type {
   User,
   AnalysisSummary,
@@ -794,7 +795,10 @@ export const videoApi = {
       createdAt: response.created_at,
       isFavorite: response.is_favorite || false,
       wordCount: response.word_count,
-      thumbnail: response.thumbnail_url,
+      thumbnail: resolveThumbnailUrl(response.thumbnail_url, {
+        videoId: response.video_id,
+        platform: response.platform,
+      }),
       channel: response.video_channel,
       duration: response.video_duration,
       videoInfo: {
@@ -802,10 +806,10 @@ export const videoApi = {
         title: response.video_title || "Sans titre",
         description: "",
         thumbnail:
-          response.thumbnail_url ||
-          (response.platform !== "tiktok"
-            ? `https://img.youtube.com/vi/${response.video_id}/mqdefault.jpg`
-            : ""),
+          resolveThumbnailUrl(response.thumbnail_url, {
+            videoId: response.video_id,
+            platform: response.platform,
+          }) ?? "",
         channel: response.video_channel || "Unknown",
         channelId: "",
         duration: response.video_duration || 0,
@@ -1206,7 +1210,10 @@ export const historyApi = {
       id: String(item.id),
       title: item.video_title || "Sans titre",
       videoId: item.video_id,
-      thumbnail: item.thumbnail_url,
+      thumbnail: resolveThumbnailUrl(item.thumbnail_url, {
+        videoId: item.video_id,
+        platform: item.platform,
+      }),
       isFavorite: item.is_favorite,
       mode: item.mode || "synthesis",
       category: item.category || "general",
@@ -1308,7 +1315,9 @@ export const historyApi = {
         name: item.playlist_title || "Playlist",
         video_count: item.num_videos ?? 0,
         created_at: item.created_at ?? "",
-        thumbnail_urls: item.thumbnail_url ? [item.thumbnail_url] : [],
+        thumbnail_urls: ((url) => (url ? [url] : []))(
+          resolveThumbnailUrl(item.thumbnail_url),
+        ),
       })),
       total: response.total,
       page: response.page,
