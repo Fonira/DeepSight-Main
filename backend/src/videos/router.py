@@ -4196,6 +4196,13 @@ async def get_summary_concepts(
         }
 
 
+# Le Hub rappelle ces deux endpoints à chaque ouverture d'une conversation :
+# sans cache, Mistral (concepts) et les métadonnées vidéo (fiabilité) étaient
+# refacturés à chaque fois.
+ENRICHED_CONCEPTS_CACHE_TTL = 7 * 24 * 3600  # 7 j (clé liée au contenu du résumé)
+RELIABILITY_CACHE_TTL = 24 * 3600  # 24 h (la fraîcheur évolue lentement)
+
+
 @router.get("/concepts/{summary_id}/enriched")
 async def get_enriched_concepts(
     summary_id: int, current_user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)
@@ -4243,6 +4250,17 @@ async def get_enriched_concepts(
 
     # Déterminer si on utilise Perplexity (Pro only)
     use_perplexity = current_user.plan in ["pro"]
+    provider = "perplexity+mistral" if use_perplexity else "mistral"
+
+    # 💾 Cache : la clé change avec le contenu du résumé, la langue et le provider
+    from core.cache import cache_service, hash_query, make_cache_key
+
+    cache_key = make_cache_key(
+        "concepts_enriched", str(summary_id), provider, summary.lang or "fr", hash_query(summary.summary_content)
+    )
+    cached = await cache_service.get(cache_key)
+    if isinstance(cached, dict):
+        return cached
 
     try:
         # Obtenir les définitions enrichies
@@ -4268,12 +4286,11 @@ async def get_enriched_concepts(
                 }
             )
 
-        provider = "perplexity+mistral" if use_perplexity else "mistral"
         logger.info(
             f"📚 [Enriched] Got {len(concepts_list)} enriched definitions for summary {summary_id} ({provider})"
         )
 
-        return {
+        response = {
             "summary_id": summary_id,
             "video_title": summary.video_title,
             "concepts": concepts_list,
@@ -4288,6 +4305,10 @@ async def get_enriched_concepts(
                 for cat_id, cat_data in CATEGORIES.items()
             },
         }
+        # Ne pas figer un résultat dégradé (LLM en échec → définitions vides)
+        if any(c["definition"] for c in concepts_list):
+            await cache_service.set(cache_key, response, ttl=ENRICHED_CONCEPTS_CACHE_TTL)
+        return response
 
     except Exception as e:
         logger.error(f"❌ [Enriched] Error: {e}")
@@ -5332,6 +5353,20 @@ async def get_content_reliability(
     if not summary:
         raise HTTPException(status_code=404, detail="Analyse non trouvée")
 
+    # 💾 Cache : évite un appel de métadonnées vidéo (Supadata) et une
+    # notification « fact-check terminé » à chaque ouverture du Hub.
+    from core.cache import cache_service, make_cache_key
+
+    cache_key = make_cache_key("reliability", str(summary_id))
+    cached = await cache_service.get(cache_key)
+    if isinstance(cached, dict):
+        # Copie : les champs propres à l'utilisateur ne sont pas mis en cache
+        return {
+            **cached,
+            "user_plan": current_user.plan or "free",
+            "full_factcheck_available": current_user.plan in ["pro"],
+        }
+
     # Récupérer la date de publication depuis video_url ou utiliser created_at
     video_date = None
 
@@ -5362,6 +5397,7 @@ async def get_content_reliability(
     result["summary_id"] = summary_id
     result["video_title"] = summary.video_title
     result["video_channel"] = summary.video_channel
+    await cache_service.set(cache_key, dict(result), ttl=RELIABILITY_CACHE_TTL)
     result["user_plan"] = current_user.plan or "free"
 
     # Indiquer si l'utilisateur peut avoir un fact-check complet
