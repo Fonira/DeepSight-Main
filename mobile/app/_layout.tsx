@@ -16,7 +16,8 @@ import { LanguageProvider } from "../src/contexts/LanguageContext";
 import { ErrorProvider } from "../src/contexts/ErrorContext";
 import { OfflineProvider } from "../src/contexts/OfflineContext";
 import { BackgroundAnalysisProvider } from "../src/contexts/BackgroundAnalysisContext";
-import { ElevenLabsProvider } from "@elevenlabs/react-native";
+// SDK voix chargé seulement hors Expo Go (WebRTC natif absent → crash à l'import)
+import { VoiceProvider } from "../src/components/voice/elevenlabs";
 import { setAudioModeAsync } from "expo-audio";
 import { ShareIntentProvider } from "expo-share-intent";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -164,11 +165,11 @@ export default function RootLayout() {
                       <OfflineProvider>
                         <PlanProvider>
                           <BackgroundAnalysisProvider>
-                            <ElevenLabsProvider>
+                            <VoiceProvider>
                               <TTSProvider>
                                 <RootNavigator />
                               </TTSProvider>
-                            </ElevenLabsProvider>
+                            </VoiceProvider>
                           </BackgroundAnalysisProvider>
                         </PlanProvider>
                       </OfflineProvider>

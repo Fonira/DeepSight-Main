@@ -19,7 +19,8 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { AppState, type AppStateStatus } from "react-native";
 import { Audio, InterruptionModeIOS, InterruptionModeAndroid } from "expo-av";
 import * as Haptics from "expo-haptics";
-import { useConversation } from "@elevenlabs/react-native";
+// Via ./elevenlabs : SDK réel dans les builds EAS, hook inerte dans Expo Go
+import { useConversation, VOICE_SDK_AVAILABLE } from "./elevenlabs";
 import { voiceApi } from "../../services/api";
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -356,8 +357,9 @@ export function useVoiceChat(
       setVoiceSummaryId(null);
       setStatus("connecting");
 
-      // Service vocal déjà connu comme indisponible (503 récent) : ni requête ni micro
-      if (isVoiceKnownUnavailable()) {
+      // Pas de SDK vocal natif (Expo Go) ou service déjà connu comme indisponible
+      // (503 récent) : ni requête, ni micro
+      if (!VOICE_SDK_AVAILABLE || isVoiceKnownUnavailable()) {
         reportUnavailable();
         return;
       }
