@@ -205,13 +205,15 @@ export const useTutorStore = create<TutorState>()(
     submitTextTurn: async (input) => {
       const sessionId = get().sessionId;
       if (!sessionId) return;
+      const userTurnTs = Date.now();
       set((s) => {
         s.messages.push({
           role: "user",
           content: input,
-          timestamp_ms: Date.now(),
+          timestamp_ms: userTurnTs,
         });
         s.loading = true;
+        s.error = null;
       });
       try {
         const resp = await tutorApi.sessionTurn(sessionId, {
@@ -227,6 +229,11 @@ export const useTutorStore = create<TutorState>()(
         });
       } catch (err) {
         set((s) => {
+          // Retire le tour optimiste : le texte reste dans la saisie pour le
+          // renvoyer, sans doublon dans la conversation.
+          s.messages = s.messages.filter(
+            (m) => !(m.role === "user" && m.timestamp_ms === userTurnTs),
+          );
           s.error = (err as Error).message;
           s.loading = false;
         });

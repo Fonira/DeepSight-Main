@@ -99,6 +99,8 @@ const I18N = {
     emptyHint:
       "Bonjour. Je suis le Tuteur — sur quoi voulez-vous revenir aujourd'hui ?",
     loading: "…",
+    error:
+      "Le Tuteur n'a pas pu répondre. Votre message est conservé : renvoyez-le dans un instant.",
     switchConfirm:
       "Changer de mode redémarrera la conversation texte. Continuer ?",
     voiceConnecting: "Connexion vocale…",
@@ -124,6 +126,8 @@ const I18N = {
     emptyHint:
       "Hello. I'm the Tutor — what would you like to revisit today?",
     loading: "…",
+    error:
+      "The Tutor couldn't answer. Your message was kept: send it again in a moment.",
     switchConfirm:
       "Switching modes will restart the text conversation. Continue?",
     voiceConnecting: "Connecting voice…",
@@ -208,6 +212,7 @@ export const TutorHub: React.FC<TutorHubProps> = ({
   const tutorMessages = useTutorStore((s) => s.messages);
   const tutorConceptTerm = useTutorStore((s) => s.conceptTerm);
   const tutorLoading = useTutorStore((s) => s.loading);
+  const tutorError = useTutorStore((s) => s.error);
   const startSession = useTutorStore((s) => s.startSession);
   const submitTextTurn = useTutorStore((s) => s.submitTextTurn);
   const endSession = useTutorStore((s) => s.endSession);
@@ -465,11 +470,11 @@ export const TutorHub: React.FC<TutorHubProps> = ({
           mode: "text",
           lang: language,
         });
-        setInput("");
-        return;
+      } else {
+        await submitTextTurn(value);
       }
-      await submitTextTurn(value);
-      setInput("");
+      // En cas d'échec, on garde le texte saisi pour pouvoir le renvoyer.
+      if (!useTutorStore.getState().error) setInput("");
     },
     [
       input,
@@ -648,6 +653,15 @@ export const TutorHub: React.FC<TutorHubProps> = ({
                 <div className="px-3 py-2 rounded-xl bg-white/[0.04] text-text-tertiary text-[12px] italic">
                   {t.loading}
                 </div>
+              </div>
+            )}
+            {tutorError && !tutorLoading && mode === "text" && (
+              <div
+                role="alert"
+                data-testid="tutor-hub-error"
+                className="px-3 py-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-200 text-[12px]"
+              >
+                {t.error}
               </div>
             )}
           </div>
