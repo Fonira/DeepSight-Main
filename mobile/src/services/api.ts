@@ -1287,13 +1287,14 @@ export const historyApi = {
       per_page: String(limit),
     });
 
+    // Format backend : PlaylistSummaryItem (backend/src/history/history_router.py)
     const response = await request<{
       items: Array<{
-        id: number;
-        name: string;
-        video_count: number;
-        created_at: string;
-        thumbnail_urls: string[];
+        playlist_id: string;
+        playlist_title?: string | null;
+        num_videos?: number;
+        thumbnail_url?: string | null;
+        created_at?: string | null;
       }>;
       total: number;
       page: number;
@@ -1303,8 +1304,11 @@ export const historyApi = {
 
     return {
       items: response.items.map((item) => ({
-        ...item,
-        id: String(item.id),
+        id: item.playlist_id,
+        name: item.playlist_title || "Playlist",
+        video_count: item.num_videos ?? 0,
+        created_at: item.created_at ?? "",
+        thumbnail_urls: item.thumbnail_url ? [item.thumbnail_url] : [],
       })),
       total: response.total,
       page: response.page,
