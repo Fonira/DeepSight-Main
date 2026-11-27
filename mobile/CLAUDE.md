@@ -3,7 +3,7 @@
 ## Stack
 
 Expo SDK 54 + React Native 0.81 + React 19 + TypeScript strict.
-Déployé via EAS Build (App Store ascAppId: 6740487498 + Play Store).
+Déployé via EAS Build (App Store ascAppId: 6758403428 + Play Store).
 
 ## Rôle stratégique
 
