@@ -1,5 +1,12 @@
 name: Lighthouse CI
 
+# ⚠️ DÉSACTIVÉ (nov. 2026) : le site n'est plus déployé sur Vercel (build Vite
+# servi par Caddy sur le VPS), il n'y a donc plus de preview à auditer et le
+# job échouait en attendant une preview qui n'arrive jamais. Le job reste
+# déclaré mais sauté (`if: false`) : un check sauté compte comme réussi si
+# jamais il est marqué obligatoire. Pour le réactiver, auditer un build local
+# (vite preview) au lieu de la preview Vercel.
+#
 # Runs Lighthouse against the Vercel preview deployment of every PR.
 # Currently in WARN-ONLY mode — see frontend/.lighthouserc.cjs and
 # docs/RUNBOOK.md §20 for the procedure to flip to blocking.
@@ -26,8 +33,9 @@ jobs:
   lighthouse:
     name: Lighthouse on Vercel preview
     runs-on: ubuntu-latest
-    # Allow skip via PR label (e.g. infra-only changes, hotfixes).
-    if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-lighthouse') }}
+    # Désactivé : plus de preview Vercel (voir l'en-tête). Ancienne condition :
+    # ${{ !contains(github.event.pull_request.labels.*.name, 'skip-lighthouse') }}
+    if: false
 
     steps:
       - uses: actions/checkout@v4
