@@ -6,7 +6,6 @@
  * - 🎓 Génération de fiches de révision avec nombre de questions configurable
  * - 🌳 Génération d'arbres pédagogiques avec profondeur variable
  * - 💰 Affichage des coûts en crédits
- * - 🎯 Génération de questions supplémentaires
  * - 📊 Affichage des résultats
  * - 📥 Export des contenus
  */
@@ -29,9 +28,10 @@ import {
   Lock,
   Crown,
 } from "lucide-react";
-import { DeepSightSpinner, DeepSightSpinnerMicro } from "./ui";
+import { DeepSightSpinner } from "./ui";
 import { StudyCard } from "./StudyCard";
 import { ConceptMap } from "./ConceptMap";
+import { request } from "../services/api";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📦 TYPES
@@ -47,172 +47,66 @@ interface StudyToolsModalProps {
   userCredits?: number;
 }
 
-interface StudyLimits {
-  quiz_questions: number;
-  mindmap_depth: number;
-  can_generate_more: boolean;
-  daily_limit: number;
-}
-
-interface CostPreview {
-  total: number;
-  breakdown: Record<string, number>;
-}
-
 type ToolType = "card" | "mindmap" | "all";
 type ViewMode = "select" | "options" | "loading" | "results";
 
+// Coût réel débité par /api/videos/study/* (backend videos/router.py) :
+// 1 crédit par outil, 2 pour le pack. Remboursé si la génération échoue.
+const TOOL_COSTS: Record<ToolType, number> = { card: 1, mindmap: 1, all: 2 };
+
+// Bornes des sélecteurs d'options (anciennes valeurs par défaut de l'UI)
+const MAX_QUIZ_QUESTIONS = 15;
+const MAX_MINDMAP_DEPTH = 5;
+
 // ═══════════════════════════════════════════════════════════════════════════════
-// 🌐 API
+// 🌐 API — via request() (renouvellement du jeton sur 401)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const API_URL =
-  (
-    import.meta.env.VITE_API_URL || "https://api.deepsightsynthesis.com"
-  ).replace(/\/api\/?$/, "") + "/api";
+interface StudyMaterials {
+  study_card?: unknown;
+  concept_map?: unknown;
+  study_card_error?: string;
+  concept_map_error?: string;
+}
 
-const getAuthHeaders = () => {
-  const token = localStorage.getItem("access_token");
-  return {
-    "Content-Type": "application/json",
-    Authorization: token ? `Bearer ${token}` : "",
-  };
-};
+interface StudyToolResponse extends StudyMaterials {
+  materials?: StudyMaterials;
+  credits_remaining?: number;
+}
 
-// Récupérer les limites du plan
-const fetchStudyLimits = async (): Promise<{ limits: StudyLimits }> => {
-  const response = await fetch(`${API_URL}/videos/study/limits`, {
-    headers: getAuthHeaders(),
-  });
-  if (!response.ok) {
-    throw new Error("Erreur lors de la récupération des limites");
-  }
-  return response.json();
-};
-
-// Prévisualiser le coût
-const fetchCostPreview = async (
-  tool: string,
-  questionCount: number,
-  depthLevel: number,
-  withDetails: boolean,
-): Promise<{ cost: CostPreview; can_afford: boolean }> => {
-  const params = new URLSearchParams({
-    tool,
-    question_count: questionCount.toString(),
-    depth_level: depthLevel.toString(),
-    with_detailed_concepts: withDetails.toString(),
-  });
-  const response = await fetch(
-    `${API_URL}/videos/study/cost-preview?${params}`,
-    {
-      headers: getAuthHeaders(),
-    },
-  );
-  if (!response.ok) {
-    throw new Error("Erreur lors du calcul du coût");
-  }
-  return response.json();
-};
-
-const generateStudyCard = async (summaryId: number, questionCount: number) => {
-  const response = await fetch(`${API_URL}/videos/study/${summaryId}/card`, {
+const generateStudyCard = (summaryId: number, questionCount: number) =>
+  request<StudyToolResponse>(`/api/videos/study/${summaryId}/card`, {
     method: "POST",
-    headers: getAuthHeaders(),
-    body: JSON.stringify({ question_count: questionCount }),
+    body: { question_count: questionCount },
+    timeout: 180000,
   });
-  if (!response.ok) {
-    const error = await response
-      .json()
-      .catch(() => ({ detail: "Erreur inconnue" }));
-    throw new Error(
-      typeof error.detail === "string"
-        ? error.detail
-        : error.detail?.message || `Erreur ${response.status}`,
-    );
-  }
-  return response.json();
-};
 
-const generateConceptMap = async (
+const generateConceptMap = (
   summaryId: number,
   depthLevel: number,
   withDetails: boolean,
-) => {
-  const response = await fetch(`${API_URL}/videos/study/${summaryId}/mindmap`, {
+) =>
+  request<StudyToolResponse>(`/api/videos/study/${summaryId}/mindmap`, {
     method: "POST",
-    headers: getAuthHeaders(),
-    body: JSON.stringify({
-      depth_level: depthLevel,
-      with_detailed_concepts: withDetails,
-    }),
+    body: { depth_level: depthLevel, with_detailed_concepts: withDetails },
+    timeout: 180000,
   });
-  if (!response.ok) {
-    const error = await response
-      .json()
-      .catch(() => ({ detail: "Erreur inconnue" }));
-    throw new Error(
-      typeof error.detail === "string"
-        ? error.detail
-        : error.detail?.message || `Erreur ${response.status}`,
-    );
-  }
-  return response.json();
-};
 
-const generateAllMaterials = async (
+const generateAllMaterials = (
   summaryId: number,
   questionCount: number,
   depthLevel: number,
   withDetails: boolean,
-) => {
-  const response = await fetch(`${API_URL}/videos/study/${summaryId}/all`, {
+) =>
+  request<StudyToolResponse>(`/api/videos/study/${summaryId}/all`, {
     method: "POST",
-    headers: getAuthHeaders(),
-    body: JSON.stringify({
+    body: {
       question_count: questionCount,
       depth_level: depthLevel,
       with_detailed_concepts: withDetails,
-    }),
-  });
-  if (!response.ok) {
-    const error = await response
-      .json()
-      .catch(() => ({ detail: "Erreur inconnue" }));
-    throw new Error(
-      typeof error.detail === "string"
-        ? error.detail
-        : error.detail?.message || `Erreur ${response.status}`,
-    );
-  }
-  return response.json();
-};
-
-const generateAdditionalQuestions = async (
-  summaryId: number,
-  existingQuestions: unknown[],
-  count: number,
-) => {
-  const response = await fetch(
-    `${API_URL}/videos/study/${summaryId}/additional-questions`,
-    {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ existing_questions: existingQuestions, count }),
     },
-  );
-  if (!response.ok) {
-    const error = await response
-      .json()
-      .catch(() => ({ detail: "Erreur inconnue" }));
-    throw new Error(
-      typeof error.detail === "string"
-        ? error.detail
-        : error.detail?.message || `Erreur ${response.status}`,
-    );
-  }
-  return response.json();
-};
+    timeout: 180000,
+  });
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🎯 COMPOSANT PRINCIPAL
@@ -225,7 +119,7 @@ export const StudyToolsModal: React.FC<StudyToolsModalProps> = ({
   videoTitle,
   language = "fr",
   userPlan = "free",
-  userCredits = 0,
+  userCredits,
 }) => {
   const [viewMode, setViewMode] = useState<ViewMode>("select");
   const [selectedTool, setSelectedTool] = useState<ToolType | null>(null);
@@ -244,43 +138,15 @@ export const StudyToolsModal: React.FC<StudyToolsModalProps> = ({
   const [depthLevel, setDepthLevel] = useState(3);
   const [withDetails, setWithDetails] = useState(false);
 
-  // Limites et coûts
-  const [limits, setLimits] = useState<StudyLimits | null>(null);
-  const [costPreview, setCostPreview] = useState<CostPreview | null>(null);
-  const [canAfford, setCanAfford] = useState(true);
-  const [credits, setCredits] = useState(userCredits);
-
-  // Charger les limites au montage
+  // Coût et crédits (coût fixe connu : pas d'appel de prévisualisation)
+  // Solde inconnu (prop absente) : on n'affiche rien et on laisse le
+  // serveur trancher (402 affiché en erreur) plutôt que de bloquer à tort.
+  const [credits, setCredits] = useState<number | undefined>(userCredits);
   useEffect(() => {
-    if (isOpen) {
-      fetchStudyLimits()
-        .then((data) => {
-          setLimits(data.limits);
-          // Ajuster les valeurs par défaut selon les limites
-          setQuestionCount(Math.min(5, data.limits.quiz_questions));
-          setDepthLevel(Math.min(3, data.limits.mindmap_depth));
-        })
-        .catch((err) => console.error("Error fetching limits:", err));
-    }
-  }, [isOpen]);
-
-  // Mettre à jour le coût quand les options changent
-  useEffect(() => {
-    if (selectedTool && viewMode === "options") {
-      const toolParam =
-        selectedTool === "card"
-          ? "study_card"
-          : selectedTool === "mindmap"
-            ? "concept_map"
-            : "study_all";
-      fetchCostPreview(toolParam, questionCount, depthLevel, withDetails)
-        .then((data) => {
-          setCostPreview(data.cost);
-          setCanAfford(data.can_afford);
-        })
-        .catch((err) => console.error("Error fetching cost:", err));
-    }
-  }, [selectedTool, questionCount, depthLevel, withDetails, viewMode]);
+    if (userCredits !== undefined) setCredits(userCredits);
+  }, [userCredits]);
+  const toolCost = selectedTool ? TOOL_COSTS[selectedTool] : 0;
+  const canAfford = credits === undefined || credits >= toolCost;
 
   const handleSelectTool = (tool: ToolType) => {
     setSelectedTool(tool);
@@ -350,40 +216,11 @@ export const StudyToolsModal: React.FC<StudyToolsModalProps> = ({
     }
   };
 
-  const handleGenerateMoreQuestions = async () => {
-    if (!studyCardData?.quiz || !limits?.can_generate_more) return;
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const result = await generateAdditionalQuestions(
-        summaryId,
-        studyCardData.quiz,
-        5,
-      );
-      // Ajouter les nouvelles questions au quiz existant
-      setStudyCardData({
-        ...studyCardData,
-        quiz: [...studyCardData.quiz, ...result.new_questions],
-      });
-      setCredits(result.credits_remaining);
-    } catch (err: unknown) {
-      setError(
-        (err as { message?: string } | null)?.message ||
-          "Erreur lors de la génération",
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleReset = () => {
     setViewMode("select");
     setSelectedTool(null);
     setStudyCardData(null);
     setConceptMapData(null);
-    setCostPreview(null);
     setError(null);
   };
 
@@ -399,7 +236,7 @@ export const StudyToolsModal: React.FC<StudyToolsModalProps> = ({
       conceptMapDesc:
         "Visualisation des concepts et de leurs relations en mindmap",
       allTools: "Pack complet",
-      allToolsDesc: "Fiche de révision + Arbre pédagogique (réduction 15%)",
+      allToolsDesc: "Fiche de révision + Arbre pédagogique",
       generating: "Génération en cours...",
       generatingCard: "Création de la fiche de révision...",
       generatingMap: "Construction de l'arbre pédagogique...",
@@ -414,14 +251,12 @@ export const StudyToolsModal: React.FC<StudyToolsModalProps> = ({
       questionCount: "Nombre de questions QCM",
       depthLevel: "Profondeur du mindmap",
       withDetails: "Descriptions détaillées",
+      credit: "crédit",
       credits: "crédits",
       estimatedCost: "Coût estimé",
       generate: "Générer",
       insufficientCredits: "Crédits insuffisants",
       upgradeRequired: "Passez à un plan supérieur pour plus d'options",
-      generateMore: "Générer 5 questions de plus",
-      moreQuestionsLocked: "Disponible à partir du plan Starter",
-      discount: "réduction",
       yourCredits: "Vos crédits",
     },
     en: {
@@ -435,7 +270,7 @@ export const StudyToolsModal: React.FC<StudyToolsModalProps> = ({
       conceptMapDesc:
         "Visualization of concepts and their relationships as a mindmap",
       allTools: "Complete Pack",
-      allToolsDesc: "Study Card + Concept Map (15% discount)",
+      allToolsDesc: "Study Card + Concept Map",
       generating: "Generating...",
       generatingCard: "Creating study card...",
       generatingMap: "Building concept map...",
@@ -450,19 +285,19 @@ export const StudyToolsModal: React.FC<StudyToolsModalProps> = ({
       questionCount: "Number of quiz questions",
       depthLevel: "Mindmap depth",
       withDetails: "Detailed descriptions",
+      credit: "credit",
       credits: "credits",
       estimatedCost: "Estimated cost",
       generate: "Generate",
       insufficientCredits: "Insufficient credits",
       upgradeRequired: "Upgrade your plan for more options",
-      generateMore: "Generate 5 more questions",
-      moreQuestionsLocked: "Available from Starter plan",
-      discount: "discount",
       yourCredits: "Your credits",
     },
   };
 
   const t = texts[language];
+  const formatCost = (cost: number) =>
+    `${cost} ${cost > 1 ? t.credits : t.credit}`;
 
   if (!isOpen) return null;
 
@@ -526,10 +361,12 @@ export const StudyToolsModal: React.FC<StudyToolsModalProps> = ({
                 <h3 className="text-lg font-semibold text-text-primary">
                   {t.selectTool}
                 </h3>
-                <span className="text-sm text-text-secondary">
-                  {t.yourCredits}:{" "}
-                  <strong className="text-accent-primary">{credits}</strong>
-                </span>
+                {credits !== undefined && (
+                  <span className="text-sm text-text-secondary">
+                    {t.yourCredits}:{" "}
+                    <strong className="text-accent-primary">{credits}</strong>
+                  </span>
+                )}
               </div>
 
               <div className="grid gap-4 md:grid-cols-3">
@@ -550,10 +387,7 @@ export const StudyToolsModal: React.FC<StudyToolsModalProps> = ({
                   <div className="flex items-center gap-2">
                     <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
                       <Zap className="w-3 h-3" />
-                      20+ {t.credits}
-                    </span>
-                    <span className="text-xs text-text-muted">
-                      max {limits?.quiz_questions || 5} questions
+                      {formatCost(TOOL_COSTS.card)}
                     </span>
                   </div>
                 </button>
@@ -575,10 +409,7 @@ export const StudyToolsModal: React.FC<StudyToolsModalProps> = ({
                   <div className="flex items-center gap-2">
                     <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
                       <Zap className="w-3 h-3" />
-                      25+ {t.credits}
-                    </span>
-                    <span className="text-xs text-text-muted">
-                      max {limits?.mindmap_depth || 3} niveaux
+                      {formatCost(TOOL_COSTS.mindmap)}
                     </span>
                   </div>
                 </button>
@@ -593,16 +424,13 @@ export const StudyToolsModal: React.FC<StudyToolsModalProps> = ({
                   </div>
                   <h4 className="font-semibold text-text-primary mb-1 flex items-center gap-2">
                     {t.allTools}
-                    <span className="px-1.5 py-0.5 text-[10px] font-bold bg-purple-600 text-white rounded">
-                      -15%
-                    </span>
                   </h4>
                   <p className="text-sm text-text-secondary mb-3">
                     {t.allToolsDesc}
                   </p>
                   <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
                     <Zap className="w-3 h-3" />
-                    38+ {t.credits}
+                    {formatCost(TOOL_COSTS.all)}
                   </span>
                 </button>
               </div>
@@ -649,21 +477,16 @@ export const StudyToolsModal: React.FC<StudyToolsModalProps> = ({
                       <button
                         onClick={() =>
                           setQuestionCount(
-                            Math.min(
-                              limits?.quiz_questions || 15,
-                              questionCount + 1,
-                            ),
+                            Math.min(MAX_QUIZ_QUESTIONS, questionCount + 1),
                           )
                         }
-                        disabled={
-                          questionCount >= (limits?.quiz_questions || 15)
-                        }
+                        disabled={questionCount >= MAX_QUIZ_QUESTIONS}
                         className="p-2 rounded-lg bg-bg-tertiary hover:bg-bg-hover disabled:opacity-50"
                       >
                         <Plus className="w-4 h-4" />
                       </button>
                     </div>
-                    {questionCount >= (limits?.quiz_questions || 15) && (
+                    {questionCount >= MAX_QUIZ_QUESTIONS && (
                       <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
                         <Lock className="w-3 h-3" />
                         Max pour votre plan ({userPlan})
@@ -695,19 +518,16 @@ export const StudyToolsModal: React.FC<StudyToolsModalProps> = ({
                       <button
                         onClick={() =>
                           setDepthLevel(
-                            Math.min(
-                              limits?.mindmap_depth || 5,
-                              depthLevel + 1,
-                            ),
+                            Math.min(MAX_MINDMAP_DEPTH, depthLevel + 1),
                           )
                         }
-                        disabled={depthLevel >= (limits?.mindmap_depth || 5)}
+                        disabled={depthLevel >= MAX_MINDMAP_DEPTH}
                         className="p-2 rounded-lg bg-bg-tertiary hover:bg-bg-hover disabled:opacity-50"
                       >
                         <Plus className="w-4 h-4" />
                       </button>
                     </div>
-                    {depthLevel >= (limits?.mindmap_depth || 5) && (
+                    {depthLevel >= MAX_MINDMAP_DEPTH && (
                       <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
                         <Lock className="w-3 h-3" />
                         Max pour votre plan ({userPlan})
@@ -737,9 +557,6 @@ export const StudyToolsModal: React.FC<StudyToolsModalProps> = ({
                         />
                       </button>
                     </label>
-                    <p className="text-xs text-text-muted mt-2">
-                      +15 crédits pour des descriptions détaillées
-                    </p>
                   </div>
                 )}
               </div>
@@ -752,27 +569,24 @@ export const StudyToolsModal: React.FC<StudyToolsModalProps> = ({
                       {t.estimatedCost}
                     </p>
                     <p className="text-3xl font-bold text-accent-primary">
-                      {costPreview?.total || "..."}{" "}
-                      <span className="text-base font-normal">{t.credits}</span>
-                    </p>
-                    {selectedTool === "all" &&
-                      costPreview?.breakdown?.discount && (
-                        <p className="text-xs text-green-600">
-                          -{costPreview.breakdown.discount} crédits (15%{" "}
-                          {t.discount})
-                        </p>
-                      )}
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm text-text-secondary">
-                      {t.yourCredits}
-                    </p>
-                    <p
-                      className={`text-2xl font-bold ${canAfford ? "text-green-600" : "text-red-500"}`}
-                    >
-                      {credits}
+                      {toolCost}{" "}
+                      <span className="text-base font-normal">
+                        {toolCost > 1 ? t.credits : t.credit}
+                      </span>
                     </p>
                   </div>
+                  {credits !== undefined && (
+                    <div className="text-right">
+                      <p className="text-sm text-text-secondary">
+                        {t.yourCredits}
+                      </p>
+                      <p
+                        className={`text-2xl font-bold ${canAfford ? "text-green-600" : "text-red-500"}`}
+                      >
+                        {credits}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -789,7 +603,7 @@ export const StudyToolsModal: React.FC<StudyToolsModalProps> = ({
                 {canAfford ? (
                   <>
                     <Sparkles className="w-5 h-5" />
-                    {t.generate} ({costPreview?.total || "..."} {t.credits})
+                    {t.generate} ({formatCost(toolCost)})
                   </>
                 ) : (
                   <>
@@ -846,12 +660,14 @@ export const StudyToolsModal: React.FC<StudyToolsModalProps> = ({
           {viewMode === "results" && (
             <div>
               {/* Header with credits */}
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-sm text-text-secondary">
-                  {t.yourCredits}:{" "}
-                  <strong className="text-accent-primary">{credits}</strong>
-                </span>
-              </div>
+              {credits !== undefined && (
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-sm text-text-secondary">
+                    {t.yourCredits}:{" "}
+                    <strong className="text-accent-primary">{credits}</strong>
+                  </span>
+                </div>
+              )}
 
               {/* Tabs if both are available */}
               {studyCardData && conceptMapData && (
@@ -886,47 +702,7 @@ export const StudyToolsModal: React.FC<StudyToolsModalProps> = ({
 
               {/* Study Card Results */}
               {activeResultTab === "card" && studyCardData && (
-                <>
-                  <StudyCard
-                    data={studyCardData}
-                    language={language}
-                    onGenerateMore={handleGenerateMoreQuestions}
-                    canGenerateMore={limits?.can_generate_more ?? false}
-                    isGenerating={loading}
-                  />
-
-                  {/* Generate More Questions Button */}
-                  {limits?.can_generate_more ? (
-                    <div className="mt-4 p-4 bg-bg-secondary rounded-xl border border-border-subtle">
-                      <button
-                        onClick={handleGenerateMoreQuestions}
-                        disabled={loading || credits < 30}
-                        className="w-full py-3 rounded-lg bg-accent-primary hover:bg-accent-primary-hover text-white font-medium flex items-center justify-center gap-2 disabled:opacity-50"
-                      >
-                        {loading ? (
-                          <DeepSightSpinnerMicro />
-                        ) : (
-                          <Plus className="w-4 h-4" />
-                        )}
-                        {t.generateMore}
-                        <span className="text-xs opacity-75">
-                          (30 {t.credits})
-                        </span>
-                      </button>
-                      <p className="text-xs text-text-muted text-center mt-2">
-                        Total actuel: {studyCardData?.quiz?.length || 0}{" "}
-                        questions
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800">
-                      <p className="text-sm text-amber-700 dark:text-amber-400 flex items-center gap-2">
-                        <Lock className="w-4 h-4" />
-                        {t.moreQuestionsLocked}
-                      </p>
-                    </div>
-                  )}
-                </>
+                <StudyCard data={studyCardData} language={language} />
               )}
 
               {/* Concept Map Results */}

@@ -758,7 +758,9 @@ interface RequestOptions {
   _retried?: boolean;
 }
 
-async function request<T>(
+// Exporté pour les appels encore hors des modules *Api (Historique, admin…) :
+// passer par ici donne le renouvellement du jeton sur 401.
+export async function request<T>(
   endpoint: string,
   options: RequestOptions = {},
 ): Promise<T> {
