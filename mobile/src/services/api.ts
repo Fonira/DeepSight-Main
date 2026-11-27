@@ -2629,17 +2629,46 @@ import type {
   SessionEndResponse as TutorSessionEndResponse,
 } from "../types/tutor";
 
+// Limites de SessionStartRequest (backend/src/tutor/schemas.py) : au-delà, 422 au
+// démarrage du Tuteur (les titres TikTok enregistrés peuvent faire 255 caractères).
+export const TUTOR_LIMITS = {
+  conceptTerm: 200,
+  conceptDef: 2000,
+  sourceVideoTitle: 300,
+} as const;
+
+/** Tronque par caractères (pas d'unité UTF-16 coupée en deux), avec « … ». */
+export function truncateForApi(text: string, max: number): string {
+  const chars = Array.from(text);
+  if (chars.length <= max) return text;
+  return `${chars.slice(0, max - 1).join("").trimEnd()}…`;
+}
+
 export const tutorApi = {
   /**
-   * Démarre une session Tutor : crée la session Redis + génère le 1er prompt Magistral.
+   * Démarre une session Tutor : crée la session Redis + génère le 1er prompt
+   * (Mistral, modèle choisi par le backend selon le plan).
    * Endpoint: POST /api/tutor/session/start
    */
   async sessionStart(
     payload: TutorSessionStartRequest,
   ): Promise<TutorSessionStartResponse> {
+    const body: TutorSessionStartRequest = {
+      ...payload,
+      concept_term: truncateForApi(payload.concept_term, TUTOR_LIMITS.conceptTerm),
+      concept_def: truncateForApi(payload.concept_def, TUTOR_LIMITS.conceptDef),
+      ...(payload.source_video_title
+        ? {
+            source_video_title: truncateForApi(
+              payload.source_video_title,
+              TUTOR_LIMITS.sourceVideoTitle,
+            ),
+          }
+        : {}),
+    };
     return request<TutorSessionStartResponse>("/api/tutor/session/start", {
       method: "POST",
-      body: payload as unknown as Record<string, unknown>,
+      body: body as unknown as Record<string, unknown>,
       timeout: 60000,
     });
   },

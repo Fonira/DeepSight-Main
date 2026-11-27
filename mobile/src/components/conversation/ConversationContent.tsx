@@ -34,6 +34,8 @@ import * as Haptics from "expo-haptics";
 import type BottomSheet from "@gorhom/bottom-sheet";
 import { useConversation } from "../../hooks/useConversation";
 import LanguageContext from "../../contexts/LanguageContext";
+import { useAuthStore } from "../../stores/authStore";
+import { getLimit } from "../../config/planPrivileges";
 import { historyApi } from "../../services/api";
 import {
   voiceErrorMessage,
@@ -193,13 +195,19 @@ export const ConversationContent: React.FC<ConversationContentProps> = ({
   }, []);
 
   // ─── Quota label ───
+  // Limite de questions par vidéo selon le plan (Free 5, Pro 25, Expert/unlimited
+  // illimité) — avant : « x/15 » codé en dur, faux pour tous les plans.
+  const userPlan = useAuthStore((s) => s.user?.plan);
+  const questionLimit = getLimit(userPlan, "chatQuestionsPerVideo");
   const userMessageCount = conv.messages.filter(
     (m) => m.role === "user",
   ).length;
   const quotaText =
     conv.voiceMode === "live"
       ? `${Math.max(0, Math.floor(conv.remainingMinutes))} min restantes`
-      : `${userMessageCount}/15 questions`;
+      : questionLimit > 0
+        ? `${userMessageCount}/${questionLimit} questions`
+        : `${userMessageCount} question${userMessageCount > 1 ? "s" : ""}`;
 
   // Detect platform pour header (Live si Quick Call sans summary résolu)
   const headerPlatform: "youtube" | "tiktok" | "live" =
