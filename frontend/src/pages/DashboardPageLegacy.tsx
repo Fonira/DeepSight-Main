@@ -670,12 +670,18 @@ export const DashboardPage: React.FC = () => {
               description: r.text_preview,
             }),
           );
-          setDiscoveryResult({
-            query: smartInput.libraryQuery!,
-            videos: candidates,
-            total_found: searchResult.total_results,
-            search_metadata: { source: "library", languages: [] },
-          } as unknown as DiscoveryResponse);
+          // `candidates` (et non `videos`) : c'est le champ que lit la modale
+          // de découverte, sinon elle s'ouvrait toujours vide.
+          const libraryResult: DiscoveryResponse = {
+            query: smartInput.libraryQuery ?? "",
+            reformulated_queries: [],
+            candidates,
+            total_searched: searchResult.total_results,
+            languages_searched: [],
+            search_duration_ms: 0,
+            tournesol_available: false,
+          };
+          setDiscoveryResult(libraryResult);
           setShowDiscoveryModal(true);
         } else {
           setError(
