@@ -242,8 +242,10 @@ async def create_share_link(
             SharedAnalysis.video_id == request.video_id,
             SharedAnalysis.is_active,
         )
+        .order_by(SharedAnalysis.id.desc())
+        .limit(1)
     )
-    existing_share = existing.scalar_one_or_none()
+    existing_share = existing.scalars().first()
 
     if existing_share:
         return ShareResponse(
@@ -260,8 +262,11 @@ async def create_share_link(
             Summary.video_id == request.video_id,
         )
         .order_by(Summary.created_at.desc())
+        .limit(1)
     )
-    summary = result.scalar_one_or_none()
+    # Plusieurs analyses de la même vidéo sont possibles (ré-analyse, cache
+    # global) : on partage la plus récente au lieu de lever MultipleResultsFound.
+    summary = result.scalars().first()
 
     if not summary:
         raise HTTPException(status_code=404, detail="Analysis not found for this video")

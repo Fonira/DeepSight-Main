@@ -935,6 +935,44 @@ async def analyze_video(
     logger.info(f"🎬 Video ID extracted: {video_id}, cost: {credit_cost} credits")
 
     # ═══════════════════════════════════════════════════════════════════════════════
+    # 💾 SYSTÈME DE CACHE v2.0 — Économise les crédits API
+    # ═══════════════════════════════════════════════════════════════════════════════
+    # Vérifier si déjà analysée (même vidéo, même mode) - SAUF si force_refresh.
+    # Placé AVANT le cache global : sinon chaque ré-analyse d'une vidéo déjà
+    # dans l'historique créait une nouvelle ligne Summary (doublons) et un
+    # appel Mistral « extras » inutile.
+    if not request.force_refresh:
+        existing = await get_summary_by_video_id(session, video_id, current_user.id)
+
+        if existing and existing.mode == request.mode:
+            # Vérifier la fraîcheur du cache (7 jours max)
+            from datetime import timedelta
+
+            cache_age = datetime.now() - existing.created_at
+            cache_valid = cache_age < timedelta(days=7)
+
+            if cache_valid:
+                logger.info(f"💾 [CACHE HIT] Using cached analysis: summary_id={existing.id} (age: {cache_age.days}d)")
+                return TaskStatusResponse(
+                    task_id=f"cached_{existing.id}",
+                    status="completed",
+                    progress=100,
+                    message="✅ Analyse retrouvée en cache (gratuit!)",
+                    result={
+                        "summary_id": existing.id,
+                        "cached": True,
+                        "cache_age_days": cache_age.days,
+                        "video_title": existing.video_title,
+                        "category": existing.category,
+                        "cost": 0,  # Gratuit car cache
+                    },
+                )
+            else:
+                logger.info(f"⏰ [CACHE EXPIRED] Cache too old ({cache_age.days} days), re-analyzing...")
+    else:
+        logger.info("🔄 [FORCE REFRESH] Bypassing cache as requested")
+
+    # ═══════════════════════════════════════════════════════════════════════════════
     # 💾 GLOBAL VIDEO CONTENT CACHE — Cross-user L1 Redis / L2 PostgreSQL VPS
     # ═══════════════════════════════════════════════════════════════════════════════
     if not request.force_refresh:
@@ -1003,41 +1041,6 @@ async def analyze_video(
                     )
         except Exception as _vcache_err:
             logger.error(f"⚠️ [GLOBAL CACHE] Check failed (continuing): {_vcache_err}")
-
-    # ═══════════════════════════════════════════════════════════════════════════════
-    # 💾 SYSTÈME DE CACHE v2.0 — Économise les crédits API
-    # ═══════════════════════════════════════════════════════════════════════════════
-    # Vérifier si déjà analysée (même vidéo, même mode) - SAUF si force_refresh
-    if not request.force_refresh:
-        existing = await get_summary_by_video_id(session, video_id, current_user.id)
-
-        if existing and existing.mode == request.mode:
-            # Vérifier la fraîcheur du cache (7 jours max)
-            from datetime import timedelta
-
-            cache_age = datetime.now() - existing.created_at
-            cache_valid = cache_age < timedelta(days=7)
-
-            if cache_valid:
-                logger.info(f"💾 [CACHE HIT] Using cached analysis: summary_id={existing.id} (age: {cache_age.days}d)")
-                return TaskStatusResponse(
-                    task_id=f"cached_{existing.id}",
-                    status="completed",
-                    progress=100,
-                    message="✅ Analyse retrouvée en cache (gratuit!)",
-                    result={
-                        "summary_id": existing.id,
-                        "cached": True,
-                        "cache_age_days": cache_age.days,
-                        "video_title": existing.video_title,
-                        "category": existing.category,
-                        "cost": 0,  # Gratuit car cache
-                    },
-                )
-            else:
-                logger.info(f"⏰ [CACHE EXPIRED] Cache too old ({cache_age.days} days), re-analyzing...")
-    else:
-        logger.info("🔄 [FORCE REFRESH] Bypassing cache as requested")
 
     # 🔐 Générer un ID d'opération sécurisé
     if SECURITY_AVAILABLE:
