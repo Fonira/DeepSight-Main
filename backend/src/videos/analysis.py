@@ -107,6 +107,7 @@ RÈGLES D'OR :
 2. Toujours attribuer les affirmations ("Selon l'auteur...", "L'intervenant affirme...")
 3. Signaler les affirmations extraordinaires ou non étayées
 4. Utiliser le conditionnel pour les hypothèses
+5. N'identifie jamais le vidéaste, le fondateur de la chaîne ou un intervenant (nom, rôle, parcours) à partir de tes connaissances générales : seulement si c'est écrit dans la transcription, les métadonnées de la vidéo ou de la chaîne, ou une source citée du contexte web. Sinon, écris « le vidéaste » ou « l'intervenant » sans le nommer.
 
 MARQUEURS À UTILISER :
 ✅ SOLIDE — Fait vérifié, consensus scientifique
@@ -131,6 +132,7 @@ GOLDEN RULES:
 2. Always attribute claims ("According to the author...", "The speaker states...")
 3. Flag extraordinary or unsupported claims
 4. Use conditional for hypotheses
+5. Never identify the creator, the channel's founder or a speaker (name, role, background) from your general knowledge: only if it is written in the transcript, the video or channel metadata, or a cited source in the web context. Otherwise write "the creator" or "the speaker" without naming them.
 
 MARKERS TO USE:
 ✅ SOLID — Verified fact, scientific consensus
@@ -1516,6 +1518,7 @@ Tu reçois en plus un contexte sur la chaîne YouTube/TikTok du vidéaste (jusqu
 - Indique si la vidéo analysée est représentative de la chaîne ou une exception (signal fort/faible)
 - Décrit en 1-2 phrases les intentions probables du vidéaste à la lumière de l'ensemble de ses contenus
 - Reste neutre et factuel — pas de jugement moral, juste classification descriptive
+- Ne nomme ni le vidéaste ni le fondateur de la chaîne, sauf si son nom figure dans le contexte chaîne fourni (description, titres) ou dans la transcription ; sinon, parle du « vidéaste »
 
 Si aucun contexte chaîne n'est fourni, ne génère PAS cette section.
 """
@@ -1529,6 +1532,7 @@ You also receive context about the video creator's YouTube/TikTok channel (up to
 - Indicates whether the analyzed video is representative of the channel or an exception (strong/weak signal)
 - Describes in 1-2 sentences the creator's probable intentions in light of their overall content
 - Remains neutral and factual — no moral judgment, just descriptive classification
+- Does not name the creator or the channel's founder unless their name appears in the provided channel context (description, titles) or in the transcript; otherwise refers to "the creator"
 
 If no channel context is provided, do NOT generate this section.
 """
