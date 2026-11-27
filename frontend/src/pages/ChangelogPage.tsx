@@ -1,37 +1,13 @@
-import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { SEO } from "../components/SEO";
-
-const CHANGELOG_URL =
-  "https://raw.githubusercontent.com/Fonira/DeepSight-Main/main/CHANGELOG.md";
+// Intégré au build : le fetch vers raw.githubusercontent.com était bloqué par
+// la CSP (connect-src) et le dépôt est privé.
+import changelog from "../../../CHANGELOG.md?raw";
 
 export default function ChangelogPage() {
-  const [content, setContent] = useState<string>("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch(CHANGELOG_URL, { cache: "no-store" })
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.text();
-      })
-      .then((text) => {
-        if (!cancelled) setContent(text);
-      })
-      .catch((e: Error) => {
-        if (!cancelled) setError(e.message);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const content = changelog;
 
   return (
     <>
@@ -55,24 +31,7 @@ export default function ChangelogPage() {
             </p>
           </header>
 
-          {loading && <p className="text-text-secondary">Chargement…</p>}
-
-          {error && (
-            <div className="rounded-lg border border-red-500/30 bg-red-900/10 p-4 text-red-300">
-              <p className="font-medium">Impossible de charger le changelog.</p>
-              <p className="mt-1 text-sm opacity-80">Erreur : {error}</p>
-              <a
-                href="https://github.com/Fonira/DeepSight-Main/blob/main/CHANGELOG.md"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-2 inline-block text-sm underline hover:no-underline"
-              >
-                Voir sur GitHub →
-              </a>
-            </div>
-          )}
-
-          {!loading && !error && (
+          {content && (
             <article className="prose prose-invert max-w-none prose-headings:text-text-primary prose-a:text-accent-primary prose-strong:text-text-primary prose-code:text-accent-primary">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>
                 {content}

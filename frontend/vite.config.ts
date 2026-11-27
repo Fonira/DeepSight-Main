@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig, searchForWorkspaceRoot } from "vite";
 import react from "@vitejs/plugin-react";
 import { sentryVitePlugin } from "@sentry/vite-plugin";
 import { visualizer } from "rollup-plugin-visualizer";
@@ -30,6 +30,14 @@ export default defineConfig({
         ]
       : []),
   ],
+
+  // Le changelog est importé depuis la racine du repo (../CHANGELOG.md?raw) :
+  // l'autoriser explicitement pour le serveur de dev.
+  server: {
+    fs: {
+      allow: [searchForWorkspaceRoot(process.cwd()), "../CHANGELOG.md"],
+    },
+  },
 
   // Inject build timestamp for cache-busting detection
   define: {
