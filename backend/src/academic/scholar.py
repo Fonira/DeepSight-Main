@@ -96,6 +96,9 @@ _CAPTCHA_PATTERNS: List[str] = [
 
 _redis_client = None
 _last_local_request_time: float = 0.0
+# Sérialise les appels concurrents d'un même process (créé à la demande, pour
+# être lié à la boucle asyncio courante ; remis à zéro par les tests).
+_rate_limit_lock: asyncio.Lock | None = None
 
 
 # ───────────────────────────────────────────────────────────────────────────────
@@ -144,9 +147,17 @@ async def init_scholar_redis(redis_client) -> None:
 
 def _reset_state_for_tests() -> None:
     """Reset module-level state. Test-only helper."""
-    global _redis_client, _last_local_request_time
+    global _redis_client, _last_local_request_time, _rate_limit_lock
     _redis_client = None
     _last_local_request_time = 0.0
+    _rate_limit_lock = None
+
+
+def _get_rate_limit_lock() -> asyncio.Lock:
+    global _rate_limit_lock
+    if _rate_limit_lock is None:
+        _rate_limit_lock = asyncio.Lock()
+    return _rate_limit_lock
 
 
 # ───────────────────────────────────────────────────────────────────────────────
@@ -159,31 +170,37 @@ async def _rate_limit() -> None:
 
     Distributed via Redis (cross-worker). Falls back to per-process local
     timer if Redis is unreachable. Spec sect. 4.5.
+
+    The read-then-write of the timestamp is not atomic: without the process
+    lock, concurrent coroutines all read the same marker and fire together
+    once it expires. The lock makes them wait their turn, one interval apart;
+    across workers the Redis marker stays best-effort.
     """
     global _last_local_request_time
 
-    if _redis_client is not None:
-        try:
-            now = time.time()
-            last_raw = await _redis_client.get(SCHOLAR_RATE_LOCK_KEY)
-            if last_raw:
-                try:
-                    last = float(last_raw)
-                    elapsed = now - last
-                    if elapsed < SCHOLAR_RATE_INTERVAL:
-                        await asyncio.sleep(SCHOLAR_RATE_INTERVAL - elapsed)
-                except (ValueError, TypeError):
-                    pass
-            await _redis_client.set(SCHOLAR_RATE_LOCK_KEY, str(time.time()), ex=15)
-            return
-        except Exception as e:
-            logger.debug(f"[SCHOLAR] Redis rate limit failed, fallback local: {e}")
+    async with _get_rate_limit_lock():
+        if _redis_client is not None:
+            try:
+                now = time.time()
+                last_raw = await _redis_client.get(SCHOLAR_RATE_LOCK_KEY)
+                if last_raw:
+                    try:
+                        last = float(last_raw)
+                        elapsed = now - last
+                        if elapsed < SCHOLAR_RATE_INTERVAL:
+                            await asyncio.sleep(SCHOLAR_RATE_INTERVAL - elapsed)
+                    except (ValueError, TypeError):
+                        pass
+                await _redis_client.set(SCHOLAR_RATE_LOCK_KEY, str(time.time()), ex=15)
+                return
+            except Exception as e:
+                logger.debug(f"[SCHOLAR] Redis rate limit failed, fallback local: {e}")
 
-    # Local fallback
-    elapsed = time.time() - _last_local_request_time
-    if elapsed < SCHOLAR_RATE_INTERVAL:
-        await asyncio.sleep(SCHOLAR_RATE_INTERVAL - elapsed)
-    _last_local_request_time = time.time()
+        # Local fallback
+        elapsed = time.time() - _last_local_request_time
+        if elapsed < SCHOLAR_RATE_INTERVAL:
+            await asyncio.sleep(SCHOLAR_RATE_INTERVAL - elapsed)
+        _last_local_request_time = time.time()
 
 
 # ───────────────────────────────────────────────────────────────────────────────
