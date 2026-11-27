@@ -164,6 +164,14 @@ class TestIntermediateRoutesUseSharedClient:
         """api.supadata.ai/v1/transcript — intermediate, no Decodo needed."""
         self._assert_url_uses_shared_client("api.supadata.ai/v1/transcript")
 
+    def test_supadata_playlist_videos_uses_shared_client(self):
+        """api.supadata.ai/v1/youtube/playlist/videos — intermediate, no Decodo needed."""
+        self._assert_url_uses_shared_client("api.supadata.ai/v1/youtube/playlist/videos")
+
+    def test_supadata_playlist_metadata_uses_shared_client(self):
+        """api.supadata.ai/v1/youtube/playlist — intermediate, no Decodo needed."""
+        self._assert_url_uses_shared_client("api.supadata.ai/v1/youtube/playlist")
+
     def test_invidious_videos_endpoint_uses_shared_client(self):
         """{instance}/api/v1/videos/{id} — Invidious, intermediate, no Decodo needed."""
         self._assert_url_uses_shared_client("/api/v1/videos/{video_id}")
