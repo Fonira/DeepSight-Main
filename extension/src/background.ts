@@ -11,7 +11,6 @@ import {
   clearStoredAuth,
   getStoredUser,
   addRecentAnalysis,
-  getTokenRefreshedAt,
 } from "./utils/storage";
 import { extractVideoId } from "./utils/video";
 import {
@@ -22,6 +21,7 @@ import {
   networkError,
   toErrorResponse,
 } from "./utils/apiError";
+import { expiresWithin } from "./utils/jwt";
 import { drainCrashes } from "./utils/crash-logger";
 import { reportCrashes } from "./utils/sentry-reporter";
 import type {
@@ -158,7 +158,7 @@ async function apiRequest<T>(
   options: RequestInit = {},
 ): Promise<T> {
   assertNotRateLimited(endpoint);
-  const { accessToken } = await getStoredTokens();
+  const accessToken = await getFreshAccessToken();
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -167,21 +167,6 @@ async function apiRequest<T>(
 
   if (accessToken) {
     headers["Authorization"] = `Bearer ${accessToken}`;
-  }
-
-  // Proactive refresh : access_token vit 7j côté backend mais on rafraîchit
-  // bien avant pour limiter les 401 mid-request sur les longs pollings.
-  // 24h = grosse marge ; pas besoin de hammer le /refresh toutes les 20min.
-  const refreshedAt = await getTokenRefreshedAt();
-  if (
-    accessToken &&
-    refreshedAt &&
-    Date.now() - refreshedAt > 24 * 60 * 60 * 1000
-  ) {
-    await tryRefreshToken();
-    const fresh = await getStoredTokens();
-    if (fresh.accessToken)
-      headers["Authorization"] = `Bearer ${fresh.accessToken}`;
   }
 
   const response = await fetchApi(endpoint, { ...options, headers });
@@ -229,6 +214,30 @@ async function apiRequest<T>(
   }
 
   return parseJsonBody<T>(response);
+}
+
+/**
+ * L'access token vit 60 min (Sprint C, refresh token 30 j). On le rafraîchit
+ * quand il expire dans moins d'une minute, avant d'envoyer la requête,
+ * plutôt que d'attendre le 401 (l'ancienne logique supposait 7 jours et ne
+ * rafraîchissait qu'au bout de 24 h). Utile aussi pour GET_AUTH_TOKEN, dont
+ * le token part dans l'URL d'un EventSource sans passer par apiRequest.
+ */
+const ACCESS_TOKEN_REFRESH_MARGIN_MS = 60_000;
+
+async function getFreshAccessToken(): Promise<string | null> {
+  const { accessToken } = await getStoredTokens();
+  if (!accessToken || !expiresWithin(accessToken, ACCESS_TOKEN_REFRESH_MARGIN_MS)) {
+    return accessToken;
+  }
+  const refreshed = await tryRefreshToken();
+  if (refreshed !== "ok") {
+    // invalid_token / transient : on garde le token courant, le 401 éventuel
+    // suivra le chemin habituel (refresh → SESSION_EXPIRED ou NETWORK_ERROR).
+    return accessToken;
+  }
+  const fresh = await getStoredTokens();
+  return fresh.accessToken ?? accessToken;
 }
 
 /** `fetch` vers l'API ; un rejet réseau devient une `ApiError` typée. */
@@ -1566,9 +1575,13 @@ async function handleExtensionMessage(
       // cas où il faut l'attacher à une URL (ex: EventSource SSE qui ne peut
       // pas envoyer de header Authorization).
       try {
-        const { accessToken } = await getStoredTokens();
+        const accessToken = await getFreshAccessToken();
         if (!accessToken) {
-          return { success: false, error: "Not authenticated" };
+          return {
+            success: false,
+            error: LEGACY_ERROR_MESSAGES.AUTH_REQUIRED,
+            errorCode: ERROR_CODES.AUTH_REQUIRED,
+          };
         }
         return { success: true, result: { token: accessToken } };
       } catch (e) {
@@ -1700,7 +1713,9 @@ try {
 // ── Alarms ──
 
 Browser.alarms.create("keepAlive", { periodInMinutes: 0.5 });
-Browser.alarms.create("refreshToken", { periodInMinutes: 30 }); // Refresh toutes les 30min — grosse marge vs access_token 24h, + proactive refresh in-flight (20min)
+// Refresh toutes les 30 min : l'access token (60 min) reste valide tant que
+// le navigateur tourne ; apiRequest rafraîchit aussi à moins d'1 min de l'exp.
+Browser.alarms.create("refreshToken", { periodInMinutes: 30 });
 
 Browser.alarms.onAlarm.addListener(async (alarm: Alarms.Alarm) => {
   if (alarm.name === "refreshToken" && (await isAuthenticated())) {
