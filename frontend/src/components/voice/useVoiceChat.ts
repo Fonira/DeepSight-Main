@@ -436,40 +436,15 @@ export function useVoiceChat({
       setElapsedSeconds(0);
       setStatus("connecting");
 
-      // 1. Lancer en PARALLÈLE : accès micro + preload SDK ElevenLabs
-      //    (sans attendre la session, économie de ~200-500ms vs exécution séquentielle)
+      // 1. Précharger le SDK ElevenLabs pendant la création de la session
       const sdkPromise = import("@elevenlabs/client").catch((e) => {
         console.warn("SDK preload failed:", e);
         return null;
       });
-      const micPromise = navigator.mediaDevices
-        .getUserMedia({ audio: true })
-        .catch((err: unknown) => err as DOMException);
 
-      let stream: MediaStream;
-      const micResult = await micPromise;
-      if (micResult instanceof MediaStream) {
-        stream = micResult;
-        mediaStreamRef.current = stream;
-      } else {
-        const mediaError = micResult as DOMException;
-        if (
-          mediaError.name === "NotAllowedError" ||
-          mediaError.name === "PermissionDeniedError"
-        ) {
-          reportError(ERROR_MESSAGES.MICROPHONE_DENIED);
-        } else if (
-          mediaError.name === "NotFoundError" ||
-          mediaError.name === "DevicesNotFoundError"
-        ) {
-          reportError(ERROR_MESSAGES.MICROPHONE_NOT_FOUND);
-        } else {
-          reportError(ERROR_MESSAGES.MICROPHONE_GENERIC);
-        }
-        return;
-      }
-
-      // 2. Créer la session via notre API
+      // 2. Créer la session AVANT de demander le micro : si la voix est
+      //    indisponible (quota, plan, service non configuré), l'utilisateur
+      //    n'a pas à accorder une permission micro pour rien.
       let sessionData: SessionResponse;
       try {
         const token = getAccessToken();
@@ -491,7 +466,6 @@ export function useVoiceChat({
         });
 
         if (response.status === 403 || response.status === 429) {
-          releaseMediaStream();
           setStatus("quota_exceeded");
           setError(ERROR_MESSAGES.QUOTA_EXCEEDED);
           onError?.(ERROR_MESSAGES.QUOTA_EXCEEDED);
@@ -516,12 +490,39 @@ export function useVoiceChat({
         pttKeyRef.current = sessionPttKey;
         setPttKey(sessionPttKey);
       } catch (err) {
-        releaseMediaStream();
         if (err instanceof TypeError) {
           // TypeError = network failure (fetch)
           reportError(ERROR_MESSAGES.NETWORK);
         } else {
           reportError(ERROR_MESSAGES.SESSION_FAILED);
+        }
+        return;
+      }
+
+      // 2b. Session obtenue : maintenant seulement, accès au micro
+      const micPromise = navigator.mediaDevices
+        .getUserMedia({ audio: true })
+        .catch((err: unknown) => err as DOMException);
+
+      let stream: MediaStream;
+      const micResult = await micPromise;
+      if (micResult instanceof MediaStream) {
+        stream = micResult;
+        mediaStreamRef.current = stream;
+      } else {
+        const mediaError = micResult as DOMException;
+        if (
+          mediaError.name === "NotAllowedError" ||
+          mediaError.name === "PermissionDeniedError"
+        ) {
+          reportError(ERROR_MESSAGES.MICROPHONE_DENIED);
+        } else if (
+          mediaError.name === "NotFoundError" ||
+          mediaError.name === "DevicesNotFoundError"
+        ) {
+          reportError(ERROR_MESSAGES.MICROPHONE_NOT_FOUND);
+        } else {
+          reportError(ERROR_MESSAGES.MICROPHONE_GENERIC);
         }
         return;
       }
