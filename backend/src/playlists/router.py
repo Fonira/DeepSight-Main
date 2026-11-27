@@ -27,9 +27,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, func
 
 from db.database import get_session, User, Summary, PlaylistAnalysis, PlaylistChatMessage, VideoChunk
-from auth.dependencies import get_current_user
+from auth.dependencies import get_current_user, is_admin_user
 from core.config import get_mistral_key
-from billing.plan_config import get_limits
+from core.plan_limits import check_feature_access
+from billing.plan_config import get_limits, normalize_plan_id
 from videos.web_search_provider import web_search_and_synthesize
 from transcripts import extract_playlist_id, get_playlist_videos, get_playlist_info
 from .task_store import playlist_task_store
@@ -107,6 +108,25 @@ class ChatCorpusResponse(BaseModel):
 _playlist_task_store = playlist_task_store
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
+
+
+def _check_playlist_access(user: User) -> tuple[str, int]:
+    """Vérifie que le plan donne accès aux playlists.
+
+    Renvoie (plan effectif, nombre max de vidéos). L'admin est traité comme
+    Expert, quel que soit le plan stocké en base ; les autres passent par
+    check_feature_access (SSOT plan_config) et reçoivent un 403 explicite.
+    """
+    if is_admin_user(user):
+        plan = "expert"
+    else:
+        has_access, error_info = check_feature_access(
+            user, "playlists", lang=getattr(user, "default_lang", None) or "fr"
+        )
+        if not has_access:
+            raise HTTPException(status_code=403, detail=error_info)
+        plan = normalize_plan_id(user.plan or "free")
+    return plan, int(get_limits(plan).get("max_playlist_videos", 0) or 0)
 
 
 def _task_status_response(task_id: str, task: dict[str, Any]) -> PlaylistTaskStatus:
@@ -797,11 +817,10 @@ async def analyze_playlist(
     if not playlist_id:
         raise HTTPException(status_code=400, detail="URL de playlist invalide")
 
-    plan = current_user.plan or "free"
-    max_allowed = get_limits(plan).get("max_playlist_videos", 10)
+    plan, max_allowed = _check_playlist_access(current_user)
     max_videos = min(request.max_videos, max_allowed)
 
-    if current_user.credits < max_videos:
+    if not is_admin_user(current_user) and (current_user.credits or 0) < max_videos:
         raise HTTPException(
             status_code=403, detail=f"Crédits insuffisants ({current_user.credits} disponibles, {max_videos} requis)"
         )
@@ -869,13 +888,12 @@ async def analyze_corpus(
     print(f"   Name: {request.name}", flush=True)
     print(f"   Videos: {len(request.urls)}", flush=True)
 
-    plan = current_user.plan or "free"
-    max_allowed = get_limits(plan).get("max_playlist_videos", 10)
+    plan, max_allowed = _check_playlist_access(current_user)
 
     if len(request.urls) > max_allowed:
         raise HTTPException(status_code=403, detail=f"Maximum {max_allowed} vidéos pour le plan {plan}")
 
-    if current_user.credits < len(request.urls):
+    if not is_admin_user(current_user) and (current_user.credits or 0) < len(request.urls):
         raise HTTPException(status_code=403, detail=f"Crédits insuffisants ({current_user.credits} disponibles)")
 
     task_id = str(uuid4())
