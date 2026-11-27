@@ -12,7 +12,6 @@
   "permissions": [
     "storage",
     "activeTab",
-    "tabs",
     "alarms",
     "identity",
     "clipboardWrite",
@@ -21,8 +20,6 @@
     "offscreen"
   ],
 
-  "optional_permissions": ["audioCapture"],
-
   "host_permissions": [
     "https://www.youtube.com/*",
     "https://youtube.com/*",
@@ -30,12 +27,7 @@
     "https://tiktok.com/*",
     "https://vm.tiktok.com/*",
     "https://m.tiktok.com/*",
-    "https://www.deepsightsynthesis.com/*",
-    "https://api.deepsightsynthesis.com/*",
-    "https://api.elevenlabs.io/*",
-    "wss://api.elevenlabs.io/*",
-    "https://*.elevenlabs.io/*",
-    "wss://*.elevenlabs.io/*"
+    "https://api.deepsightsynthesis.com/*"
   ],
 
   "background": {

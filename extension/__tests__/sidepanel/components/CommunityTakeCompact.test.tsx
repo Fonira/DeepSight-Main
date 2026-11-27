@@ -82,14 +82,14 @@ describe("CommunityTakeCompact", () => {
     ).toBeInTheDocument();
   });
 
-  it("expand puis click 'lire complet' → ouvre /hub/analysis/{id}", () => {
+  it("expand puis click 'lire complet' → ouvre /hub?conv={id}", () => {
     render(
       <CommunityTakeCompact take={baseTake} summaryId={777} userPlanId="pro" />,
     );
     fireEvent.click(screen.getByTestId("community-take-compact-toggle"));
     fireEvent.click(screen.getByTestId("community-take-compact-open-web"));
     expect(tabsCreateSpy).toHaveBeenCalledWith({
-      url: expect.stringContaining("/hub/analysis/777"),
+      url: expect.stringContaining("/hub?conv=777"),
     });
   });
 

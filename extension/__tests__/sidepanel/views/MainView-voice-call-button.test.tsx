@@ -15,65 +15,10 @@ import { resetChromeMocks } from "../../setup/chrome-api-mock";
 // Mock useTranslation pour ne pas dépendre de chrome.storage.sync.
 // Inclut tout ce que MainView, VoiceCallButton et PromoBanner utilisent.
 jest.mock("../../../src/i18n/useTranslation", () => ({
+  // Vraies traductions FR : un dictionnaire partiel faisait planter le rendu
+  // dès qu'un composant enfant lisait une clé absente (voiceCall.callActive…).
   useTranslation: () => ({
-    t: {
-      common: {
-        login: "Login",
-        logout: "Logout",
-        retry: "Réessayer",
-        viewPlans: "Voir les plans",
-        unlock: "Débloquer",
-        analyses: "analyses",
-        credits: "crédits",
-        createAccount: "Créer un compte",
-      },
-      plans: { free: "Gratuit", pro: "Pro", expert: "Expert" },
-      upsell: {
-        free: { label: "Pro", feature: "x", price: "5,99€" },
-      },
-      promos: {
-        free: [{ text: "x", cta: "y" }],
-        starter: [{ text: "x", cta: "y" }],
-        standard: [{ text: "x", cta: "y" }],
-        pro: [{ text: "x", cta: "y" }],
-      },
-      analysis: {
-        noVideo: "Aucune vidéo",
-        analyzeButton: "Analyser cette vidéo",
-        starting: "Démarrage…",
-        processing: "En cours…",
-        failed: "Échec",
-        startFailed: "Impossible de démarrer",
-        recent: "Récents",
-        quickChatButton: "Quick Chat",
-        quickChatPreparing: "Préparation…",
-        quotaExceeded: "Quota atteint",
-        quotaExceededText: "Passez en Pro",
-        mode: "Mode",
-        language: "Langue",
-        modes: { standard: "Standard", accessible: "Accessible" },
-        languages: { fr: "FR", en: "EN", es: "ES", de: "DE" },
-      },
-      guest: { banner: "Découverte", exhaustedText: "Créez un compte" },
-      credits: {
-        critical: "{count}",
-        recharge: "x",
-        remaining: "{count}",
-        low: "x",
-      },
-      mistral: { badge: "Mistral" },
-      ytRecommend: { title: "x", subtitle: "x", dismiss: "x" },
-      voiceCall: {
-        buttonLabel: "Appel rapide",
-        buttonAriaLabel: "Lancer un appel vocal",
-        buttonLabelFloating: "🎙️ Appeler la vidéo",
-        trialBadge: "1 essai gratuit",
-        trialUsed: "Essai utilisé",
-        trialUsedTitle: "Essai utilisé — passer en Expert",
-        minutesRemaining: "{count} min restantes",
-        upgradeBadge: "Passer en Expert",
-      },
-    },
+    t: jest.requireActual("../../../src/i18n/fr.json"),
     language: "fr",
     setLanguage: jest.fn(),
   }),
@@ -193,8 +138,8 @@ describe("MainView × VoiceCallButton (I1)", () => {
     );
 
     await waitFor(() => {
-      // Pro plan → badge "Passer en Expert" sur VoiceCallButton.
-      expect(screen.queryByText(/Passer en Expert/)).not.toBeNull();
+      // Pricing v2 : Pro a un quota mensuel → badge « N min restantes ».
+      expect(screen.queryByText(/min restantes/)).not.toBeNull();
     });
   });
 

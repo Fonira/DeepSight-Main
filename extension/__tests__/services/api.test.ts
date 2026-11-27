@@ -2,53 +2,29 @@
  * Tests — Background script API client (message handler)
  * Fichier source : src/background.ts
  *
- * On teste handleMessage indirectement via le listener chrome.runtime.onMessage
- * car handleMessage n'est pas exporté. On simule via le pattern sendMessage mockée.
+ * `handleMessage` est exporté par background.ts : on l'appelle directement.
+ * (L'ancien harnais récupérait le PREMIER listener `onMessage` enregistré —
+ * devenu le relais URL_CHANGED, qui ne répond jamais aux autres actions →
+ * tous les tests tombaient en timeout.)
  */
 
 import { resetChromeMocks, seedLocalStorage } from "../setup/chrome-api-mock";
+import { handleMessage as backgroundHandleMessage } from "../../src/background";
+import type { ExtensionMessage } from "../../src/types";
 
 // Mock fetch globally
 const mockFetch = jest.fn();
 (global as unknown as Record<string, unknown>).fetch = mockFetch;
 
-// We need to capture the handleMessage function from background.ts
-// Since it registers via chrome.runtime.onMessage.addListener, we capture it
-let handleMessage: (message: {
+const handleMessage = (message: {
   action: string;
   data?: Record<string, unknown>;
-}) => Promise<unknown>;
-
-beforeAll(() => {
-  // Import background.ts which registers the listener
-  // The chrome-api-mock is already set up via setupFiles
-  const onMessageAddListener = chrome.runtime.onMessage
-    .addListener as jest.Mock;
-
-  // Reset to capture the listener
-  onMessageAddListener.mockClear();
-
-  // Import to trigger registration
-  require("../../src/background");
-
-  // Grab the registered handler
-  const registeredCallback = onMessageAddListener.mock.calls[0]?.[0];
-  if (registeredCallback) {
-    // Wrap it to extract the Promise from the callback pattern
-    handleMessage = async (message) => {
-      return new Promise((resolve) => {
-        registeredCallback(message, {}, resolve);
-      });
-    };
-  }
-});
+}): Promise<unknown> =>
+  backgroundHandleMessage(message as unknown as ExtensionMessage);
 
 beforeEach(() => {
   resetChromeMocks();
   mockFetch.mockReset();
-
-  // Re-mock onMessage.addListener since resetChromeMocks clears it
-  // but we already captured the handler
 });
 
 // ── CHECK_AUTH ──
@@ -170,7 +146,7 @@ describe("START_ANALYSIS", () => {
     const response = (await handleMessage({
       action: "START_ANALYSIS",
       data: {
-        url: "https://youtube.com/watch?v=test",
+        url: "https://youtube.com/watch?v=dQw4w9WgXcQ",
         options: { mode: "standard", lang: "fr" },
       },
     })) as { success: boolean; result: { task_id: string } };
@@ -190,7 +166,7 @@ describe("START_ANALYSIS", () => {
 
     const response = (await handleMessage({
       action: "START_ANALYSIS",
-      data: { url: "https://youtube.com/watch?v=test", options: {} },
+      data: { url: "https://youtube.com/watch?v=dQw4w9WgXcQ", options: {} },
     })) as { success: boolean; error: string };
 
     expect(response.success).toBe(false);
@@ -255,31 +231,45 @@ describe("GET_SUMMARY", () => {
 
 // ── GET_PLAN ──
 describe("GET_PLAN", () => {
-  it("returns plan info", async () => {
-    seedLocalStorage({ accessToken: "valid-token" });
-
-    const mockPlan = {
-      plan_name: "Pro",
-      plan_id: "pro",
-      monthly_analyses: 200,
-      analyses_this_month: 42,
-      credits: 12000,
-      credits_monthly: 15000,
-    };
+  it("normalises the /billing/my-plan payload", async () => {
+    seedLocalStorage({
+      accessToken: "valid-token",
+      user: { id: 1, plan: "pro", credits: 12000, credits_monthly: 15000 },
+    });
 
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: () => Promise.resolve(mockPlan),
+      json: () =>
+        Promise.resolve({
+          plan: "pro",
+          plan_name: "Pro",
+          limits: { monthly_analyses: 30, monthly_credits: 15000 },
+          usage: { analyses_this_month: 12 },
+          voice_quota: { trial_used: false, monthly_minutes_used: 0 },
+        }),
     });
 
     const response = (await handleMessage({ action: "GET_PLAN" })) as {
       success: boolean;
-      plan: typeof mockPlan;
+      plan: {
+        plan_id: string;
+        monthly_analyses: number;
+        analyses_this_month: number;
+        credits: number;
+      };
     };
 
     expect(response.success).toBe(true);
-    expect(response.plan.plan_id).toBe("pro");
-    expect(response.plan.monthly_analyses).toBe(200);
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("/billing/my-plan?platform=extension"),
+      expect.anything(),
+    );
+    expect(response.plan).toMatchObject({
+      plan_id: "pro",
+      monthly_analyses: 30,
+      analyses_this_month: 12,
+      credits: 12000,
+    });
   });
 });
 
@@ -341,5 +331,183 @@ describe("Unknown action", () => {
       error: string;
     };
     expect(response.error).toBe("Unknown action");
+  });
+});
+
+// ── Erreurs structurées (detail objet / tableau) ──
+describe("Structured API errors", () => {
+  it("LOGIN surfaces the private_mode message instead of [object Object]", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      json: () =>
+        Promise.resolve({
+          detail: {
+            code: "private_mode",
+            message:
+              "DeepSight est temporairement en accès privé (maintenance).",
+          },
+        }),
+    });
+
+    const response = (await handleMessage({
+      action: "LOGIN",
+      data: { email: "user@test.com", password: "secret" },
+    })) as { success: boolean; error: string; errorCode: string };
+
+    expect(response.success).toBe(false);
+    expect(response.error).toBe(
+      "DeepSight est temporairement en accès privé (maintenance).",
+    );
+    expect(response.error).not.toContain("[object Object]");
+    expect(response.errorCode).toBe("private_mode");
+  });
+
+  it("START_ANALYSIS forwards the code + message of an object detail", async () => {
+    seedLocalStorage({ accessToken: "valid-token" });
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      json: () =>
+        Promise.resolve({
+          detail: {
+            code: "insufficient_credits",
+            message: "Crédits insuffisants",
+            credits: 0,
+          },
+        }),
+    });
+
+    const response = (await handleMessage({
+      action: "START_ANALYSIS",
+      data: { url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ", options: {} },
+    })) as {
+      success: boolean;
+      error: string;
+      errorCode: string;
+      httpStatus: number;
+      errorDetail: Record<string, unknown>;
+    };
+
+    expect(response).toMatchObject({
+      success: false,
+      error: "Crédits insuffisants",
+      errorCode: "insufficient_credits",
+      httpStatus: 403,
+    });
+    expect(response.errorDetail.credits).toBe(0);
+  });
+
+  it("joins 422 validation messages", async () => {
+    seedLocalStorage({ accessToken: "valid-token" });
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 422,
+      json: () =>
+        Promise.resolve({
+          detail: [
+            { loc: ["body", "question"], msg: "Field required", type: "missing" },
+          ],
+        }),
+    });
+
+    const response = (await handleMessage({
+      action: "ASK_QUESTION",
+      data: { summaryId: 1, question: "" },
+    })) as { success: boolean; error: string; errorCode: string };
+
+    expect(response.success).toBe(false);
+    expect(response.error).toBe("Field required");
+    expect(response.errorCode).toBe("validation_error");
+  });
+
+  it("returns auth_required (not SESSION_EXPIRED) when no account is signed in", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 401,
+      json: () => Promise.resolve({ detail: "Not authenticated" }),
+    });
+
+    const response = (await handleMessage({
+      action: "QUICK_CHAT",
+      data: { url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" },
+    })) as { success: boolean; error: string; errorCode: string };
+
+    expect(response.success).toBe(false);
+    expect(response.errorCode).toBe("auth_required");
+    // Pas de tentative de refresh sans compte.
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("maps a rejected fetch to network_error", async () => {
+    seedLocalStorage({ accessToken: "valid-token" });
+    mockFetch.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+
+    const response = (await handleMessage({
+      action: "GET_TASK_STATUS",
+      data: { taskId: "task-1" },
+    })) as { success: boolean; error: string; errorCode: string };
+
+    expect(response).toMatchObject({
+      success: false,
+      error: "NETWORK_ERROR",
+      errorCode: "network_error",
+    });
+  });
+});
+
+// ── Seul l'identifiant vidéo part vers l'API ──
+describe("Canonical video URL", () => {
+  function sentBody(): { url: string } {
+    const init = mockFetch.mock.calls[0][1] as RequestInit;
+    return JSON.parse(init.body as string) as { url: string };
+  }
+
+  it("START_ANALYSIS sends the bare YouTube watch URL", async () => {
+    seedLocalStorage({ accessToken: "valid-token" });
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ task_id: "t" }),
+    });
+
+    await handleMessage({
+      action: "START_ANALYSIS",
+      data: {
+        url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PL1&t=42s&si=abc",
+        options: {},
+      },
+    });
+
+    expect(sentBody().url).toBe("https://www.youtube.com/watch?v=dQw4w9WgXcQ");
+  });
+
+  it("QUICK_CHAT strips TikTok tracking parameters", async () => {
+    seedLocalStorage({ accessToken: "valid-token" });
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ summary_id: 1 }),
+    });
+
+    await handleMessage({
+      action: "QUICK_CHAT",
+      data: {
+        url: "https://www.tiktok.com/@a/video/7234567890123456789?is_from_webapp=1",
+      },
+    });
+
+    expect(sentBody().url).toBe(
+      "https://www.tiktok.com/@a/video/7234567890123456789",
+    );
+  });
+
+  it("refuses non-video URLs without calling the API", async () => {
+    seedLocalStorage({ accessToken: "valid-token" });
+    const res = (await handleMessage({
+      action: "START_ANALYSIS",
+      data: { url: "https://www.youtube.com/feed/trending", options: {} },
+    })) as { success: boolean; errorCode: string };
+
+    expect(res).toMatchObject({ success: false, errorCode: "invalid_url" });
+    expect(mockFetch).not.toHaveBeenCalled();
   });
 });

@@ -13,6 +13,8 @@ import type { VoicePanelContext, PendingVoiceCall } from "./types";
 import { DeepSightSpinner } from "./shared/DeepSightSpinner";
 import MicroDoodleBackground from "./shared/MicroDoodleBackground";
 import DoodleBackground from "./components/DoodleBackground";
+import { useTranslation } from "../i18n/useTranslation";
+import { localizeError } from "../i18n/errorMessages";
 
 type ViewName = "loading" | "login" | "main";
 
@@ -55,6 +57,7 @@ function getStorageOnChanged(): StorageOnChanged | null {
 }
 
 export const App: React.FC = () => {
+  const { t } = useTranslation();
   // Voice flow integration (Spec #4 + Quick Voice Call Task 16) :
   // - `voicePanelContext` (legacy)         → ouvre VoiceView avec context
   // - `pendingVoiceCall` (Quick Voice Call) → centralisé ici (B4) :
@@ -247,10 +250,10 @@ export const App: React.FC = () => {
         await loadPlanInfo();
         setView("main");
       } else {
-        throw new Error(response.error || "Login failed");
+        throw new Error(localizeError(t.errors, response));
       }
     },
-    [],
+    [t],
   );
 
   const handleGoogleLogin = useCallback(async (): Promise<void> => {
@@ -268,9 +271,9 @@ export const App: React.FC = () => {
       await loadPlanInfo();
       setView("main");
     } else {
-      throw new Error(response.error || "Google login failed");
+      throw new Error(localizeError(t.errors, response));
     }
-  }, []);
+  }, [t]);
 
   const handleGuestMode = useCallback(() => {
     setIsGuest(true);

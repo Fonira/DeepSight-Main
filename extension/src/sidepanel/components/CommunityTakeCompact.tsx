@@ -20,6 +20,7 @@ import React, { useState } from "react";
 import type { CommunityTake } from "../../types";
 import { useTranslation } from "../../i18n/useTranslation";
 import { WEBAPP_URL } from "../../utils/config";
+import { analysisUrl } from "../../utils/webappLinks";
 import Browser from "../../utils/browser-polyfill";
 
 interface Props {
@@ -195,7 +196,7 @@ export const CommunityTakeCompact: React.FC<Props> = ({
             type="button"
             onClick={() =>
               Browser.tabs.create({
-                url: `${WEBAPP_URL}/hub/analysis/${summaryId}`,
+                url: analysisUrl(summaryId),
               })
             }
             style={{

@@ -59,6 +59,7 @@
     "processing": "Traitement en cours...",
     "failed": "Analyse échouée",
     "startFailed": "Impossible de démarrer l'analyse",
+    "timeout": "L'analyse prend plus de temps que prévu. Retrouvez-la plus tard dans l'app web.",
     "recent": "Analyses récentes",
     "quotaExceeded": "Quota atteint",
     "quotaExceededText": "Passez au plan supérieur",
@@ -78,9 +79,15 @@
       "de": "Deutsch"
     }
   },
+  "suggestions": {
+    "flashcards": "Créer des flashcards",
+    "history": "Mes analyses",
+    "openApp": "Ouvrir dans l'app"
+  },
   "guest": {
     "banner": "Mode découverte — 3 analyses gratuites sans compte",
-    "exhaustedText": "Créez un compte gratuit pour sauvegarder vos analyses et en faire plus"
+    "exhaustedText": "Créez un compte gratuit pour sauvegarder vos analyses et en faire plus",
+    "unlockText": "Créez un compte gratuit pour discuter avec la vidéo, garder l'historique et analyser des vidéos plus longues."
   },
   "credits": {
     "critical": "Plus que {count} crédits —",
@@ -351,5 +358,21 @@
     "upgradeDescription": "Mini-résumé Mistral de chaque lien cité dans la description",
     "upgradeCta": "Passer Pro",
     "openExternalAriaLabel": "Ouvrir {host} dans un nouvel onglet"
+  },
+  "errors": {
+    "privateMode": "DeepSight est temporairement en accès privé (maintenance). L'accès est réservé à l'administrateur.",
+    "paymentsUnavailable": "Les paiements sont momentanément indisponibles. Réessayez plus tard.",
+    "rateLimited": "Trop de requêtes. Réessayez dans {seconds} s.",
+    "rateLimitedShort": "Trop de requêtes. Réessayez dans un instant.",
+    "sessionExpired": "Votre session a expiré. Reconnectez-vous.",
+    "network": "Impossible de joindre le serveur DeepSight. Vérifiez votre connexion et réessayez.",
+    "authRequired": "Connectez-vous ou créez un compte pour utiliser cette fonctionnalité.",
+    "googleUnavailable": "La connexion avec Google n'est pas disponible pour le moment. Utilisez votre e-mail et votre mot de passe.",
+    "voiceUnavailable": "L'appel vocal n'est pas disponible pour le moment.",
+    "emailNotVerified": "Adresse e-mail non vérifiée. Validez-la depuis le site DeepSight, puis reconnectez-vous.",
+    "userNotRegistered": "Aucun compte DeepSight n'est associé à ce compte Google. Créez un compte sur le site.",
+    "invalidUrl": "Cette page n'est pas une vidéo YouTube ou TikTok reconnue.",
+    "guestQuota": "Vous avez utilisé vos analyses gratuites. Créez un compte pour continuer.",
+    "generic": "Une erreur est survenue. Réessayez."
   }
 }

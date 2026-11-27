@@ -11,130 +11,20 @@ import { App } from "../../src/sidepanel/App";
 
 // Mock useTranslation to avoid chrome.storage.sync dependency in tests
 jest.mock("../../src/i18n/useTranslation", () => ({
+  // Vraies traductions FR : un dictionnaire partiel cassait le rendu dès
+  // qu'un composant lisait une clé absente.
   useTranslation: () => ({
-    t: {
-      common: {
-        login: "Se connecter",
-        logout: "Déconnexion",
-        retry: "Réessayer",
-        createAccount: "Créer un compte",
-        viewPlans: "Voir les plans",
-        unlock: "Débloquer",
-        analyses: "analyses",
-        credits: "crédits",
-      },
-      login: {
-        tagline: "Ne subissez plus vos vidéos — interrogez-les.",
-        badgeFr: "IA Française",
-        badgeEu: "Données en Europe",
-        googleLoading: "Connexion Google...",
-        googleButton: "Continuer avec Google",
-        divider: "ou",
-        emailPlaceholder: "Adresse e-mail",
-        passwordPlaceholder: "Mot de passe",
-        loginLoading: "Connexion...",
-        guestButton: "Essayer sans compte (1 analyse gratuite)",
-        privacy: "Confidentialité",
-        terms: "CGU",
-      },
-      plans: {
-        free: "Gratuit",
-        pro: "Pro",
-        starter: "Standard",
-        student: "Starter",
-      },
-      upsell: {
-        free: {
-          label: "Starter",
-          feature: "Flashcards + Cartes mentales",
-          price: "2,99€",
-        },
-        etudiant: {
-          label: "Standard",
-          feature: "Recherche web IA + 50 analyses",
-          price: "5,99€",
-        },
-        student: {
-          label: "Standard",
-          feature: "Recherche web IA + 50 analyses",
-          price: "5,99€",
-        },
-        starter: {
-          label: "Pro",
-          feature: "Playlists + Exports + Chat illimité",
-          price: "12,99€",
-        },
-      },
-      promos: {
-        free: [
-          { text: "Révisez avec des Flashcards IA", cta: "Débloquer Starter" },
-          { text: "Cartes mentales IA", cta: "Voir les plans" },
-          { text: "Seulement 5 analyses/mois ?", cta: "Upgrade" },
-        ],
-        starter: [
-          { text: "Recherche web IA", cta: "Débloquer" },
-          { text: "50 analyses/mois", cta: "Voir les plans" },
-        ],
-        standard: [
-          { text: "Analysez des playlists", cta: "Débloquer Pro" },
-          { text: "Exportez en PDF/DOCX", cta: "Voir les plans" },
-        ],
-        pro: [
-          { text: "DeepSight sur mobile", cta: "Télécharger" },
-          { text: "Gérez vos playlists", cta: "Ouvrir" },
-        ],
-      },
-      analysis: {
-        noVideo: "Ouvre une vidéo YouTube ou TikTok",
-        analyzeButton: "Analyser cette vidéo",
-        starting: "Démarrage...",
-        processing: "Traitement...",
-        failed: "Analyse échouée",
-        startFailed: "Impossible de démarrer",
-        recent: "Analyses récentes",
-        quotaExceeded: "Quota atteint",
-        quotaExceededText: "Passez au plan supérieur",
-        mode: "Mode",
-        language: "Langue",
-        modes: {
-          standard: "Standard",
-          accessible: "Accessible",
-          expert: "Expert",
-        },
-        languages: {
-          fr: "Français",
-          en: "English",
-          es: "Español",
-          de: "Deutsch",
-        },
-      },
-      guest: {
-        banner: "Mode découverte",
-        exhaustedText: "Créez un compte gratuit",
-      },
-      credits: {
-        critical: "Plus que {count} crédits",
-        recharge: "Recharger",
-        remaining: "{count} crédits",
-        low: "cr.",
-      },
-      mistral: { badge: "Propulsé par Mistral AI" },
-      voiceCall: {
-        buttonLabel: "Appel rapide",
-        buttonAriaLabel: "Voice call",
-        buttonLabelFloating: "🎙️",
-        trialBadge: "1 essai gratuit",
-        trialUsed: "Essai utilisé",
-        trialUsedTitle: "Essai utilisé — passer en Expert",
-        minutesRemaining: "{count} min restantes",
-        upgradeBadge: "Passer en Expert",
-        callActive: { settingsAriaLabel: "Réglages voix" },
-      },
-    },
+    t: jest.requireActual("../../src/i18n/fr.json"),
     language: "fr",
     setLanguage: jest.fn(),
   }),
 }));
+
+const fr = jest.requireActual("../../src/i18n/fr.json") as {
+  login: { guestButton: string };
+  guest: { banner: string };
+  errors: { privateMode: string };
+};
 
 beforeEach(() => {
   resetChromeMocks();
@@ -201,7 +91,7 @@ describe("App — unauthenticated state", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("Essayer sans compte (1 analyse gratuite)"),
+        screen.getByText(fr.login.guestButton),
       ).toBeInTheDocument();
     });
   });
@@ -218,16 +108,21 @@ describe("App — unauthenticated state", () => {
 });
 
 // ── Login flow ──
+/** Réponses du SW par action (l'ordre des appels varie selon les vues). */
+function mockSwByAction(responses: Record<string, unknown>): void {
+  (chrome.runtime.sendMessage as jest.Mock).mockImplementation(
+    (msg: { action?: string }) =>
+      Promise.resolve(responses[msg?.action ?? ""] ?? {}),
+  );
+}
+
 describe("App — login flow", () => {
   it("transitions to main view on successful login", async () => {
     const user = userEvent.setup();
 
-    // First call: CHECK_AUTH → not authenticated
-    // Second call: LOGIN → success
-    // Third call: GET_PLAN → plan info
-    (chrome.runtime.sendMessage as jest.Mock)
-      .mockResolvedValueOnce({ authenticated: false })
-      .mockResolvedValueOnce({
+    mockSwByAction({
+      CHECK_AUTH: { authenticated: false },
+      LOGIN: {
         success: true,
         user: {
           id: 1,
@@ -237,8 +132,8 @@ describe("App — login flow", () => {
           credits: 100,
           credits_monthly: 150,
         },
-      })
-      .mockResolvedValueOnce({
+      },
+      GET_PLAN: {
         success: true,
         plan: {
           plan_name: "Gratuit",
@@ -249,7 +144,8 @@ describe("App — login flow", () => {
           credits_monthly: 150,
           features: {},
         },
-      });
+      },
+    });
 
     render(<App />);
 
@@ -281,9 +177,10 @@ describe("App — login flow", () => {
   it("shows error on failed login", async () => {
     const user = userEvent.setup();
 
-    (chrome.runtime.sendMessage as jest.Mock)
-      .mockResolvedValueOnce({ authenticated: false }) // CHECK_AUTH
-      .mockResolvedValueOnce({ success: false, error: "Invalid credentials" }); // LOGIN
+    mockSwByAction({
+      CHECK_AUTH: { authenticated: false },
+      LOGIN: { success: false, error: "Invalid credentials" },
+    });
 
     render(<App />);
 
@@ -362,6 +259,34 @@ describe("App — authenticated state", () => {
   });
 });
 
+describe("App — private mode", () => {
+  it("shows the private-mode message instead of [object Object]", async () => {
+    const user = userEvent.setup();
+    mockSwByAction({
+      CHECK_AUTH: { authenticated: false },
+      LOGIN: {
+        success: false,
+        error: "DeepSight est temporairement en accès privé (maintenance).",
+        errorCode: "private_mode",
+        httpStatus: 403,
+      },
+    });
+
+    render(<App />);
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText("Adresse e-mail")).toBeInTheDocument();
+    });
+    await user.type(screen.getByPlaceholderText("Adresse e-mail"), "a@b.c");
+    await user.type(screen.getByPlaceholderText("Mot de passe"), "secret");
+    await user.click(screen.getByText("Se connecter"));
+
+    await waitFor(() => {
+      expect(screen.getByText(fr.errors.privateMode)).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/object Object/)).not.toBeInTheDocument();
+  });
+});
+
 // ── Guest mode ──
 describe("App — guest mode", () => {
   it("enters guest mode when clicking guest button", async () => {
@@ -391,17 +316,17 @@ describe("App — guest mode", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("Essayer sans compte (1 analyse gratuite)"),
+        screen.getByText(fr.login.guestButton),
       ).toBeInTheDocument();
     });
 
     await user.click(
-      screen.getByText("Essayer sans compte (1 analyse gratuite)"),
+      screen.getByText(fr.login.guestButton),
     );
 
     await waitFor(() => {
       // Should show guest banner and main view
-      expect(screen.getByText("Mode découverte")).toBeInTheDocument();
+      expect(screen.getByText(fr.guest.banner)).toBeInTheDocument();
     });
   });
 });

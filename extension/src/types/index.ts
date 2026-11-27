@@ -7,7 +7,15 @@ export interface User {
   username: string;
   email: string;
   avatar_url?: string;
-  plan: "free" | "starter" | "pro" | "expert" | "student" | "team";
+  /** "unlimited" = compte admin (seul autorisé en mode privé). */
+  plan:
+    | "free"
+    | "starter"
+    | "pro"
+    | "expert"
+    | "student"
+    | "team"
+    | "unlimited";
   credits: number;
   credits_monthly: number;
   default_lang?: string;
@@ -216,6 +224,22 @@ export interface ChatResponse {
   web_search_used: boolean;
 }
 
+// ── Guest (mode découverte) ──
+
+/** Réponse de POST /api/videos/analyze/guest (éphémère, non sauvegardée). */
+export interface GuestAnalyzeResponse {
+  video_title: string;
+  video_channel: string;
+  video_duration: number;
+  thumbnail_url: string;
+  summary_content: string;
+  category: string;
+  word_count: number;
+  mode: string;
+  lang: string;
+  remaining_analyses: number;
+}
+
 // ── Quick Chat ──
 
 export interface QuickChatResponse {
@@ -247,7 +271,8 @@ export interface VoiceQuotaInfo {
 
 export interface PlanInfo {
   plan_name: string;
-  plan_id: "free" | "starter" | "pro" | "expert" | "student" | "team";
+  plan_id: User["plan"];
+  /** -1 = illimité. */
   monthly_analyses: number;
   analyses_this_month: number;
   credits: number;
@@ -278,6 +303,7 @@ export type MessageAction =
   | "GET_USER"
   | "LOGIN"
   | "GOOGLE_LOGIN"
+  | "GET_AUTH_PROVIDERS"
   | "LOGOUT"
   | "START_ANALYSIS"
   | "ANALYZE_VIDEO"
@@ -328,6 +354,14 @@ export interface MessageResponse {
   plan?: PlanInfo;
   result?: unknown;
   error?: string;
+  /** Code machine de l'erreur (`private_mode`, `rate_limited`…), cf. apiError.ts. */
+  errorCode?: string;
+  /** Statut HTTP de l'erreur API (0 = erreur réseau). */
+  httpStatus?: number;
+  /** Secondes à attendre avant de réessayer (429). */
+  retryAfter?: number;
+  /** `detail` objet renvoyé par l'API (ex. quota voice 402). */
+  errorDetail?: Record<string, unknown>;
   share_url?: string;
   state?: VoiceButtonState;
   // Phase 4 — Semantic Search V1

@@ -2,6 +2,7 @@ import React from "react";
 import type { PlanInfo } from "../../types";
 import Browser from "../../utils/browser-polyfill";
 import { WEBAPP_URL } from "../../utils/config";
+import { featureUrl, type WebFeature } from "../../utils/webappLinks";
 import { DoodleIcon } from "./doodles/DoodleIcon";
 import { useTranslation } from "../../i18n/useTranslation";
 
@@ -12,7 +13,7 @@ interface FeatureCTAGridProps {
 }
 
 interface FeatureItem {
-  key: keyof NonNullable<PlanInfo["features"]>;
+  key: WebFeature;
   doodleName: string;
   labelKey: "flashcards" | "mindMaps" | "webSearch" | "exports" | "playlists";
   descKey:
@@ -21,7 +22,6 @@ interface FeatureItem {
     | "webSearchDesc"
     | "exportsDesc"
     | "playlistsDesc";
-  hash: string;
   price: string;
 }
 
@@ -31,7 +31,6 @@ const FEATURES: FeatureItem[] = [
     doodleName: "book",
     labelKey: "flashcards",
     descKey: "flashcardsDesc",
-    hash: "#flashcards",
     price: "8,99\u20AC",
   },
   {
@@ -39,7 +38,6 @@ const FEATURES: FeatureItem[] = [
     doodleName: "brain",
     labelKey: "mindMaps",
     descKey: "mindMapsDesc",
-    hash: "#mindmap",
     price: "8,99\u20AC",
   },
   {
@@ -47,7 +45,6 @@ const FEATURES: FeatureItem[] = [
     doodleName: "globe",
     labelKey: "webSearch",
     descKey: "webSearchDesc",
-    hash: "#websearch",
     price: "8,99\u20AC",
   },
   {
@@ -55,7 +52,6 @@ const FEATURES: FeatureItem[] = [
     doodleName: "code",
     labelKey: "exports",
     descKey: "exportsDesc",
-    hash: "#export",
     price: "8,99\u20AC",
   },
   {
@@ -63,7 +59,6 @@ const FEATURES: FeatureItem[] = [
     doodleName: "camera",
     labelKey: "playlists",
     descKey: "playlistsDesc",
-    hash: "#playlists",
     price: "8,99\u20AC",
   },
 ];
@@ -92,7 +87,7 @@ export const FeatureCTAGrid: React.FC<FeatureCTAGridProps> = ({
               onClick={() => {
                 if (available) {
                   Browser.tabs.create({
-                    url: `${WEBAPP_URL}/summary/${summaryId}${feat.hash}`,
+                    url: featureUrl(summaryId, feat.key),
                   });
                 } else {
                   Browser.tabs.create({ url: `${WEBAPP_URL}/upgrade` });

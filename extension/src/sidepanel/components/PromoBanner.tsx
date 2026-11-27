@@ -46,7 +46,7 @@ const PROMOS_PRO: Promo[] = [
   {
     id: "pro-mobile",
     textKey: 0,
-    url: `${WEBAPP_URL}/mobile`,
+    url: WEBAPP_URL,
     gradient: GRADIENTS.goldDark,
   },
   {
@@ -70,6 +70,8 @@ function getPromoTier(planId?: string): PromoTier {
     case "etudiant":
     case "student":
     case "starter":
+    case "team":
+    case "unlimited":
       return "pro";
     default:
       return "free";
