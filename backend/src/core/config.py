@@ -1023,6 +1023,14 @@ def is_mistral_agent_available() -> bool:
     return bool(MISTRAL_AGENT_ENABLED and MISTRAL_API_KEY)
 
 
+def is_visual_analysis_enabled() -> bool:
+    """Couche visuelle (frames + Mistral Vision) activée sur ce serveur.
+
+    Lu à chaque appel, comme le pipeline d'analyse (VISUAL_ANALYSIS_ENABLED).
+    """
+    return os.getenv("VISUAL_ANALYSIS_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
+
+
 def is_semantic_search_v1_enabled() -> bool:
     """Check if extended semantic search V1 is enabled (gates UI rollout).
 

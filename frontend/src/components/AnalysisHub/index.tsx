@@ -38,7 +38,12 @@ interface AnalysisHubProps {
   selectedSummary: Summary;
   reliabilityData: ReliabilityResult | null;
   reliabilityLoading: boolean;
-  user: { plan?: string; credits?: number };
+  user: {
+    plan?: string;
+    credits?: number;
+    /** Couche visuelle activée côté serveur (sinon pas de bouton de ré-analyse) */
+    visual_analysis_available?: boolean;
+  };
   language: "fr" | "en";
   concepts: EnrichedConcept[];
   onTimecodeClick: (seconds: number, info?: TimecodeInfo) => void;
@@ -408,6 +413,7 @@ export const AnalysisHub: React.FC<AnalysisHubProps> = ({
         <VisualTab
           visualAnalysis={selectedSummary.visual_analysis}
           language={language}
+          visualAvailable={user?.visual_analysis_available === true}
           onReanalyze={handleReanalyzeVisual}
           isReanalyzing={isReanalyzingVisual}
         />

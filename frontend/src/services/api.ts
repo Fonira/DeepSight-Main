@@ -134,6 +134,8 @@ export interface User {
   // Bag JSON merge non-destructivement par PUT /api/auth/preferences
   // (has_completed_onboarding, persona, etc.)
   preferences?: Record<string, unknown>;
+  // Couche visuelle activée sur le serveur (VISUAL_ANALYSIS_ENABLED)
+  visual_analysis_available?: boolean;
 }
 
 export interface TokenResponse {
