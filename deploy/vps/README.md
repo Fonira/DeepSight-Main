@@ -147,6 +147,28 @@ free -h ; df -h /
 
 Pour modifier la CSP ou les en-têtes du site : édite `frontend/vercel.json` (section `"source": "/(.*)"`), puis redéploie. `deploy.sh` régénère `caddy/generated/headers.caddy` à chaque fois.
 
+`deploy.sh` valide aussi le `Caddyfile` avant tout build : si la nouvelle config est invalide, rien n'est déployé.
+
+---
+
+## Déployer depuis GitHub Actions
+
+Le workflow `.github/workflows/deploy-vps.yml` lance `deploy.sh` sur le serveur, ce qui permet de déployer sans ton PC (par exemple depuis une session Claude). Sa clé SSH est **dédiée et bridée** : côté serveur, `authorized_keys` lui impose la commande `~/bin/deepsight-ci-deploy.sh` (copie de `scripts/ci-deploy.sh`), qui n'accepte que `deploy <branche>` et `status`. Pas de shell, pas de redirection de port.
+
+**Mise en place (une seule fois, dans cmd sur ton PC, avec `gh` connecté au compte Fonira).** La clé privée passe directement du serveur au secret GitHub, sans jamais s'afficher, puis elle est supprimée du serveur :
+
+```bat
+ssh -i %USERPROFILE%\.ssh\id_vps deploy@62.83.136.156 "cd /opt/deepsight/repo ; git fetch -q origin feat/infra-ovh ; git reset -q --hard FETCH_HEAD ; bash deploy/vps/scripts/setup-ci-deploy.sh install"
+ssh -i %USERPROFILE%\.ssh\id_vps deploy@62.83.136.156 "bash /opt/deepsight/repo/deploy/vps/scripts/setup-ci-deploy.sh known-hosts" | gh secret set VPS_KNOWN_HOSTS --repo Fonira/DeepSight-Main
+ssh -i %USERPROFILE%\.ssh\id_vps deploy@62.83.136.156 "bash /opt/deepsight/repo/deploy/vps/scripts/setup-ci-deploy.sh private-key" | gh secret set VPS_DEPLOY_KEY --repo Fonira/DeepSight-Main
+```
+
+**Déployer :**
+- pousser un tag `deploy-AAAAMMJJ-HHMM` sur la tête de la branche déployée (`feat/infra-ovh` par défaut, variable de dépôt `DEPLOY_BRANCH` pour en changer) : le workflow refuse un tag qui ne pointe pas sur la tête de cette branche ;
+- ou, une fois le workflow présent sur `main`, le bouton « Run workflow » dans l'onglet Actions.
+
+**Révoquer la clé** (sur le serveur) : `bash /opt/deepsight/repo/deploy/vps/scripts/setup-ci-deploy.sh revoke`, puis supprimer le secret `VPS_DEPLOY_KEY` dans GitHub. Pour mettre à jour la commande bridée après un changement de `ci-deploy.sh`, relancer `setup-ci-deploy.sh install` : la même clé publique est conservée.
+
 ---
 
 ## Sauvegardes

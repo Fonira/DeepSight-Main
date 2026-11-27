@@ -59,6 +59,14 @@ grep -q '^MISTRAL_API_KEY=.\+' .env.production \
 grep -q '^SUPADATA_API_KEY=.\+' .env.production \
   || warn "SUPADATA_API_KEY vide : transcriptions YouTube limitées aux méthodes de secours"
 
+# Le Caddyfile du repo est monté dans le conteneur : on valide la nouvelle
+# version avant tout build, pour ne pas recharger une config cassée.
+if [[ "$(docker inspect -f '{{.State.Running}}' repo-caddy-1 2>/dev/null)" == "true" ]]; then
+  log "Validation du Caddyfile"
+  docker exec repo-caddy-1 caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null \
+    || die "Caddyfile invalide : rien n'a été déployé (corriger deploy/vps/caddy/Caddyfile)"
+fi
+
 # ─── 2-3. Build du site + en-têtes ─────────────────────────────────────────────
 log "Build du site (npm ci + vite build)"
 docker run --rm \

@@ -1,0 +1,95 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# DeepSight — déploiement sur le VPS netcup (site + API) via deploy.sh
+#
+# Déclencheurs :
+#   - tag « deploy-* » poussé sur la tête de la branche à déployer
+#     (DEPLOY_BRANCH, par défaut feat/infra-ovh) ;
+#   - bouton « Run workflow » (une fois ce fichier présent sur main).
+#
+# La clé SSH (secret VPS_DEPLOY_KEY) est limitée côté serveur à
+# deploy/vps/scripts/ci-deploy.sh : elle ne peut que déployer une branche ou
+# afficher l'état. Mise en place : deploy/vps/README.md, « Déployer depuis
+# GitHub Actions ».
+# ═══════════════════════════════════════════════════════════════════════════════
+name: 🚀 Deploy VPS (netcup)
+
+on:
+  push:
+    tags:
+      - "deploy-*"
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branche à déployer"
+        required: true
+        default: "feat/infra-ovh"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Déployer sur le VPS
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      DEPLOY_HOST: ${{ vars.VPS_HOST || '62.83.136.156' }}
+      DEPLOY_USER: ${{ vars.VPS_USER || 'deploy' }}
+      DEPLOY_BRANCH: ${{ github.event.inputs.branch || vars.DEPLOY_BRANCH || 'feat/infra-ovh' }}
+    steps:
+      - name: Vérifier les secrets
+        env:
+          HAS_KEY: ${{ secrets.VPS_DEPLOY_KEY != '' }}
+          HAS_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS != '' }}
+        run: |
+          if [ "$HAS_KEY" != "true" ] || [ "$HAS_HOSTS" != "true" ]; then
+            echo "::error::Secrets VPS_DEPLOY_KEY et/ou VPS_KNOWN_HOSTS absents (voir deploy/vps/README.md)"
+            exit 1
+          fi
+
+      - name: Le tag pointe sur la tête de la branche
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          head_sha="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${DEPLOY_BRANCH}" --jq .sha)"
+          echo "Tag ${GITHUB_REF_NAME} → ${GITHUB_SHA}"
+          echo "Tête de ${DEPLOY_BRANCH} → ${head_sha}"
+          if [ "$head_sha" != "$GITHUB_SHA" ]; then
+            echo "::error::Le tag ne pointe pas sur la tête de ${DEPLOY_BRANCH} : rien n'est déployé."
+            exit 1
+          fi
+
+      - name: Préparer SSH
+        env:
+          VPS_DEPLOY_KEY: ${{ secrets.VPS_DEPLOY_KEY }}
+          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VPS_DEPLOY_KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          printf '%s\n' "$VPS_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Déployer ${{ env.DEPLOY_BRANCH }}
+        run: |
+          ssh -i ~/.ssh/id_deploy \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -o ServerAliveInterval=30 \
+            -o ServerAliveCountMax=10 \
+            "${DEPLOY_USER}@${DEPLOY_HOST}" "deploy ${DEPLOY_BRANCH}"
+
+      - name: Vérification publique
+        run: |
+          curl -fsS --retry 5 --retry-delay 5 https://api.deepsightsynthesis.com/health
+          echo
+          curl -fsS -o /dev/null -w "www: HTTP %{http_code}\n" https://www.deepsightsynthesis.com/
+
+      - name: Nettoyer la clé
+        if: always()
+        run: rm -f ~/.ssh/id_deploy
