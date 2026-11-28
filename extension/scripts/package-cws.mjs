@@ -1,23 +1,25 @@
 #!/usr/bin/env node
 /**
- * Paquet Chrome Web Store — zip de dist/ prêt à téléverser.
+ * Paquet Chrome Web Store — build dédié puis zip prêt à téléverser.
  *
- *   npm run package:cws        (build de production puis ce script)
+ *   npm run package:cws
+ *   → release/cws-build/ (build de production, dist/ n'est pas touché)
  *   → release/deepsight-extension-v<version>.zip
  *
  * Par rapport à dist/ (ce qu'on charge en local) :
  *  - `key` est retiré du manifest : il fige l'ID de l'extension non
  *    empaquetée, mais le Store refuse un manifest qui le contient ;
  *  - les source maps sont exclues ;
- *  - voix coupée (`voice: false` dans src/utils/features.ts) : les fichiers
- *    propres aux appels vocaux sont exclus, la permission `offscreen` et
- *    les hôtes ElevenLabs de la CSP sont retirés. Le Store refuse les
- *    permissions inutilisées, et le SDK ElevenLabs référence un worklet
- *    hébergé sur un CDN (code distant interdit en MV3).
+ *  - tant que STORE_VOICE vaut false, le code des appels vocaux n'est pas
+ *    compilé (`--env voice=off`), leurs fichiers sont exclus, la permission
+ *    `offscreen` et les hôtes ElevenLabs de la CSP sont retirés. Le Store
+ *    refuse les permissions inutilisées, et le SDK ElevenLabs référence un
+ *    worklet hébergé sur un CDN (code distant interdit en MV3).
  *
  * Aucune dépendance : le zip (deflate) est écrit avec zlib de Node.
  */
 
+import { spawnSync } from "node:child_process";
 import {
   mkdirSync,
   readFileSync,
@@ -25,13 +27,21 @@ import {
   statSync,
   writeFileSync,
 } from "node:fs";
+import { createRequire } from "node:module";
 import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { deflateRawSync } from "node:zlib";
 
+/**
+ * Voix dans le paquet du Store. À passer à true seulement quand la fiche
+ * déclare le micro, l'offscreen et l'envoi de l'audio à ElevenLabs, et que
+ * le worklet du CDN est auto-hébergé (CHROME_WEB_STORE.md § 6).
+ */
+const STORE_VOICE = false;
+
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const DIST = join(ROOT, "dist");
 const OUT_DIR = join(ROOT, "release");
+const BUILD_DIR = join(OUT_DIR, "cws-build");
 
 /** Fichiers de dist/ qui ne servent qu'aux appels vocaux. */
 const VOICE_ONLY_FILES = new Set([
@@ -51,12 +61,25 @@ function fail(message) {
   process.exit(1);
 }
 
-function readVoiceSwitch() {
-  const featuresPath = join(ROOT, "src", "utils", "features.ts");
-  const source = readFileSync(featuresPath, "utf8");
-  const match = source.match(/\bvoice:\s*(true|false)\b/);
-  if (!match) fail("FEATURES.voice introuvable dans src/utils/features.ts");
-  return match[1] === "true";
+/** Build de production dans release/cws-build/, voix selon STORE_VOICE. */
+function buildForStore() {
+  const webpackCli = createRequire(import.meta.url).resolve(
+    "webpack/bin/webpack.js",
+  );
+  const result = spawnSync(
+    process.execPath,
+    [
+      webpackCli,
+      "--mode",
+      "production",
+      "--env",
+      `voice=${STORE_VOICE ? "on" : "off"}`,
+      "--env",
+      `out=${relative(ROOT, BUILD_DIR).split(sep).join("/")}`,
+    ],
+    { cwd: ROOT, stdio: "inherit" },
+  );
+  if (result.status !== 0) fail("le build webpack du Store a échoué.");
 }
 
 function listFiles(dir) {
@@ -181,20 +204,16 @@ function buildZip(entries) {
 
 // ── Main ──
 
-let distFiles;
-try {
-  distFiles = listFiles(DIST);
-} catch {
-  fail("dist/ introuvable : lance d'abord `npm run build`.");
-}
+buildForStore();
 
-const voiceEnabled = readVoiceSwitch();
+const voiceEnabled = STORE_VOICE;
+const buildFiles = listFiles(BUILD_DIR);
 const entries = [];
 const excluded = [];
 let manifestInfo = null;
 
-for (const file of distFiles) {
-  const name = relative(DIST, file).split(sep).join("/");
+for (const file of buildFiles) {
+  const name = relative(BUILD_DIR, file).split(sep).join("/");
   const base = name.split("/").pop();
   if (IGNORED_NAMES.has(base) || name.endsWith(".map")) {
     excluded.push(name);
@@ -212,7 +231,7 @@ for (const file of distFiles) {
   entries.push({ name, data: readFileSync(file) });
 }
 
-if (!manifestInfo) fail("dist/manifest.json introuvable.");
+if (!manifestInfo) fail("manifest.json absent du build du Store.");
 
 // Le manifest en tête de l'archive (convention ; le Store ne l'exige pas).
 const isManifest = (entry) => entry.name === "manifest.json";

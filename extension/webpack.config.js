@@ -15,10 +15,19 @@ module.exports = (env, argv) => {
   const targetBrowser = env?.target || "chrome";
   const manifestFile = manifestMap[targetBrowser] || "manifest.json";
 
+  // `--env voice=off` : build sans les appels vocaux (zip du Chrome Web Store,
+  // cf. scripts/package-cws.mjs). Par défaut la voix est compilée, et elle ne
+  // s'affiche que si l'API répond voice_available (src/utils/features.ts).
+  const voiceEnabled = env?.voice !== "off";
+
+  // `--env out=<dossier>` : sortie hors de dist/, pour que le build du Store
+  // n'écrase pas l'extension chargée en local.
   // If an explicit target is set, output to dist/<target>; otherwise dist/ for backwards compat
-  const outputDir = env?.target
-    ? path.resolve(__dirname, "dist", targetBrowser)
-    : path.resolve(__dirname, "dist");
+  const outputDir = env?.out
+    ? path.resolve(__dirname, env.out)
+    : env?.target
+      ? path.resolve(__dirname, "dist", targetBrowser)
+      : path.resolve(__dirname, "dist");
 
   return {
     entry: {
@@ -66,6 +75,7 @@ module.exports = (env, argv) => {
     plugins: [
       new webpack.DefinePlugin({
         __TARGET_BROWSER__: JSON.stringify(targetBrowser),
+        __DS_VOICE__: JSON.stringify(voiceEnabled),
       }),
       new MiniCssExtractPlugin({
         filename: "[name].css",

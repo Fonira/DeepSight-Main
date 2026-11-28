@@ -57,18 +57,23 @@ Rien à changer côté API : le CORS accepte toute origine
 ## 3. Le paquet
 
 ```powershell
-cd C:\Users\33667\DeepSight\extension ; npm run package:cws
+cd C:\Users\maxim\DeepSight\extension ; npm run package:cws
 ```
 
-→ `release\deepsight-extension-v<version>.zip` (≈ 720 Ko). Le script
-`scripts/package-cws.mjs` :
+→ `release\deepsight-extension-v<version>.zip` (≈ 730 Ko). Le script
+`scripts/package-cws.mjs` fait son propre build de production dans
+`release\cws-build\` : `dist\` (l'extension chargée en local) n'est pas
+touché. Puis il :
 
 - retire `key` du manifest et exclut les source maps ;
-- tant que `FEATURES.voice` est à `false` (`src/utils/features.ts`) : exclut
-  les fichiers propres aux appels vocaux, retire la permission `offscreen` et
-  les hôtes ElevenLabs de la CSP. Le SDK ElevenLabs référence un worklet
-  hébergé sur un CDN : le laisser dans le zip pourrait être lu comme du code
-  distant, interdit en MV3.
+- tant que `STORE_VOICE` vaut `false` (en tête du script) : compile sans les
+  appels vocaux (`--env voice=off`), exclut leurs fichiers, retire la
+  permission `offscreen` et les hôtes ElevenLabs de la CSP. Le SDK ElevenLabs
+  référence un worklet hébergé sur un CDN : le laisser dans le zip pourrait
+  être lu comme du code distant, interdit en MV3.
+
+En local, `npm run build` garde la voix : elle n'apparaît que si l'API répond
+`voice_available: true` (clé ElevenLabs configurée sur le serveur).
 
 Permissions du paquet : `storage`, `alarms`, `identity`, `clipboardWrite`,
 `clipboardRead`, `sidePanel`. À l'installation, Chrome avertit de l'accès aux
@@ -234,11 +239,20 @@ Cocher les trois certifications : pas de vente des données, pas d'usage
 URL de la politique de confidentialité :
 `https://www.deepsightsynthesis.com/legal/privacy`
 
-## 6. Quand la voix reviendra
+## 6. Mettre la voix dans une version publiée
 
-Passer `FEATURES.voice` à `true` suffit côté code. Avant de republier :
-héberger dans le paquet le worklet libsamplerate que le SDK ElevenLabs va
-chercher sur un CDN (comme `rawAudioProcessor.js` et
-`audioConcatProcessor.js` dans `webpack.config.js`), puis ajouter à ce
-document la justification de `offscreen` (capture micro dans un document
-offscreen, `getUserMedia` n'étant pas disponible dans le service worker).
+La voix est déjà rebranchée dans le code : l'extension l'affiche dès que
+l'API répond `voice_available: true` (clé ElevenLabs sur le serveur, kill
+switch `VOICE_CALL_DISABLED` coupé). Seul le paquet du Store la laisse de
+côté. Pour l'y mettre :
+
+1. Héberger dans le paquet le worklet libsamplerate que le SDK ElevenLabs va
+   chercher sur un CDN (comme `rawAudioProcessor.js` et
+   `audioConcatProcessor.js` dans `webpack.config.js`).
+2. Passer `STORE_VOICE` à `true` dans `scripts/package-cws.mjs`.
+3. Compléter la fiche : justification de `offscreen` (capture micro dans un
+   document offscreen, `getUserMedia` n'étant pas disponible dans le service
+   worker), données « audio » envoyées à ElevenLabs dans les pratiques de
+   confidentialité, et la politique de confidentialité du site.
+4. Vérifier que la description reste juste : l'audio part chez ElevenLabs,
+   pas chez Mistral (« IA européenne »).

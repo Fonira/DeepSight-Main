@@ -14,7 +14,7 @@
     "build:firefox": "webpack --mode production --env target=firefox",
     "build:safari": "webpack --mode production --env target=safari",
     "build:all": "npm run build:chrome && npm run build:firefox && npm run build:safari",
-    "package:cws": "npm run build && node scripts/package-cws.mjs",
+    "package:cws": "node scripts/package-cws.mjs",
     "e2e": "playwright test -c e2e/playwright.config.ts",
     "e2e:headful": "playwright test -c e2e/playwright.config.ts --headed"
   },
