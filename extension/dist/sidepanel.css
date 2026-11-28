@@ -1994,6 +1994,41 @@ a:hover {
   color: var(--warning);
 }
 
+.conversation-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--error-muted);
+  border-top: 1px solid rgba(239, 68, 68, 0.25);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--error);
+}
+
+.conversation-alert-text {
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+
+.conversation-alert-close {
+  flex-shrink: 0;
+  padding: 0 4px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.8;
+  transition: opacity 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.conversation-alert-close:hover,
+.conversation-alert-close:focus-visible {
+  opacity: 1;
+}
+
 .chat-reconnect-btn {
   padding: 5px 12px;
   border-radius: var(--radius-full);
