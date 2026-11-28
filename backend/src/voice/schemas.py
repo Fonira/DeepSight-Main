@@ -2,10 +2,11 @@
 Voice Chat Schemas — Pydantic models for voice API endpoints.
 """
 
+import math
 from datetime import datetime
 from typing import Literal, Optional, List
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -163,22 +164,75 @@ class VoiceQuotaResponse(BaseModel):
 
 
 class VoiceWebhookPayload(BaseModel):
-    """Payload recu du provider voice (ElevenLabs)."""
+    """Webhook post-appel ElevenLabs : ``{type, event_timestamp, data}``.
 
-    conversation_id: str
-    agent_id: str
-    status: str
-    duration_seconds: int
-    transcript: Optional[str] = None
-    metadata: Optional[dict] = None
+    Types envoyés : ``post_call_transcription`` (traité), ``post_call_audio``
+    et ``call_initiation_failure`` (acquittés sans traitement). ``data`` reste
+    brut ici : il n'est validé que pour ``post_call_transcription``.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    type: str
+    event_timestamp: float | None = None
+    data: dict = Field(default_factory=dict)
+
+
+class ElevenLabsTranscriptTurn(BaseModel):
+    """Un tour de ``data.transcript`` (``role`` vaut ``user`` ou ``agent``)."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    role: str
+    message: str | None = None
+    time_in_call_secs: float | None = None
+
+
+class ElevenLabsCallMetadata(BaseModel):
+    """``data.metadata`` : la durée de l'appel sert au décompte des minutes."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    call_duration_secs: float = Field(default=0.0, ge=0)
+    start_time_unix_secs: float | None = None
+    termination_reason: str | None = None
+
+
+class ElevenLabsPostCallData(BaseModel):
+    """``data`` d'un webhook ``post_call_transcription``."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    agent_id: str | None = None
+    conversation_id: str | None = None
+    status: str | None = None
+    transcript: list[ElevenLabsTranscriptTurn] = Field(default_factory=list)
+    metadata: ElevenLabsCallMetadata = Field(default_factory=ElevenLabsCallMetadata)
+
+    @field_validator("transcript", "metadata", mode="before")
+    @classmethod
+    def _null_as_default(cls, value: object, info: ValidationInfo) -> object:
+        """ElevenLabs peut envoyer ``null`` : on retombe sur la valeur par défaut."""
+        if value is None:
+            return [] if info.field_name == "transcript" else {}
+        return value
+
+    @property
+    def duration_seconds(self) -> int:
+        """Durée facturée, arrondie à la seconde supérieure."""
+        return math.ceil(self.metadata.call_duration_secs)
 
 
 class WebhookAckResponse(BaseModel):
-    """Reponse d'acquittement du webhook."""
+    """Acquittement renvoyé à ElevenLabs.
 
-    status: str = "ok"
-    session_id: str
-    minutes_deducted: float
+    ``ok`` : appel décompté ; ``duplicate`` : livraison déjà traitée (retry) ;
+    ``ignored`` : événement ou agent qui ne concerne aucune session DeepSight.
+    """
+
+    status: Literal["ok", "duplicate", "ignored"] = "ok"
+    session_id: str | None = None
+    minutes_deducted: float = 0.0
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
