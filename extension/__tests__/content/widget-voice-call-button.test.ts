@@ -38,8 +38,13 @@ describe("widget voice call button", () => {
     expect(btn.disabled).toBe(true);
   });
 
-  it("shows minutes remaining for expert user", async () => {
+  it("shows minutes remaining for expert user (120 min/mois)", async () => {
     await renderWidget({ plan: "expert", monthlyMinutesUsed: 10 });
+    expect(document.body.textContent).toMatch(/110 min restantes/);
+  });
+
+  it("shows minutes remaining for pro user (30 min/mois)", async () => {
+    await renderWidget({ plan: "pro", monthlyMinutesUsed: 10 });
     expect(document.body.textContent).toMatch(/20 min restantes/);
   });
 

@@ -10,8 +10,8 @@
 // Quotas affichés selon le plan :
 //   - free + !trialUsed → badge "1 essai gratuit"
 //   - free + trialUsed  → bouton désactivé "Essai utilisé"
-//   - pro               → CTA upgrade (Pro n'a pas voice call)
-//   - expert            → "X min restantes" (sur 30 min/mois)
+//   - pro               → "X min restantes" (sur 30 min/mois)
+//   - expert            → "X min restantes" (sur 120 min/mois)
 //
 // Click → envoie `chrome.runtime.sendMessage({ type: "OPEN_VOICE_CALL", … })`
 // au service worker, qui ouvre le side panel et stocke le contexte vidéo.
@@ -31,7 +31,15 @@ export interface VoiceCallButtonOpts {
   videoTitle?: string;
 }
 
-const EXPERT_MONTHLY_MIN = 30;
+/**
+ * Minutes de voice call par mois, pricing v2 — miroir de
+ * `voice_monthly_minutes` dans backend/src/billing/plan_config.py (qui reste
+ * la source de vérité au POST /voice/session). Affichage indicatif seulement.
+ */
+const MONTHLY_VOICE_MINUTES: Record<"pro" | "expert", number> = {
+  pro: 30,
+  expert: 120,
+};
 const TRANSLATIONS = { fr, en } as const;
 type Language = keyof typeof TRANSLATIONS;
 const STORAGE_KEY = "ds_language";
@@ -111,7 +119,7 @@ export async function renderVoiceCallButton(
     // [N5] Math.max protège contre overflow si backend renvoie used > quota.
     const remaining = Math.max(
       0,
-      EXPERT_MONTHLY_MIN - (opts.monthlyMinutesUsed ?? 0),
+      MONTHLY_VOICE_MINUTES[opts.plan] - (opts.monthlyMinutesUsed ?? 0),
     );
     const remainingLabel = t.minutesRemaining.replace(
       "{count}",
