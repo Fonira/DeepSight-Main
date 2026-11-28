@@ -363,7 +363,7 @@ class UserResponse(BaseModel):
         """
         from core.config import is_voice_call_available
 
-        return is_voice_call_available(is_admin=bool(self.is_admin))
+        return is_voice_call_available(is_admin=bool(self.is_admin), email=self.email)
 
     class Config:
         from_attributes = True

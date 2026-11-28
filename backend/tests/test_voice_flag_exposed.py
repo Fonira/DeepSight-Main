@@ -8,12 +8,14 @@ import pytest
 import core.config as core_config
 from auth.schemas import UserResponse
 
+ADMIN_EMAIL = "fondateur@deepsight.test"
 
-def _user(*, is_admin: bool) -> UserResponse:
+
+def _user(*, is_admin: bool, email: str = "u@test.fr") -> UserResponse:
     return UserResponse(
         id=1,
         username="u",
-        email="u@test.fr",
+        email=email,
         email_verified=True,
         plan="pro",
         credits=3,
@@ -26,6 +28,11 @@ def _user(*, is_admin: bool) -> UserResponse:
         total_playlists=0,
         created_at=datetime.now(UTC),
     )
+
+
+@pytest.fixture(autouse=True)
+def _admin_email(monkeypatch):
+    monkeypatch.setitem(core_config.ADMIN_CONFIG, "ADMIN_EMAIL", ADMIN_EMAIL)
 
 
 @pytest.mark.parametrize(
@@ -43,3 +50,17 @@ def test_voice_available_follows_key_and_kill_switch(monkeypatch, api_key, kill_
     monkeypatch.setattr(core_config, "VOICE_CALL_DISABLED", kill_switch)
 
     assert _user(is_admin=is_admin).model_dump()["voice_available"] is expected
+
+
+@pytest.mark.parametrize(
+    ("email", "expected"),
+    [
+        ("Fondateur@DeepSight.test", True),  # admin par ADMIN_EMAIL, comme /voice/session
+        ("autre@deepsight.test", False),
+    ],
+)
+def test_kill_switch_spares_the_admin_email_like_the_session_endpoint(monkeypatch, email, expected):
+    monkeypatch.setattr(core_config._settings, "ELEVENLABS_API_KEY", "xi-test-key")
+    monkeypatch.setattr(core_config, "VOICE_CALL_DISABLED", True)
+
+    assert _user(is_admin=False, email=email).model_dump()["voice_available"] is expected
