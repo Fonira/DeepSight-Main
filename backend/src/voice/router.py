@@ -62,6 +62,7 @@ from voice.quota import (
     deduct_voice_usage,
 )
 from voice.elevenlabs import (
+    ElevenLabsAPIError,
     ElevenLabsClient,
     get_elevenlabs_client,
     VOICE_CALL_PROVIDER,
@@ -1940,14 +1941,15 @@ async def create_voice_session(
         # eagerness renamed to turn_eagerness enum: "patient"|"normal"|"eager"
         eagerness_map = {"low": "patient", "medium": "normal", "high": "eager"}
         mapped_eagerness = eagerness_map.get(user_prefs.turn_eagerness, user_prefs.turn_eagerness)
+        # ElevenLabs' TurnConfig has no `mode` any more: push-to-talk is done by
+        # the client (mic muted until the key is held), the server keeps its
+        # end-of-turn detection.
         if user_prefs.input_mode == "ptt":
             turn_config = {
-                "mode": "turn",
                 "turn_timeout": user_prefs.turn_timeout,
             }
         else:
             turn_config = {
-                "mode": "silence",
                 "turn_eagerness": mapped_eagerness if mapped_eagerness in ("patient", "normal", "eager") else "normal",
                 "turn_timeout": user_prefs.turn_timeout,
             }
@@ -1978,6 +1980,7 @@ async def create_voice_session(
                 max_duration_seconds=_call_duration_cap_seconds(
                     quota_info, plan_limits, is_streaming=bool(request.is_streaming)
                 ),
+                name=f"DeepSight {agent_config.agent_type} {voice_session.id[:8]}",
             )
 
             # Get the signed WebSocket URL (legacy web / JS SDK transport)
@@ -2010,6 +2013,29 @@ async def create_voice_session(
             },
         )
 
+    except ElevenLabsAPIError as exc:
+        # ElevenLabs refused a tool, the agent or the signed URL. The log keeps
+        # its status and message; an admin also gets them in the response so
+        # the reason shows up without reading the server logs.
+        logger.error("ElevenLabs refused the voice session: %s", exc)
+        voice_session.status = "error"
+        await db.commit()
+        detail: dict = {
+            "code": "voice_service_unavailable" if exc.is_config_error else "voice_service_error",
+            "message": (
+                "Voice service is not configured properly. Please try again later."
+                if exc.is_config_error
+                else "Voice service is temporarily unavailable. Please try again later."
+            ),
+        }
+        if is_admin:
+            detail["provider_error"] = {
+                "operation": exc.operation,
+                "status": exc.status_code,
+                "code": exc.code,
+                "message": exc.message,
+            }
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=detail)
     except ValueError as exc:
         # Invalid API key or missing config
         logger.error("ElevenLabs config error: %s", exc)

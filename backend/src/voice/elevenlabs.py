@@ -15,7 +15,8 @@ https://elevenlabs.io/docs/api-reference/conversational-ai
 
 from __future__ import annotations
 
-from typing import Optional
+import asyncio
+from typing import Any, Optional
 
 import httpx
 
@@ -45,6 +46,89 @@ ALLOWED_VOICE_CALL_MODELS: frozenset[str] = frozenset(
 # Bounds ElevenLabs accepts for conversation.max_duration_seconds.
 MIN_CALL_DURATION_SECONDS: int = 60
 MAX_CALL_DURATION_SECONDS: int = 7200
+
+# Vitesse de voix acceptée par les agents ElevenLabs (curseur 0,7–1,2 du
+# dashboard). Les presets plus rapides passent par le playback_rate client.
+MIN_TTS_SPEED: float = 0.7
+MAX_TTS_SPEED: float = 1.2
+
+# Champs de conversation_config.turn que l'on transmet. Le schéma TurnConfig
+# n'a plus de champ `mode` : le push-to-talk se fait côté client (micro coupé
+# hors appui), le serveur garde sa détection de fin de tour.
+_TURN_CONFIG_KEYS: frozenset[str] = frozenset(
+    {"turn_timeout", "turn_eagerness", "silence_end_call_timeout", "initial_wait_time"}
+)
+
+
+class ElevenLabsAPIError(Exception):
+    """ElevenLabs a refusé une requête : statut HTTP, code et message renvoyés par l'API."""
+
+    def __init__(self, operation: str, status_code: int, code: str | None, message: str) -> None:
+        self.operation = operation
+        self.status_code = status_code
+        self.code = code
+        self.message = message
+        label = f"{status_code} {code}" if code else str(status_code)
+        super().__init__(f"ElevenLabs {operation} failed ({label}): {message}")
+
+    @property
+    def is_config_error(self) -> bool:
+        """Clé refusée ou permission manquante : un problème de configuration, pas une panne."""
+        return self.status_code in (401, 403)
+
+
+def _error_from_response(response: httpx.Response, operation: str) -> ElevenLabsAPIError:
+    """Extrait le code et le message d'une réponse d'erreur ElevenLabs.
+
+    Formats rencontrés : ``{"detail": {"status": ..., "message": ...}}``,
+    ``{"detail": [{"loc": [...], "msg": ..., "type": ...}]}`` (validation 422)
+    et ``{"detail": "texte"}``. Ces corps ne contiennent pas la clé API.
+    """
+    code: str | None = None
+    message = ""
+    try:
+        payload: Any = response.json()
+    except ValueError:
+        payload = None
+    detail = payload.get("detail") if isinstance(payload, dict) else None
+    if isinstance(detail, dict):
+        raw_code = detail.get("status") or detail.get("code")
+        code = str(raw_code) if raw_code else None
+        message = str(detail.get("message") or detail)
+    elif isinstance(detail, list):
+        parts: list[str] = []
+        for item in detail[:5]:
+            if isinstance(item, dict):
+                location = ".".join(str(part) for part in item.get("loc", []) if part != "body")
+                text = str(item.get("msg", ""))
+                parts.append(f"{location}: {text}" if location else text)
+                if code is None and item.get("type"):
+                    code = str(item["type"])
+            else:
+                parts.append(str(item))
+        message = " ; ".join(parts)
+    elif detail is not None:
+        message = str(detail)
+    elif payload is not None:
+        message = str(payload)
+    if not message:
+        message = response.text or "empty response body"
+    return ElevenLabsAPIError(operation, response.status_code, code, message[:500])
+
+
+def _ensure_success(response: httpx.Response, operation: str) -> None:
+    """Lève ElevenLabsAPIError (et la journalise) si la réponse n'est pas un 2xx."""
+    if 200 <= response.status_code < 300:
+        return
+    error = _error_from_response(response, operation)
+    logger.error(
+        "elevenlabs.request_failed",
+        operation=operation,
+        status=error.status_code,
+        code=error.code,
+        detail=error.message,
+    )
+    raise error
 
 
 class ElevenLabsClient:
@@ -85,20 +169,29 @@ class ElevenLabsClient:
         voice_settings: Optional[dict] = None,
         turn_config: Optional[dict] = None,
         max_duration_seconds: int | None = None,
+        name: str | None = None,
     ) -> str:
-        """Create a conversational AI agent and return its agent_id.
+        """Create a private conversational AI agent and return its agent_id.
+
+        Les outils webhook sont créés comme outils autonomes (POST /convai/tools)
+        puis référencés par ``prompt.tool_ids`` : depuis juillet 2025, ElevenLabs
+        refuse les créations d'agent qui contiennent ``prompt.tools``. Si la
+        création de l'agent échoue, les outils déjà créés sont supprimés.
 
         Args:
+            tools: webhook tool configs (from the ``build_*_tools_config`` builders).
             model_id: ElevenLabs TTS model (eleven_flash_v2_5, eleven_turbo_v2_5, eleven_multilingual_v2).
-            voice_settings: ElevenLabs voice_settings dict (stability, similarity_boost, style, speed, etc.).
-            turn_config: ElevenLabs turn configuration (mode, turn_timeout, interruptions, eagerness).
+            voice_settings: user voice settings; only stability, similarity_boost and
+                speed exist on agents (speed clamped to 0.7–1.2).
+            turn_config: turn settings; only the keys of ``_TURN_CONFIG_KEYS`` are sent.
             max_duration_seconds: ElevenLabs ends the conversation at this duration
                 (``conversation_config.conversation.max_duration_seconds``), clamped to
                 the 60–7200 s the API accepts. None keeps ElevenLabs' default (600 s).
+            name: agent name shown in the ElevenLabs dashboard.
 
         Raises:
-            ValueError: on 401 (invalid API key) or invalid model_id (HARD-PIN).
-            httpx.HTTPStatusError: on 429 (rate limit) or 5xx.
+            ValueError: invalid model_id (HARD-PIN).
+            ElevenLabsAPIError: ElevenLabs refused a tool or the agent (status, code, message).
         """
         # HARD-PIN: ElevenLabs only for voice-call (see tts-policy.md)
         # Defence in depth — even if a caller bypasses the Pydantic schema in
@@ -118,39 +211,44 @@ class ElevenLabsClient:
                 f"model_id={model_id!r} is not allowed. "
                 f"See backend/docs/architecture/tts-policy.md."
             )
-        # ── TTS config (flat properties since API update April 2026) ──
+        # ── TTS config — only the fields of TTSConversationalConfig ──
+        # (style, use_speaker_boost and optimize_streaming_latency are not
+        # agent settings: style/speaker boost don't exist there, the latency
+        # option is a deprecated no-op).
         tts_config: dict = {
             "voice_id": voice_id,
             "model_id": model_id,
-            # Reduce first-byte latency — level 4 = maximum optimization
-            "optimize_streaming_latency": 4,
         }
-        # Flatten voice_settings into tts_config (no longer nested)
         if voice_settings:
-            for key in ("stability", "similarity_boost", "speed", "style"):
-                if key in voice_settings:
-                    tts_config[key] = voice_settings[key]
-
-        # ── Agent prompt config (tools now live inside agent.prompt) ──
-        prompt_config: dict = {
-            "prompt": system_prompt,
-            "tools": tools,
-        }
+            for key in ("stability", "similarity_boost"):
+                value = voice_settings.get(key)
+                if value is not None:
+                    tts_config[key] = min(max(float(value), 0.0), 1.0)
+            speed = voice_settings.get("speed")
+            if speed is not None:
+                tts_config["speed"] = min(max(float(speed), MIN_TTS_SPEED), MAX_TTS_SPEED)
 
         body: dict = {
             "conversation_config": {
                 "agent": {
-                    "prompt": prompt_config,
+                    "prompt": {"prompt": system_prompt},
                     "first_message": first_message or "",
                     "language": language,
                 },
                 "tts": tts_config,
             },
+            # Agent privé : une conversation ne démarre qu'avec l'URL signée ou
+            # le jeton LiveKit que notre API obtient avec la clé. Sinon l'agent_id
+            # renvoyé au client suffisait à ouvrir des appels hors quota.
+            "platform_settings": {"auth": {"enable_auth": True}},
         }
+        if name:
+            body["name"] = name
 
-        # Add turn/interruption configuration if provided
         if turn_config:
-            body["conversation_config"]["turn"] = turn_config
+            turn = {key: value for key, value in turn_config.items() if key in _TURN_CONFIG_KEYS}
+            if turn:
+                body["conversation_config"]["turn"] = turn
 
         # Hard cap enforced by ElevenLabs: the agent hangs up at the limit, so
         # a call cannot outlast the user's quota even if the client ignores it.
@@ -164,35 +262,109 @@ class ElevenLabsClient:
 
         logger.info(
             "elevenlabs.create_agent",
-            extra={"voice_id": voice_id, "model_id": model_id, "language": language},
+            voice_id=voice_id,
+            model_id=model_id,
+            language=language,
+            tools=len(tools),
         )
 
-        response = await self._client.post("/convai/agents/create", json=body)
+        tool_ids = await self._create_tools(tools)
+        if tool_ids:
+            body["conversation_config"]["agent"]["prompt"]["tool_ids"] = tool_ids
 
-        if response.status_code == 401:
-            raise ValueError("ElevenLabs API key is invalid or expired")
-        if response.status_code == 429:
-            raise httpx.HTTPStatusError(
-                "ElevenLabs rate limit exceeded — retry later",
-                request=response.request,
-                response=response,
-            )
-        if response.status_code == 422:
-            # Log the response body for debugging schema mismatches
-            try:
-                error_detail = response.json()
-            except Exception:
-                error_detail = response.text[:500]
-            logger.error(
-                "elevenlabs.create_agent_422",
-                extra={"status": 422, "detail": error_detail},
-            )
-        response.raise_for_status()
+        try:
+            response = await self._client.post("/convai/agents/create", json=body)
+            _ensure_success(response, "create_agent")
+            agent_id: str = response.json()["agent_id"]
+        except Exception:
+            # L'agent n'existe pas : ses outils resteraient orphelins.
+            await self._delete_tools(tool_ids)
+            raise
 
-        data = response.json()
-        agent_id: str = data["agent_id"]
-        logger.info("elevenlabs.agent_created", extra={"agent_id": agent_id})
+        logger.info("elevenlabs.agent_created", agent_id=agent_id, tools=len(tool_ids))
         return agent_id
+
+    # ------------------------------------------------------------------
+    # Standalone tools (prompt.tool_ids)
+    # ------------------------------------------------------------------
+
+    async def create_tool(self, tool_config: dict) -> str:
+        """Create a standalone workspace tool and return its id."""
+        operation = f"create_tool:{tool_config.get('name', '?')}"
+        response = await self._client.post("/convai/tools", json={"tool_config": tool_config})
+        _ensure_success(response, operation)
+        tool_id = response.json().get("id")
+        if not tool_id:
+            raise ElevenLabsAPIError(operation, response.status_code, "missing_id", "response has no tool id")
+        return str(tool_id)
+
+    async def delete_tool(self, tool_id: str) -> bool:
+        """Delete a standalone tool. A tool that no longer exists counts as deleted."""
+        try:
+            response = await self._client.delete(f"/convai/tools/{tool_id}")
+        except httpx.HTTPError as exc:
+            logger.warning("elevenlabs.delete_tool_error", tool_id=tool_id, error=str(exc))
+            return False
+        if 200 <= response.status_code < 300 or response.status_code == 404:
+            return True
+        logger.warning("elevenlabs.delete_tool_failed", tool_id=tool_id, status=response.status_code)
+        return False
+
+    async def _create_tools(self, tools: list[dict]) -> list[str]:
+        """Create the tools in parallel; if one fails, delete the others and re-raise."""
+        if not tools:
+            return []
+        results = await asyncio.gather(*(self.create_tool(tool) for tool in tools), return_exceptions=True)
+        created = [result for result in results if isinstance(result, str)]
+        failure = next((result for result in results if isinstance(result, BaseException)), None)
+        if failure is not None:
+            await self._delete_tools(created)
+            raise failure
+        return created
+
+    async def _delete_tools(self, tool_ids: list[str]) -> None:
+        if tool_ids:
+            await asyncio.gather(*(self.delete_tool(tool_id) for tool_id in tool_ids))
+
+    async def get_agent_tool_ids(self, agent_id: str) -> list[str]:
+        """Tool ids referenced by an agent ([] if the agent can't be read)."""
+        try:
+            response = await self._client.get(f"/convai/agents/{agent_id}")
+        except httpx.HTTPError as exc:
+            logger.warning("elevenlabs.get_agent_error", agent_id=agent_id, error=str(exc))
+            return []
+        if not 200 <= response.status_code < 300:
+            return []
+        try:
+            prompt = response.json()["conversation_config"]["agent"]["prompt"]
+        except (ValueError, KeyError, TypeError):
+            return []
+        tool_ids = prompt.get("tool_ids") if isinstance(prompt, dict) else None
+        return [tool_id for tool_id in tool_ids or [] if isinstance(tool_id, str)]
+
+    # ------------------------------------------------------------------
+    # Account checks (used by voice.diagnostics)
+    # ------------------------------------------------------------------
+
+    async def get_subscription(self) -> dict:
+        response = await self._client.get("/user/subscription")
+        _ensure_success(response, "get_subscription")
+        return response.json()
+
+    async def get_voice(self, voice_id: str) -> dict:
+        response = await self._client.get(f"/voices/{voice_id}")
+        _ensure_success(response, "get_voice")
+        return response.json()
+
+    async def list_agents(self, *, search: str | None = None, cursor: str | None = None, page_size: int = 100) -> dict:
+        params: dict[str, Any] = {"page_size": page_size}
+        if search:
+            params["search"] = search
+        if cursor:
+            params["cursor"] = cursor
+        response = await self._client.get("/convai/agents", params=params)
+        _ensure_success(response, "list_agents")
+        return response.json()
 
     async def get_signed_url(self, agent_id: str) -> tuple[str, str]:
         """Get a signed WebSocket URL for a conversation session.
@@ -206,7 +378,7 @@ class ElevenLabsClient:
             "/convai/conversation/get-signed-url",
             params={"agent_id": agent_id},
         )
-        response.raise_for_status()
+        _ensure_success(response, "get_signed_url")
 
         data = response.json()
         return data["signed_url"], data.get("expires_at", "")
@@ -223,7 +395,7 @@ class ElevenLabsClient:
             (token, expires_at_iso) — token is a LiveKit-compatible JWT.
 
         Raises:
-            httpx.HTTPStatusError: on 4xx/5xx. The caller is expected to
+            ElevenLabsAPIError: on 4xx/5xx. The caller is expected to
                 gracefully degrade to signed_url-only when this fails.
         """
         logger.info("elevenlabs.get_conversation_token", extra={"agent_id": agent_id})
@@ -232,7 +404,7 @@ class ElevenLabsClient:
             "/convai/conversation/token",
             params={"agent_id": agent_id},
         )
-        response.raise_for_status()
+        _ensure_success(response, "get_conversation_token")
 
         data = response.json()
         token: str = data.get("token") or data.get("conversation_token") or ""
@@ -243,25 +415,31 @@ class ElevenLabsClient:
             )
         return token, data.get("expires_at", "")
 
-    async def delete_agent(self, agent_id: str) -> bool:
-        """Delete a conversational AI agent. Returns True on success, False otherwise."""
+    async def delete_agent(self, agent_id: str, *, delete_tools: bool = True) -> bool:
+        """Delete an agent, then the standalone tools it referenced.
+
+        Returns True when the agent is gone (deleted now, or already absent),
+        False otherwise. Tools are only deleted once the agent no longer exists.
+        """
         logger.info("elevenlabs.delete_agent", extra={"agent_id": agent_id})
+        tool_ids = await self.get_agent_tool_ids(agent_id) if delete_tools else []
         try:
             response = await self._client.delete(f"/convai/agents/{agent_id}")
-            if response.is_success:
-                logger.info("elevenlabs.agent_deleted", extra={"agent_id": agent_id})
-                return True
-            logger.warning(
-                "elevenlabs.delete_agent_failed",
-                extra={"agent_id": agent_id, "status": response.status_code},
-            )
-            return False
         except httpx.HTTPError as exc:
             logger.warning(
                 "elevenlabs.delete_agent_error",
                 extra={"agent_id": agent_id, "error": str(exc)},
             )
             return False
+        if not (200 <= response.status_code < 300 or response.status_code == 404):
+            logger.warning(
+                "elevenlabs.delete_agent_failed",
+                extra={"agent_id": agent_id, "status": response.status_code},
+            )
+            return False
+        await self._delete_tools(tool_ids)
+        logger.info("elevenlabs.agent_deleted", agent_id=agent_id, tools=len(tool_ids))
+        return True
 
     # ------------------------------------------------------------------
     # Prompt & tool builders (static)
