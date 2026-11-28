@@ -353,6 +353,18 @@ class UserResponse(BaseModel):
 
         return is_visual_analysis_enabled()
 
+    @computed_field
+    @property
+    def voice_available(self) -> bool:
+        """Appels vocaux ElevenLabs utilisables : clé configurée, kill switch coupé.
+
+        Ne dit rien du plan, que /voice/session vérifie toujours. L'extension
+        masque ses boutons d'appel quand c'est faux.
+        """
+        from core.config import is_voice_call_available
+
+        return is_voice_call_available(is_admin=bool(self.is_admin))
+
     class Config:
         from_attributes = True
 
