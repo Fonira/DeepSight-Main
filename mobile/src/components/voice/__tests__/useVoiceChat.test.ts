@@ -193,7 +193,7 @@ describe("useVoiceChat", () => {
     );
   });
 
-  it("retombe sur agentId quand le backend ne fournit pas de conversation_token", async () => {
+  it("n'ouvre pas l'appel sans conversation_token (agents privés)", async () => {
     mockCreateSession.mockResolvedValueOnce({
       session_id: "sess_123",
       signed_url:
@@ -211,10 +211,66 @@ describe("useVoiceChat", () => {
       await result.current.start();
     });
 
-    expect(mockStartSession).toHaveBeenCalledWith(
-      expect.objectContaining({
-        agentId: "agent_abc",
-      }),
+    expect(mockStartSession).not.toHaveBeenCalled();
+    expect(result.current.status).toBe("error");
+    expect(result.current.error).toBe(
+      "Impossible de démarrer la session vocale. Réessayez.",
+    );
+  });
+
+  it("démarre sans override client : l'agent n'en autorise aucun", async () => {
+    const { result } = renderHook(() => useVoiceChat({ summaryId: "42" }));
+
+    await act(async () => {
+      await result.current.start();
+    });
+
+    expect(mockStartSession).toHaveBeenCalledWith({
+      conversationToken: "livekit-jwt-token-test",
+    });
+  });
+
+  it("montre à l'admin la raison donnée par ElevenLabs", async () => {
+    mockCreateSession.mockRejectedValue({
+      status: 503,
+      message: "Voice service is not configured properly.",
+      detail: {
+        code: "voice_service_unavailable",
+        provider_error: {
+          operation: "create_agent",
+          status: 401,
+          code: "missing_permissions",
+          message: "missing the permission convai_write",
+        },
+      },
+    });
+
+    const { result } = renderHook(() => useVoiceChat({ summaryId: "42" }));
+
+    await act(async () => {
+      await result.current.start();
+    });
+
+    expect(result.current.error).toBe(
+      "Impossible de démarrer la session vocale. Réessayez. (ElevenLabs : 401 missing_permissions - missing the permission convai_write)",
+    );
+    expect(mockStartSession).not.toHaveBeenCalled();
+  });
+
+  it("dit quand les appels sont coupés côté serveur", async () => {
+    mockCreateSession.mockRejectedValue({
+      status: 503,
+      detail: { code: "voice_call_disabled", message: "indisponible" },
+    });
+
+    const { result } = renderHook(() => useVoiceChat({ summaryId: "42" }));
+
+    await act(async () => {
+      await result.current.start();
+    });
+
+    expect(result.current.error).toBe(
+      "Les appels vocaux sont coupés pour le moment.",
     );
   });
 
