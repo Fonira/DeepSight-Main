@@ -373,6 +373,14 @@
     "userNotRegistered": "No DeepSight account is linked to this Google account. Create an account on the website.",
     "invalidUrl": "This page is not a recognised YouTube or TikTok video.",
     "guestQuota": "You have used your free analyses. Create an account to continue.",
+    "voiceServiceError": "The voice service isn't responding. Try again in a moment.",
+    "voiceCallDisabled": "Voice calls are switched off for now.",
+    "voiceConnectionFailed": "The call couldn't connect to the voice agent.",
+    "voiceProviderReason": "(ElevenLabs: {reason})",
+    "micDenied": "The microphone is blocked for DeepSight. Allow it in Chrome (Settings > Privacy and security > Site settings > Microphone), then start the call again.",
+    "micDismissed": "Allow the microphone in the DeepSight window that opened, then start the call again.",
+    "micNotFound": "No microphone found on this computer.",
+    "dismiss": "Dismiss message",
     "generic": "Something went wrong. Please try again."
   }
 }

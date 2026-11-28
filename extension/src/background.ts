@@ -1045,7 +1045,8 @@ interface MicPermissionMessage {
   action:
     | "REQUEST_MIC_PERMISSION"
     | "OPEN_MIC_PERMISSION_POPUP"
-    | "MIC_PERMISSION_GRANTED";
+    | "MIC_PERMISSION_GRANTED"
+    | "MIC_PERMISSION_DISMISSED";
 }
 
 /**
@@ -1145,6 +1146,14 @@ export async function handleMessage(
       .catch(() => {
         /* sidepanel may be closed */
       });
+    return { success: true };
+  }
+
+  // Fenêtre micro fermée sans autorisation : le side panel reçoit le même
+  // message directement (sidepanel/micPermission.ts), rien à relayer.
+  if (
+    (message as MicPermissionMessage)?.action === "MIC_PERMISSION_DISMISSED"
+  ) {
     return { success: true };
   }
 

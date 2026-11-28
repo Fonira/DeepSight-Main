@@ -9,7 +9,7 @@
  */
 
 import React from "react";
-import { render } from "@testing-library/react";
+import { act, fireEvent, render } from "@testing-library/react";
 import { ConversationView } from "../../../src/sidepanel/views/ConversationView";
 import type {
   UseConversationInput,
@@ -67,6 +67,7 @@ jest.mock("../../../src/i18n/useTranslation", () => ({
         },
         errors: { callEnded: "ended" },
       },
+      errors: { dismiss: "Fermer le message" },
     },
     language: "fr",
   }),
@@ -247,5 +248,59 @@ describe("ConversationView", () => {
     expect(getByText("typed")).toBeTruthy();
     // assistant voice bubble has the mic badge
     expect(getByTestId("voice-badge-mic")).toBeTruthy();
+  });
+
+  it("shows the errors the hook reports until they are dismissed", () => {
+    const { getByTestId, queryByTestId, getByLabelText } = render(
+      <ConversationView
+        summaryId={42}
+        videoTitle="Test"
+        initialMode="call"
+        voiceAvailable
+        onClose={jest.fn()}
+      />,
+    );
+    expect(queryByTestId("conversation-alert")).toBeNull();
+
+    act(() => {
+      lastHookInput?.onError?.("Le micro est bloqué pour DeepSight.");
+    });
+    expect(getByTestId("conversation-alert").textContent).toContain(
+      "Le micro est bloqué pour DeepSight.",
+    );
+    expect(getByTestId("conversation-alert").getAttribute("role")).toBe(
+      "alert",
+    );
+
+    fireEvent.click(getByLabelText("Fermer le message"));
+    expect(queryByTestId("conversation-alert")).toBeNull();
+  });
+
+  it("clears the error once a call is live", () => {
+    const view = render(
+      <ConversationView
+        summaryId={42}
+        videoTitle="Test"
+        initialMode="call"
+        voiceAvailable
+        onClose={jest.fn()}
+      />,
+    );
+    act(() => {
+      lastHookInput?.onError?.("Le service vocal ne répond pas.");
+    });
+    expect(view.queryByTestId("conversation-alert")).toBeTruthy();
+
+    mockConv = { ...baseConv, voiceMode: "live" };
+    view.rerender(
+      <ConversationView
+        summaryId={42}
+        videoTitle="Test"
+        initialMode="call"
+        voiceAvailable
+        onClose={jest.fn()}
+      />,
+    );
+    expect(view.queryByTestId("conversation-alert")).toBeNull();
   });
 });

@@ -12,7 +12,7 @@
 //   - EndedToast (visible 3s après hangup)
 //   - ConversationInput (toujours visible — mic + web-search + send)
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useConversation } from "../hooks/useConversation";
 import { ConversationFeed } from "../components/ConversationFeed";
 import { ConversationInput } from "../components/ConversationInput";
@@ -91,6 +91,9 @@ export const ConversationView: React.FC<ConversationViewProps> = ({
   onSessionExpired,
 }) => {
   const { t } = useTranslation();
+  // Erreurs d'appel ou de chat : la vue s'affiche aussi seule (appel lancé
+  // depuis YouTube), sans le toast de l'App, donc elle les montre elle-même.
+  const [notice, setNotice] = useState<string | null>(null);
   const conv = useConversation({
     summaryId,
     videoTitle,
@@ -99,6 +102,7 @@ export const ConversationView: React.FC<ConversationViewProps> = ({
     initialMode,
     userPlan,
     voiceAvailable,
+    onError: setNotice,
     onSessionExpired,
   });
 
@@ -123,6 +127,11 @@ export const ConversationView: React.FC<ConversationViewProps> = ({
     toggleMute,
     clearHistory,
   } = conv;
+
+  // Un appel qui démarre rend l'erreur précédente caduque.
+  useEffect(() => {
+    if (voiceMode === "live") setNotice(null);
+  }, [voiceMode]);
 
   const truncatedTitle =
     videoTitle.length > 30 ? videoTitle.substring(0, 30) + "..." : videoTitle;
@@ -225,6 +234,25 @@ export const ConversationView: React.FC<ConversationViewProps> = ({
             }}
           >
             {t.chat.reconnect}
+          </button>
+        </div>
+      )}
+
+      {notice && (
+        <div
+          className="conversation-alert"
+          role="alert"
+          data-testid="conversation-alert"
+        >
+          <span className="conversation-alert-text">{notice}</span>
+          <button
+            type="button"
+            className="conversation-alert-close"
+            onClick={() => setNotice(null)}
+            title={t.errors.dismiss}
+            aria-label={t.errors.dismiss}
+          >
+            ×
           </button>
         </div>
       )}

@@ -20,6 +20,18 @@
 
 const btn = document.getElementById("grant-btn") as HTMLButtonElement | null;
 const statusEl = document.getElementById("status") as HTMLDivElement | null;
+let granted = false;
+
+// Fenêtre fermée sans autorisation : le panneau latéral, qui attend la
+// réponse avant de lancer l'appel, affiche tout de suite comment reprendre.
+window.addEventListener("pagehide", () => {
+  if (granted) return;
+  chrome.runtime
+    .sendMessage({ action: "MIC_PERMISSION_DISMISSED" })
+    .catch(() => {
+      /* best-effort */
+    });
+});
 
 function setStatus(text: string, kind: "ok" | "err" | "" = ""): void {
   if (!statusEl) return;
@@ -37,6 +49,7 @@ if (btn) {
         // Release immédiat — Chrome cache la permission, le SDK ElevenLabs
         // côté sidepanel re-getUserMedia sans re-prompt.
         for (const track of stream.getTracks()) track.stop();
+        granted = true;
         setStatus("✅ Micro autorisé ! Cette fenêtre se ferme…", "ok");
         // Notifie le background → broadcast au sidepanel.
         chrome.runtime

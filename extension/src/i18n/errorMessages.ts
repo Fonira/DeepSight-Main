@@ -59,6 +59,18 @@ export function localizeError(
       return errors.googleUnavailable;
     case "voice_service_unavailable":
       return errors.voiceUnavailable;
+    case "voice_service_error":
+      return errors.voiceServiceError;
+    case "voice_call_disabled":
+      return errors.voiceCallDisabled;
+    case "voice_connection_failed":
+      return errors.voiceConnectionFailed;
+    case "mic_denied":
+      return errors.micDenied;
+    case "mic_dismissed":
+      return errors.micDismissed;
+    case "mic_not_found":
+      return errors.micNotFound;
     case "email_not_verified":
       return errors.emailNotVerified;
     case "user_not_registered":
