@@ -1065,6 +1065,22 @@ async def _run_main_analysis_for_video(
         )
 
 
+def _call_duration_cap_seconds(quota_info: dict, plan_limits: dict, *, is_streaming: bool) -> int:
+    """Longest call the agent may hold, passed to ElevenLabs as max_duration_seconds.
+
+    The client timer only displays time, so the cap must live on the agent:
+    the remaining quota seconds, further bounded for classic voice chat by the
+    plan's per-session maximum. Quick Voice Call has no per-session limit in
+    its quota model (VOICE_LIMITS is the legacy table and has no Expert entry).
+    """
+    remaining = int(quota_info.get("seconds_remaining", 0) or 0)
+    if not is_streaming:
+        per_session = int(plan_limits.get("max_session_minutes", 0) or 0) * 60
+        if per_session > 0:
+            remaining = min(remaining, per_session)
+    return remaining
+
+
 @router.post("/session", response_model=VoiceSessionResponse)
 async def create_voice_session(
     request: VoiceSessionRequest,
@@ -1959,6 +1975,9 @@ async def create_voice_session(
                 model_id=voice_chat_model,
                 voice_settings=voice_settings,
                 turn_config=turn_config,
+                max_duration_seconds=_call_duration_cap_seconds(
+                    quota_info, plan_limits, is_streaming=bool(request.is_streaming)
+                ),
             )
 
             # Get the signed WebSocket URL (legacy web / JS SDK transport)

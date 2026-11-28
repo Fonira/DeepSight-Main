@@ -42,6 +42,10 @@ ALLOWED_VOICE_CALL_MODELS: frozenset[str] = frozenset(
     }
 )
 
+# Bounds ElevenLabs accepts for conversation.max_duration_seconds.
+MIN_CALL_DURATION_SECONDS: int = 60
+MAX_CALL_DURATION_SECONDS: int = 7200
+
 
 class ElevenLabsClient:
     """Async client for the ElevenLabs Conversational AI API."""
@@ -80,6 +84,7 @@ class ElevenLabsClient:
         model_id: str = "eleven_flash_v2_5",
         voice_settings: Optional[dict] = None,
         turn_config: Optional[dict] = None,
+        max_duration_seconds: int | None = None,
     ) -> str:
         """Create a conversational AI agent and return its agent_id.
 
@@ -87,6 +92,9 @@ class ElevenLabsClient:
             model_id: ElevenLabs TTS model (eleven_flash_v2_5, eleven_turbo_v2_5, eleven_multilingual_v2).
             voice_settings: ElevenLabs voice_settings dict (stability, similarity_boost, style, speed, etc.).
             turn_config: ElevenLabs turn configuration (mode, turn_timeout, interruptions, eagerness).
+            max_duration_seconds: ElevenLabs ends the conversation at this duration
+                (``conversation_config.conversation.max_duration_seconds``), clamped to
+                the 60–7200 s the API accepts. None keeps ElevenLabs' default (600 s).
 
         Raises:
             ValueError: on 401 (invalid API key) or invalid model_id (HARD-PIN).
@@ -143,6 +151,16 @@ class ElevenLabsClient:
         # Add turn/interruption configuration if provided
         if turn_config:
             body["conversation_config"]["turn"] = turn_config
+
+        # Hard cap enforced by ElevenLabs: the agent hangs up at the limit, so
+        # a call cannot outlast the user's quota even if the client ignores it.
+        if max_duration_seconds is not None:
+            body["conversation_config"]["conversation"] = {
+                "max_duration_seconds": min(
+                    max(int(max_duration_seconds), MIN_CALL_DURATION_SECONDS),
+                    MAX_CALL_DURATION_SECONDS,
+                ),
+            }
 
         logger.info(
             "elevenlabs.create_agent",
