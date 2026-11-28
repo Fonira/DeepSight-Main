@@ -26,6 +26,12 @@ export interface User {
    * par login, refresh et /auth/me.
    */
   visual_analysis_available?: boolean;
+  /**
+   * Appels vocaux ElevenLabs utilisables sur le serveur : clé configurée et
+   * kill switch `VOICE_CALL_DISABLED` coupé (l'admin garde l'accès). Champ
+   * calculé de `UserResponse`. Ne dit rien du plan, vérifié à /voice/session.
+   */
+  voice_available?: boolean;
 }
 
 export interface AuthTokens {
@@ -357,6 +363,8 @@ export interface VoiceButtonState {
   monthlyMinutesUsed: number;
   /** Couche visuelle activée côté API (`user.visual_analysis_available`). */
   visualAnalysisAvailable: boolean;
+  /** Voix compilée dans ce build et branchée côté API (`isVoiceEnabled`). */
+  voiceAvailable: boolean;
 }
 
 export interface MessageResponse {

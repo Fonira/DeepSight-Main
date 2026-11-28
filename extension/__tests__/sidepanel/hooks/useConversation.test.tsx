@@ -16,7 +16,6 @@ import React from "react";
 import { render, act, waitFor } from "@testing-library/react";
 import { useConversation } from "../../../src/sidepanel/hooks/useConversation";
 import type { UnifiedMessage } from "../../../src/sidepanel/hooks/useConversation";
-import { FEATURES } from "../../../src/utils/features";
 
 // ── Mocks ────────────────────────────────────────────────────────────
 
@@ -106,15 +105,22 @@ jest.mock("../../../src/sidepanel/hooks/useStreamingVideoContext", () => ({
 
 interface HarnessProps {
   initialMode: "chat" | "call";
+  /** Voix utilisable (build + API) ; faux par défaut comme dans le hook. */
+  voiceAvailable?: boolean;
   onResult: (r: ReturnType<typeof useConversation>) => void;
 }
 
-const Harness: React.FC<HarnessProps> = ({ initialMode, onResult }) => {
+const Harness: React.FC<HarnessProps> = ({
+  initialMode,
+  voiceAvailable,
+  onResult,
+}) => {
   const result = useConversation({
     summaryId: 42,
     videoTitle: "Test Video",
     videoId: "vid-abc",
     initialMode,
+    voiceAvailable,
   });
   onResult(result);
   return null;
@@ -310,19 +316,12 @@ describe("useConversation — sendMessage routing", () => {
 });
 
 describe("useConversation — call lifecycle", () => {
-  beforeEach(() => {
-    FEATURES.voice = true;
-  });
-
-  afterEach(() => {
-    FEATURES.voice = false;
-  });
-
   it("auto-starts voice when initialMode='call'", async () => {
     let captured: ReturnType<typeof useConversation> | null = null;
     render(
       <Harness
         initialMode="call"
+        voiceAvailable
         onResult={(r) => {
           captured = r;
         }}
@@ -346,6 +345,7 @@ describe("useConversation — call lifecycle", () => {
     render(
       <Harness
         initialMode="chat"
+        voiceAvailable
         onResult={(r) => {
           captured = r;
         }}
@@ -366,6 +366,7 @@ describe("useConversation — call lifecycle", () => {
     render(
       <Harness
         initialMode="chat"
+        voiceAvailable
         onResult={(r) => {
           captured = r;
         }}
@@ -394,6 +395,7 @@ describe("useConversation — call lifecycle", () => {
     render(
       <Harness
         initialMode="chat"
+        voiceAvailable
         onResult={(r) => {
           captured = r;
         }}
@@ -412,11 +414,9 @@ describe("useConversation — call lifecycle", () => {
   });
 });
 
-describe("useConversation — appels vocaux coupés", () => {
-  beforeEach(() => {
-    FEATURES.voice = false;
-  });
-
+// Voix absente du build ou coupée côté API : ConversationView passe
+// voiceAvailable=false (défaut du hook).
+describe("useConversation — voix indisponible", () => {
   it("does NOT auto-start voice even when initialMode='call'", async () => {
     let captured: ReturnType<typeof useConversation> | null = null;
     render(

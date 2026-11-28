@@ -21,7 +21,6 @@ import { EndedToast } from "../components/EndedToast";
 import { ContextProgressBar } from "../components/ContextProgressBar";
 import { BackIcon } from "../shared/Icons";
 import { useTranslation } from "../../i18n/useTranslation";
-import { FEATURES } from "../../utils/features";
 
 const TrashIcon: React.FC<{ size?: number }> = ({ size = 16 }) => (
   <svg
@@ -71,6 +70,11 @@ export interface ConversationViewProps {
   platform?: "youtube" | "tiktok" | null;
   initialMode: "chat" | "call";
   userPlan?: string;
+  /**
+   * Voix utilisable (compilée et branchée côté API, cf. utils/features).
+   * Faux par défaut : ni micro, ni démarrage d'appel.
+   */
+  voiceAvailable?: boolean;
   onClose: () => void;
   onSessionExpired?: () => void;
 }
@@ -82,6 +86,7 @@ export const ConversationView: React.FC<ConversationViewProps> = ({
   platform,
   initialMode,
   userPlan,
+  voiceAvailable = false,
   onClose,
   onSessionExpired,
 }) => {
@@ -93,6 +98,7 @@ export const ConversationView: React.FC<ConversationViewProps> = ({
     platform: platform ?? null,
     initialMode,
     userPlan,
+    voiceAvailable,
     onSessionExpired,
   });
 
@@ -228,7 +234,7 @@ export const ConversationView: React.FC<ConversationViewProps> = ({
         webSearchAvailable={canUseWebSearch(userPlan)}
         webSearchEnabled={webSearchEnabled}
         onToggleWebSearch={setWebSearchEnabled}
-        voiceAvailable={FEATURES.voice}
+        voiceAvailable={voiceAvailable}
         voiceMode={voiceMode}
         isMuted={isMuted}
         onMicTap={handleMicTap}

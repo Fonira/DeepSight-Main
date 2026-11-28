@@ -3,12 +3,13 @@
  * @jest-environment-options {"url": "https://www.youtube.com/watch?v=initial"}
  */
 //
-// Tests — voiceCallInjector × FEATURES.voice × couche visuelle de l'API
+// Tests — voiceCallInjector × voix (build + API) × couche visuelle de l'API
 //
 // Le host injecté sur YouTube contient le bouton 🎙️ « Appeler la vidéo »
-// (si la voix est activée) et le badge d'analyse visuelle (si l'API a
-// la couche visuelle, `user.visual_analysis_available`). Rien à
-// afficher → pas de host du tout.
+// (si la voix est compilée ET que l'API la déclare disponible,
+// `state.voiceAvailable`) et le badge d'analyse visuelle (si l'API a la
+// couche visuelle, `user.visual_analysis_available`). Rien à afficher →
+// pas de host du tout.
 
 jest.mock("../../src/content/widget", () => ({
   renderVoiceCallButton: jest.fn().mockResolvedValue(undefined),
@@ -28,7 +29,13 @@ import { FEATURES } from "../../src/utils/features";
 const renderVoice = renderVoiceCallButton as jest.Mock;
 const renderBadge = renderVisualAnalysisBadge as jest.Mock;
 
-function setupWatchPage(visualAnalysisAvailable: boolean): void {
+function setupWatchPage({
+  voiceAvailable,
+  visualAnalysisAvailable,
+}: {
+  voiceAvailable: boolean;
+  visualAnalysisAvailable: boolean;
+}): void {
   document.body.innerHTML = "";
   window.history.replaceState({}, "", "https://www.youtube.com/watch?v=abc123");
   chrome.runtime.sendMessage = jest.fn().mockResolvedValue({
@@ -38,6 +45,7 @@ function setupWatchPage(visualAnalysisAvailable: boolean): void {
       trialUsed: false,
       monthlyMinutesUsed: 0,
       visualAnalysisAvailable,
+      voiceAvailable,
     },
   }) as unknown as typeof chrome.runtime.sendMessage;
 }
@@ -45,7 +53,7 @@ function setupWatchPage(visualAnalysisAvailable: boolean): void {
 const host = (): HTMLElement | null =>
   document.getElementById("ds-voice-call-host");
 
-describe("voiceCallInjector × FEATURES.voice × couche visuelle", () => {
+describe("voiceCallInjector × voix × couche visuelle", () => {
   beforeEach(() => {
     removeVoiceCallButton();
     renderVoice.mockClear();
@@ -53,12 +61,11 @@ describe("voiceCallInjector × FEATURES.voice × couche visuelle", () => {
   });
 
   afterEach(() => {
-    FEATURES.voice = false;
+    FEATURES.voice = true;
   });
 
-  it("voix coupée + couche visuelle active : host avec le badge seul", async () => {
-    FEATURES.voice = false;
-    setupWatchPage(true);
+  it("voix coupée côté API + couche visuelle active : host avec le badge seul", async () => {
+    setupWatchPage({ voiceAvailable: false, visualAnalysisAvailable: true });
 
     await injectVoiceCallButton();
 
@@ -71,8 +78,7 @@ describe("voiceCallInjector × FEATURES.voice × couche visuelle", () => {
   });
 
   it("voix coupée + couche visuelle coupée : aucun host", async () => {
-    FEATURES.voice = false;
-    setupWatchPage(false);
+    setupWatchPage({ voiceAvailable: false, visualAnalysisAvailable: false });
 
     await injectVoiceCallButton();
 
@@ -81,9 +87,18 @@ describe("voiceCallInjector × FEATURES.voice × couche visuelle", () => {
     expect(renderBadge).not.toHaveBeenCalled();
   });
 
-  it("voix activée + couche visuelle coupée : bouton d'appel seul", async () => {
-    FEATURES.voice = true;
-    setupWatchPage(false);
+  it("build sans voix : pas de bouton d'appel, même si l'état le permet", async () => {
+    FEATURES.voice = false;
+    setupWatchPage({ voiceAvailable: true, visualAnalysisAvailable: false });
+
+    await injectVoiceCallButton();
+
+    expect(host()).toBeNull();
+    expect(renderVoice).not.toHaveBeenCalled();
+  });
+
+  it("voix disponible + couche visuelle coupée : bouton d'appel seul", async () => {
+    setupWatchPage({ voiceAvailable: true, visualAnalysisAvailable: false });
 
     await injectVoiceCallButton();
 
@@ -95,9 +110,8 @@ describe("voiceCallInjector × FEATURES.voice × couche visuelle", () => {
     expect(renderBadge).not.toHaveBeenCalled();
   });
 
-  it("voix activée + couche visuelle active : bouton d'appel puis badge", async () => {
-    FEATURES.voice = true;
-    setupWatchPage(true);
+  it("voix disponible + couche visuelle active : bouton d'appel puis badge", async () => {
+    setupWatchPage({ voiceAvailable: true, visualAnalysisAvailable: true });
 
     await injectVoiceCallButton();
 

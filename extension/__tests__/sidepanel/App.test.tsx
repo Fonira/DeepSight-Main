@@ -288,13 +288,67 @@ describe("App — private mode", () => {
   });
 });
 
-// ── Appels vocaux coupés ──
-describe("App — appels vocaux coupés", () => {
+// ── voice_available relu sur l'API à l'ouverture ──
+describe("App — voix suivant l'API", () => {
+  it("re-reads the user on open, so the call button follows voice_available", async () => {
+    const storedUser = {
+      id: 1,
+      username: "alice",
+      email: "alice@test.com",
+      plan: "pro",
+      credits: 12000,
+      credits_monthly: 15000,
+    };
+    mockSwByAction({
+      CHECK_AUTH: { authenticated: true, user: storedUser },
+      GET_PLAN: {
+        success: true,
+        plan: {
+          plan_name: "Pro",
+          plan_id: "pro",
+          monthly_analyses: 25,
+          analyses_this_month: 0,
+          credits: 12000,
+          credits_monthly: 15000,
+          features: {},
+        },
+      },
+      // L'API a ElevenLabs branché depuis le dernier login.
+      GET_USER: { success: true, user: { ...storedUser, voice_available: true } },
+    });
+    (chrome.tabs.query as jest.Mock).mockImplementation(
+      (_q: unknown, cb?: (tabs: unknown[]) => void) => {
+        const tabs = [
+          {
+            id: 1,
+            url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+            title: "Test Video",
+          },
+        ];
+        if (typeof cb === "function") cb(tabs);
+        return Promise.resolve(tabs);
+      },
+    );
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(document.querySelector("button.voice-call-btn")).not.toBeNull();
+    });
+    expect(chrome.runtime.sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "GET_USER" }),
+    );
+  });
+});
+
+// ── Build sans voix ──
+describe("App — build sans voix", () => {
   beforeEach(() => {
     FEATURES.voice = false;
   });
 
   afterEach(() => {
+    FEATURES.voice = true;
     delete (chrome.storage as unknown as { session?: unknown }).session;
   });
 

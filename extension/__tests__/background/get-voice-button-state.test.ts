@@ -54,7 +54,29 @@ describe("GET_VOICE_BUTTON_STATE handler", () => {
       trialUsed: false,
       monthlyMinutesUsed: 0,
       visualAnalysisAvailable: false,
+      voiceAvailable: false,
     });
+  });
+
+  it("reports voice only when the API says it is available", async () => {
+    const user = {
+      id: 1,
+      email: "x@y.z",
+      username: "x",
+      plan: "pro",
+      credits: 0,
+      credits_monthly: 0,
+    };
+    seedLocalStorage({ accessToken: "tok", user });
+    const without = await handleMessage({ action: "GET_VOICE_BUTTON_STATE" });
+    expect(without.state?.voiceAvailable).toBe(false);
+
+    seedLocalStorage({
+      accessToken: "tok",
+      user: { ...user, voice_available: true },
+    });
+    const withVoice = await handleMessage({ action: "GET_VOICE_BUTTON_STATE" });
+    expect(withVoice.state?.voiceAvailable).toBe(true);
   });
 
   it("reports the API's visual layer from user.visual_analysis_available", async () => {

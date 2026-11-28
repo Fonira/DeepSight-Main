@@ -102,10 +102,12 @@ export const App: React.FC = () => {
       return;
     }
     if (!FEATURES.voice) {
-      // Appels vocaux coupés (utils/features) : un contexte d'appel resté en
-      // session (ancien clic 🎙️, ouverture via l'icône) ouvrirait le side
-      // panel sur une conversation vocale. On le purge et on suit le flux
-      // normal (vérification de la connexion).
+      // Voix absente de ce build (zip du Store, utils/features) : un
+      // contexte d'appel resté en session (ancien clic 🎙️, ouverture via
+      // l'icône) ouvrirait le side panel sur une conversation vocale. On le
+      // purge et on suit le flux normal (vérification de la connexion).
+      // Avec la voix compilée, le background ne pose un contexte d'appel
+      // qu'après avoir vérifié voice_available (OPEN_VOICE_CALL).
       void session.remove?.("voicePanelContext").catch(() => {});
       void session.remove?.("pendingVoiceCall").catch(() => {});
       setVoiceChecked(true);
@@ -224,11 +226,28 @@ export const App: React.FC = () => {
         setIsGuest(false);
         await loadPlanInfo();
         setView("main");
+        void refreshUser();
       } else {
         setView("login");
       }
     } catch {
       setView("login");
+    }
+  }
+
+  // Le user stocké date du dernier login ou refresh de token : on le relit
+  // sur l'API pour que ses champs calculés côté serveur (voice_available,
+  // visual_analysis_available) suivent la configuration actuelle.
+  async function refreshUser(): Promise<void> {
+    try {
+      const response = await swMessage<unknown, MessageResponse>({
+        action: "GET_USER",
+      });
+      if (response.success && response.user) {
+        setUser(response.user);
+      }
+    } catch {
+      // Hors ligne ou SW_TIMEOUT : on garde le user stocké.
     }
   }
 
@@ -397,6 +416,9 @@ export const App: React.FC = () => {
           platform={ctxPlatform}
           initialMode="call"
           userPlan={planInfo?.plan_id || user?.plan || "free"}
+          // Ce contexte n'existe que si le background a validé la voix
+          // (OPEN_VOICE_CALL) ; le user, lui, n'est chargé qu'après.
+          voiceAvailable={FEATURES.voice}
           onClose={handleReturnFromVoice}
           onSessionExpired={handleLogout}
         />

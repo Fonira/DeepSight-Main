@@ -28,6 +28,7 @@ import { MainView } from "../../../src/sidepanel/views/MainView";
 import { FEATURES } from "../../../src/utils/features";
 import type { User, PlanInfo } from "../../../src/types";
 
+// voice_available : l'API a ElevenLabs branché (champ calculé du user).
 const mockUser: User = {
   id: 1,
   username: "alice",
@@ -35,6 +36,7 @@ const mockUser: User = {
   plan: "pro",
   credits: 100,
   credits_monthly: 150,
+  voice_available: true,
 };
 
 const mockPlanInfo: PlanInfo = {
@@ -82,16 +84,11 @@ function setupTabsQuery(url: string, title: string): void {
 
 describe("MainView × VoiceCallButton (I1)", () => {
   beforeEach(() => {
-    FEATURES.voice = true;
     resetChromeMocks();
     chrome.runtime.sendMessage = jest.fn().mockResolvedValue({
       success: true,
     }) as unknown as typeof chrome.runtime.sendMessage;
     setupTabsQuery("https://www.youtube.com/watch?v=abc123", "Hello world");
-  });
-
-  afterEach(() => {
-    FEATURES.voice = false;
   });
 
   it("renders VoiceCallButton when a YouTube video is detected", async () => {
@@ -218,9 +215,8 @@ describe("MainView × VoiceCallButton (I1)", () => {
   });
 });
 
-describe("MainView × VoiceCallButton — appels vocaux coupés", () => {
+describe("MainView × VoiceCallButton — voix indisponible", () => {
   beforeEach(() => {
-    FEATURES.voice = false;
     resetChromeMocks();
     chrome.runtime.sendMessage = jest.fn().mockResolvedValue({
       success: true,
@@ -228,10 +224,14 @@ describe("MainView × VoiceCallButton — appels vocaux coupés", () => {
     setupTabsQuery("https://www.youtube.com/watch?v=abc123", "Hello world");
   });
 
-  it("does NOT render VoiceCallButton even when a YouTube video is detected", async () => {
+  afterEach(() => {
+    FEATURES.voice = true;
+  });
+
+  async function expectVideoWithoutCallButton(user: User): Promise<void> {
     render(
       <MainView
-        user={mockUser}
+        user={user}
         planInfo={mockPlanInfo}
         isGuest={false}
         onLogout={() => {}}
@@ -247,5 +247,15 @@ describe("MainView × VoiceCallButton — appels vocaux coupés", () => {
       ).toBeGreaterThan(0);
     });
     expect(document.querySelector("button.voice-call-btn")).toBeNull();
+  }
+
+  it("hides it when the API does not report voice (old API or no ElevenLabs key)", async () => {
+    const { voice_available: _ignored, ...userWithoutVoice } = mockUser;
+    await expectVideoWithoutCallButton(userWithoutVoice);
+  });
+
+  it("hides it in a build without voice, even if the API has it", async () => {
+    FEATURES.voice = false;
+    await expectVideoWithoutCallButton(mockUser);
   });
 });

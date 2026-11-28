@@ -15,7 +15,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Browser from "../../utils/browser-polyfill";
-import { FEATURES } from "../../utils/features";
 import { parseApiTimestamp } from "../../utils/apiTime";
 import type { ChatMessage, MessageResponse } from "../../types";
 import {
@@ -74,6 +73,11 @@ export interface UseConversationInput {
   initialMode: ConversationInitialMode;
   /** Plan utilisateur (impact UI : web search toggle, voice quota). */
   userPlan?: string;
+  /**
+   * Voix utilisable (compilée et branchée côté API, cf. utils/features).
+   * Faux par défaut : aucun appel ne démarre, ni automatiquement ni au micro.
+   */
+  voiceAvailable?: boolean;
   /** Callback erreur global remontée par voice ou chat. */
   onError?: (msg: string) => void;
   /** Callback quand la session backend est expirée (401). */
@@ -130,7 +134,14 @@ export interface UseConversationResult {
 export function useConversation(
   input: UseConversationInput,
 ): UseConversationResult {
-  const { summaryId, videoTitle, videoId, initialMode, onError } = input;
+  const {
+    summaryId,
+    videoTitle,
+    videoId,
+    initialMode,
+    onError,
+    voiceAvailable = false,
+  } = input;
 
   // ── State chat ──
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -244,7 +255,7 @@ export function useConversation(
   // ── Auto-start call si initialMode='call' ──
   const autoStartedRef = useRef<boolean>(false);
   useEffect(() => {
-    if (!FEATURES.voice) return; // appels vocaux coupés (utils/features)
+    if (!voiceAvailable) return; // voix absente du build ou coupée côté API
     if (initialMode !== "call") return;
     if (autoStartedRef.current) return;
     if (!videoId) return; // pas de videoId = pas de call possible
@@ -264,7 +275,7 @@ export function useConversation(
         }
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialMode, videoId]);
+  }, [initialMode, videoId, voiceAvailable]);
 
   // ── Hot-swap agent to full-context "explorer" once analysis completes ──
   // The streaming context pipeline (useStreamingVideoContext) feeds the agent
@@ -425,7 +436,7 @@ export function useConversation(
   );
 
   const requestStartCall = useCallback((): void => {
-    if (!FEATURES.voice || voiceMode !== "off") return;
+    if (!voiceAvailable || voiceMode !== "off") return;
     const remaining = "";
     const confirmed = window.confirm(
       `Demarrer l'appel vocal ?${remaining}\nCela consomme votre quota voice.`,
@@ -449,7 +460,7 @@ export function useConversation(
           onError?.((err as Error)?.message ?? "Voice start error");
         }
       });
-  }, [voiceMode, videoId, videoTitle, voice, onError]);
+  }, [voiceAvailable, voiceMode, videoId, videoTitle, voice, onError]);
 
   const endCall = useCallback(async (): Promise<void> => {
     setLastCallDurationSec(elapsedSec);
@@ -465,7 +476,7 @@ export function useConversation(
   const clearHistory = useCallback(async (): Promise<void> => {
     if (resolvedSummaryId === null) return;
     const confirmed = window.confirm(
-      FEATURES.voice
+      voiceAvailable
         ? "Effacer l'historique chat + voice ?\nCette action supprime aussi les transcripts du dernier appel."
         : "Effacer l'historique du chat ?",
     );
@@ -491,7 +502,7 @@ export function useConversation(
     } catch (e) {
       onError?.((e as Error).message || "Clear failed");
     }
-  }, [resolvedSummaryId, onError]);
+  }, [resolvedSummaryId, onError, voiceAvailable]);
 
   return {
     messages,
