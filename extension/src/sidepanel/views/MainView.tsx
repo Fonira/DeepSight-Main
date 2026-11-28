@@ -547,11 +547,7 @@ export const MainView: React.FC<MainViewProps> = ({
     ? t.plans[planInfo.plan_id as keyof typeof t.plans] || planInfo.plan_name
     : null;
   const isFree = !user || user.plan === "free";
-  const planLabel = isGuest
-    ? t.common.login
-    : isFree
-      ? planName || t.plans.free
-      : planName || "";
+  const planLabel = isFree ? planName || t.plans.free : planName || "";
 
   const platform = video ? detectPlatform(video.url) : null;
   const isTikTok = platform === "tiktok";
@@ -574,9 +570,15 @@ export const MainView: React.FC<MainViewProps> = ({
             style={{ borderRadius: "50%", objectFit: "cover" }}
           />
           <span className="v3-brand">DeepSight</span>
-          <span className={`v3-plan-chip${isFree ? " v3-plan-chip-free" : ""}`}>
-            {planLabel}
-          </span>
+          {/* Invité : pas de pastille de plan, le lien « Se connecter » à
+              droite porte déjà l'action (la pastille le dupliquait). */}
+          {!isGuest && (
+            <span
+              className={`v3-plan-chip${isFree ? " v3-plan-chip-free" : ""}`}
+            >
+              {planLabel}
+            </span>
+          )}
           <button
             className="v3-icon-btn"
             onClick={() => Browser.tabs.create({ url: WEBAPP_URL })}

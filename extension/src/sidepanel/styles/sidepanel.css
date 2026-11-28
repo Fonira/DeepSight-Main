@@ -3386,6 +3386,10 @@ a:hover {
   color: var(--v3-text);
   flex: 1;
   min-width: 0;
+  /* Panneau étroit : tronquer plutôt que chevaucher les boutons du header. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .v3-plan-chip {
