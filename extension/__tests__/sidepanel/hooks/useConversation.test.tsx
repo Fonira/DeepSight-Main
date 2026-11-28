@@ -210,6 +210,43 @@ describe("useConversation — fil unifié", () => {
   });
 });
 
+describe("useConversation — historique API (created_at)", () => {
+  it("orders history by the API's created_at (UTC without suffix)", async () => {
+    // GET /chat/{id}/history renvoie `created_at` naïf en UTC, pas
+    // `timestamp`. Tableau volontairement dans le désordre.
+    mockChatHistory = [
+      {
+        id: "a1",
+        role: "assistant",
+        content: "réponse",
+        created_at: "2026-11-28T08:01:00.250000",
+      },
+      {
+        id: "u1",
+        role: "user",
+        content: "question",
+        created_at: "2026-11-28T08:00:00.100000",
+      },
+    ];
+
+    let captured: ReturnType<typeof useConversation> | null = null;
+    render(
+      <Harness
+        initialMode="chat"
+        onResult={(r) => {
+          captured = r;
+        }}
+      />,
+    );
+
+    await waitFor(() => expect(captured?.loadingHistory).toBe(false));
+    expect(captured?.messages.map((m) => m.id)).toEqual(["u1", "a1"]);
+    expect(captured?.messages[0].timestamp).toBe(
+      Date.UTC(2026, 10, 28, 8, 0, 0, 100),
+    );
+  });
+});
+
 describe("useConversation — sendMessage routing", () => {
   it("routes to chat (ASK_QUESTION) when voiceMode='off'", async () => {
     mockSendMessageImpl = jest.fn().mockResolvedValue({

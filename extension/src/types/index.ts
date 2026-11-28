@@ -207,6 +207,11 @@ export interface ChatMessage {
   content: string;
   /** ISO 8601 timestamp from backend ChatHistoryItem.timestamp. */
   timestamp?: string;
+  /**
+   * Date de création renvoyée par GET /chat/{id}/history (`ChatMessage`
+   * backend) : ISO 8601 en UTC, sans suffixe de fuseau.
+   */
+  created_at?: string;
   web_search_used?: boolean;
   /** Source du message — "text" pour un chat clavier, "voice" pour un
    *  transcript ElevenLabs persisté côté backend. Défaut "text" si omis

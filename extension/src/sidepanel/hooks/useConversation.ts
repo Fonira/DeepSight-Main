@@ -16,6 +16,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Browser from "../../utils/browser-polyfill";
 import { FEATURES } from "../../utils/features";
+import { parseApiTimestamp } from "../../utils/apiTime";
 import type { ChatMessage, MessageResponse } from "../../types";
 import {
   useExtensionVoiceChat,
@@ -521,7 +522,9 @@ export function useConversation(
 // ── Helpers ──────────────────────────────────────────────────────
 
 function toUnified(m: ChatMessage, fallbackIndex: number): UnifiedMessage {
-  const ts = m.timestamp ? Date.parse(m.timestamp) : NaN;
+  // L'historique API porte `created_at` (UTC sans suffixe) ; `timestamp`
+  // reste lu pour les autres sources. Sans date → position d'arrivée.
+  const ts = parseApiTimestamp(m.timestamp ?? m.created_at);
   return {
     id: m.id ?? `chat-${fallbackIndex}`,
     role: m.role,
