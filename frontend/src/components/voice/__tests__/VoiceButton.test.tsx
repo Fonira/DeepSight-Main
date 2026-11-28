@@ -57,7 +57,7 @@ describe("VoiceButton", () => {
   });
 
   it("affiche le bouton micro quand voice est activé", () => {
-    mockUseAuth.mockReturnValue({ user: { plan: "pro" } });
+    mockUseAuth.mockReturnValue({ user: { plan: "pro", voice_available: true } });
     render(<VoiceButton summaryId={42} onOpen={onOpen} />);
 
     const button = screen.getByRole("button");
@@ -66,7 +66,7 @@ describe("VoiceButton", () => {
   });
 
   it("affiche le cadenas quand le plan est free", () => {
-    mockUseAuth.mockReturnValue({ user: { plan: "free" } });
+    mockUseAuth.mockReturnValue({ user: { plan: "free", voice_available: true } });
     render(<VoiceButton summaryId={42} onOpen={onOpen} />);
 
     const button = screen.getByRole("button");
@@ -75,7 +75,7 @@ describe("VoiceButton", () => {
   });
 
   it("appelle onOpen quand cliqué et voice enabled", () => {
-    mockUseAuth.mockReturnValue({ user: { plan: "pro" } });
+    mockUseAuth.mockReturnValue({ user: { plan: "pro", voice_available: true } });
     render(<VoiceButton summaryId={42} onOpen={onOpen} />);
 
     fireEvent.click(screen.getByRole("button"));
@@ -83,7 +83,7 @@ describe("VoiceButton", () => {
   });
 
   it("n'appelle PAS onOpen quand le plan est free (locked)", () => {
-    mockUseAuth.mockReturnValue({ user: { plan: "free" } });
+    mockUseAuth.mockReturnValue({ user: { plan: "free", voice_available: true } });
     render(<VoiceButton summaryId={42} onOpen={onOpen} />);
 
     fireEvent.click(screen.getByRole("button"));
@@ -91,7 +91,7 @@ describe("VoiceButton", () => {
   });
 
   it("n'appelle PAS onOpen quand disabled=true", () => {
-    mockUseAuth.mockReturnValue({ user: { plan: "pro" } });
+    mockUseAuth.mockReturnValue({ user: { plan: "pro", voice_available: true } });
     render(<VoiceButton summaryId={42} onOpen={onOpen} disabled />);
 
     fireEvent.click(screen.getByRole("button"));
@@ -99,7 +99,7 @@ describe("VoiceButton", () => {
   });
 
   it("réagit au clavier (Enter)", () => {
-    mockUseAuth.mockReturnValue({ user: { plan: "starter" } });
+    mockUseAuth.mockReturnValue({ user: { plan: "starter", voice_available: true } });
     render(<VoiceButton summaryId={42} onOpen={onOpen} />);
 
     fireEvent.keyDown(screen.getByRole("button"), { key: "Enter" });
@@ -107,7 +107,7 @@ describe("VoiceButton", () => {
   });
 
   it("réagit au clavier (Space)", () => {
-    mockUseAuth.mockReturnValue({ user: { plan: "starter" } });
+    mockUseAuth.mockReturnValue({ user: { plan: "starter", voice_available: true } });
     render(<VoiceButton summaryId={42} onOpen={onOpen} />);
 
     fireEvent.keyDown(screen.getByRole("button"), { key: " " });
@@ -115,9 +115,17 @@ describe("VoiceButton", () => {
   });
 
   it("a le tabIndex 0 pour l'accessibilité", () => {
-    mockUseAuth.mockReturnValue({ user: { plan: "pro" } });
+    mockUseAuth.mockReturnValue({ user: { plan: "pro", voice_available: true } });
     render(<VoiceButton summaryId={42} onOpen={onOpen} />);
 
     expect(screen.getByRole("button").getAttribute("tabindex")).toBe("0");
+  });
+
+  it("ne rend rien quand la voix est coupée côté serveur", () => {
+    mockUseAuth.mockReturnValue({
+      user: { plan: "pro", voice_available: false },
+    });
+    const { container } = render(<VoiceButton summaryId={1} onOpen={onOpen} />);
+    expect(container.firstChild).toBeNull();
   });
 });

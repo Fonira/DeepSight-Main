@@ -84,7 +84,8 @@ import type {
 } from "../services/api";
 import type { DebateAnalysis } from "../types/debate";
 import { DebateHistoryCard } from "../components/debate";
-import { normalizePlanId, PLAN_LIMITS } from "../config/planPrivileges";
+import { normalizePlanId } from "../config/planPrivileges";
+import { useVoiceEnabled } from "../components/voice/hooks/useVoiceEnabled";
 import { AnalysisActionBar } from "../components/analysis/AnalysisActionBar";
 import { VoiceModal } from "../components/voice/VoiceModal";
 import { useVoiceChat } from "../components/voice/useVoiceChat";
@@ -546,12 +547,7 @@ export const History: React.FC = () => {
     language: language as "fr" | "en",
   });
   const micLevel = useMicLevel(voiceChat.micStream, voiceChat.isTalking);
-  const ADMIN_EMAIL_VOICE = "maximeleparc3@gmail.com";
-  const isAdminVoice =
-    user?.is_admin ||
-    user?.email?.toLowerCase() === ADMIN_EMAIL_VOICE.toLowerCase();
-  const voiceEnabled =
-    isAdminVoice || PLAN_LIMITS[normalizePlanId(user?.plan)].voiceChatEnabled;
+  const { voiceEnabled } = useVoiceEnabled();
 
   // 🗑️ Clear History Modal
   const [showClearModal, setShowClearModal] = useState(false);

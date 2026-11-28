@@ -153,10 +153,42 @@ const ERROR_MESSAGES = {
   QUOTA_EXCEEDED:
     "Quota de conversation vocale épuisé. Passez à un plan supérieur pour continuer.",
   SESSION_FAILED: "Impossible de démarrer la session vocale. Réessayez.",
+  VOICE_DISABLED: "Les appels vocaux sont coupés pour le moment.",
   SDK_LOAD_FAILED: "Impossible de charger le module de conversation vocale.",
   SESSION_TIMEOUT: "Session terminée : durée maximale atteinte.",
   UNKNOWN: "Une erreur inattendue est survenue. Réessayez.",
 } as const;
+
+interface ProviderError {
+  status?: number;
+  code?: string | null;
+  message?: string;
+}
+
+/**
+ * Message d'un refus de POST /api/voice/session que l'on sait expliquer :
+ * appels coupés côté serveur, ou raison ElevenLabs (`provider_error`, que
+ * l'API n'envoie qu'à un admin). `null` pour le message générique.
+ */
+async function describeSessionRefusal(
+  response: Response,
+): Promise<string | null> {
+  const body: unknown = await response.json().catch(() => null);
+  const detail =
+    body && typeof body === "object" && "detail" in body
+      ? (body as { detail: unknown }).detail
+      : null;
+  if (!detail || typeof detail !== "object") return null;
+  const { code, provider_error: provider } = detail as {
+    code?: unknown;
+    provider_error?: ProviderError;
+  };
+  if (code === "voice_call_disabled") return ERROR_MESSAGES.VOICE_DISABLED;
+  if (!provider?.message) return null;
+  const label = [provider.status, provider.code].filter(Boolean).join(" ");
+  const reason = label ? `${label} - ${provider.message}` : provider.message;
+  return `${ERROR_MESSAGES.SESSION_FAILED} (ElevenLabs : ${reason})`;
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Hook
@@ -473,6 +505,11 @@ export function useVoiceChat({
         }
 
         if (!response.ok) {
+          const refusal = await describeSessionRefusal(response);
+          if (refusal) {
+            reportError(refusal);
+            return;
+          }
           throw new Error(`HTTP ${response.status}`);
         }
 
