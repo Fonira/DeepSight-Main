@@ -25,6 +25,7 @@ jest.mock("../../../src/i18n/useTranslation", () => ({
 }));
 
 import { MainView } from "../../../src/sidepanel/views/MainView";
+import { FEATURES } from "../../../src/utils/features";
 import type { User, PlanInfo } from "../../../src/types";
 
 const mockUser: User = {
@@ -81,11 +82,16 @@ function setupTabsQuery(url: string, title: string): void {
 
 describe("MainView × VoiceCallButton (I1)", () => {
   beforeEach(() => {
+    FEATURES.voice = true;
     resetChromeMocks();
     chrome.runtime.sendMessage = jest.fn().mockResolvedValue({
       success: true,
     }) as unknown as typeof chrome.runtime.sendMessage;
     setupTabsQuery("https://www.youtube.com/watch?v=abc123", "Hello world");
+  });
+
+  afterEach(() => {
+    FEATURES.voice = false;
   });
 
   it("renders VoiceCallButton when a YouTube video is detected", async () => {
@@ -209,5 +215,37 @@ describe("MainView × VoiceCallButton (I1)", () => {
         all.indexOf(v3Primary[0] as HTMLButtonElement),
       );
     });
+  });
+});
+
+describe("MainView × VoiceCallButton — appels vocaux coupés", () => {
+  beforeEach(() => {
+    FEATURES.voice = false;
+    resetChromeMocks();
+    chrome.runtime.sendMessage = jest.fn().mockResolvedValue({
+      success: true,
+    }) as unknown as typeof chrome.runtime.sendMessage;
+    setupTabsQuery("https://www.youtube.com/watch?v=abc123", "Hello world");
+  });
+
+  it("does NOT render VoiceCallButton even when a YouTube video is detected", async () => {
+    render(
+      <MainView
+        user={mockUser}
+        planInfo={mockPlanInfo}
+        isGuest={false}
+        onLogout={() => {}}
+        onLoginRedirect={() => {}}
+        onError={() => {}}
+      />,
+    );
+
+    // La vidéo est bien détectée (bouton Analyser) mais pas de bouton d'appel.
+    await waitFor(() => {
+      expect(
+        document.querySelectorAll("button.v3-button-primary").length,
+      ).toBeGreaterThan(0);
+    });
+    expect(document.querySelector("button.voice-call-btn")).toBeNull();
   });
 });

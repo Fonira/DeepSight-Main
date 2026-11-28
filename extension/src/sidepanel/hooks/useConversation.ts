@@ -15,6 +15,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Browser from "../../utils/browser-polyfill";
+import { FEATURES } from "../../utils/features";
 import type { ChatMessage, MessageResponse } from "../../types";
 import {
   useExtensionVoiceChat,
@@ -242,6 +243,7 @@ export function useConversation(
   // ── Auto-start call si initialMode='call' ──
   const autoStartedRef = useRef<boolean>(false);
   useEffect(() => {
+    if (!FEATURES.voice) return; // appels vocaux coupés (utils/features)
     if (initialMode !== "call") return;
     if (autoStartedRef.current) return;
     if (!videoId) return; // pas de videoId = pas de call possible
@@ -422,7 +424,7 @@ export function useConversation(
   );
 
   const requestStartCall = useCallback((): void => {
-    if (voiceMode !== "off") return;
+    if (!FEATURES.voice || voiceMode !== "off") return;
     const remaining = "";
     const confirmed = window.confirm(
       `Demarrer l'appel vocal ?${remaining}\nCela consomme votre quota voice.`,
@@ -462,7 +464,9 @@ export function useConversation(
   const clearHistory = useCallback(async (): Promise<void> => {
     if (resolvedSummaryId === null) return;
     const confirmed = window.confirm(
-      "Effacer l'historique chat + voice ?\nCette action supprime aussi les transcripts du dernier appel.",
+      FEATURES.voice
+        ? "Effacer l'historique chat + voice ?\nCette action supprime aussi les transcripts du dernier appel."
+        : "Effacer l'historique du chat ?",
     );
     if (!confirmed) return;
     try {

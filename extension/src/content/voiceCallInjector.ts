@@ -15,7 +15,11 @@
 //
 // Pas de dépendance externe — `renderVoiceCallButton` est notre source de
 // vérité unique pour le rendu et l'envoi du message OPEN_VOICE_CALL.
+//
+// Appels vocaux coupés (`FEATURES.voice`, cf. utils/features) : le host est
+// toujours injecté mais ne contient que le badge d'analyse visuelle.
 import { renderVoiceCallButton, renderVisualAnalysisBadge } from "./widget";
+import { FEATURES } from "../utils/features";
 
 const HOST_ID = "ds-voice-call-host";
 
@@ -173,15 +177,18 @@ export async function injectVoiceCallButton(): Promise<void> {
   // attachShadow renvoie un ShadowRoot ; renderVoiceCallButton accepte un
   // HTMLElement (DOM node avec appendChild). Cast minimaliste — on ne triche
   // pas sur la sémantique runtime.
-  await renderVoiceCallButton(shadow as unknown as HTMLElement, {
-    plan: state.plan,
-    trialUsed: state.trialUsed,
-    monthlyMinutesUsed: state.monthlyMinutesUsed,
-    videoId,
-    videoTitle: getCleanVideoTitle(),
-  });
+  if (FEATURES.voice) {
+    await renderVoiceCallButton(shadow as unknown as HTMLElement, {
+      plan: state.plan,
+      trialUsed: state.trialUsed,
+      monthlyMinutesUsed: state.monthlyMinutesUsed,
+      videoId,
+      videoTitle: getCleanVideoTitle(),
+    });
+  }
 
-  // Phase 2 Visual Analysis badge — sous le bouton Voice Call.
+  // Phase 2 Visual Analysis badge — sous le bouton Voice Call (seul élément
+  // du host quand la voix est coupée).
   // Best-effort : si le rendu échoue, le bouton Voice Call reste fonctionnel.
   try {
     await renderVisualAnalysisBadge(shadow as unknown as HTMLElement, {

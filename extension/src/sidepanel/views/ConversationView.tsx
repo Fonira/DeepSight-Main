@@ -21,6 +21,7 @@ import { EndedToast } from "../components/EndedToast";
 import { ContextProgressBar } from "../components/ContextProgressBar";
 import { BackIcon } from "../shared/Icons";
 import { useTranslation } from "../../i18n/useTranslation";
+import { FEATURES } from "../../utils/features";
 
 const TrashIcon: React.FC<{ size?: number }> = ({ size = 16 }) => (
   <svg
@@ -227,6 +228,7 @@ export const ConversationView: React.FC<ConversationViewProps> = ({
         webSearchAvailable={canUseWebSearch(userPlan)}
         webSearchEnabled={webSearchEnabled}
         onToggleWebSearch={setWebSearchEnabled}
+        voiceAvailable={FEATURES.voice}
         voiceMode={voiceMode}
         isMuted={isMuted}
         onMicTap={handleMicTap}

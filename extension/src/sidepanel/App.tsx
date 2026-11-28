@@ -15,6 +15,7 @@ import MicroDoodleBackground from "./shared/MicroDoodleBackground";
 import DoodleBackground from "./components/DoodleBackground";
 import { useTranslation } from "../i18n/useTranslation";
 import { localizeError } from "../i18n/errorMessages";
+import { FEATURES } from "../utils/features";
 
 type ViewName = "loading" | "login" | "main";
 
@@ -100,6 +101,16 @@ export const App: React.FC = () => {
       setVoiceChecked(true);
       return;
     }
+    if (!FEATURES.voice) {
+      // Appels vocaux coupés (utils/features) : un contexte d'appel resté en
+      // session (ancien clic 🎙️, ouverture via l'icône) ouvrirait le side
+      // panel sur une conversation vocale. On le purge et on suit le flux
+      // normal (vérification de la connexion).
+      void session.remove?.("voicePanelContext").catch(() => {});
+      void session.remove?.("pendingVoiceCall").catch(() => {});
+      setVoiceChecked(true);
+      return;
+    }
     Promise.all([
       session
         .get("voicePanelContext")
@@ -130,6 +141,7 @@ export const App: React.FC = () => {
 
   // Listener live (I6) — réagit si le SW set pendingVoiceCall après mount.
   useEffect(() => {
+    if (!FEATURES.voice) return;
     const onChanged = getStorageOnChanged();
     const session = getSessionStorage();
     if (!onChanged || !session) return;

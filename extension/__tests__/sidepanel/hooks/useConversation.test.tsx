@@ -16,6 +16,7 @@ import React from "react";
 import { render, act, waitFor } from "@testing-library/react";
 import { useConversation } from "../../../src/sidepanel/hooks/useConversation";
 import type { UnifiedMessage } from "../../../src/sidepanel/hooks/useConversation";
+import { FEATURES } from "../../../src/utils/features";
 
 // ── Mocks ────────────────────────────────────────────────────────────
 
@@ -272,6 +273,14 @@ describe("useConversation — sendMessage routing", () => {
 });
 
 describe("useConversation — call lifecycle", () => {
+  beforeEach(() => {
+    FEATURES.voice = true;
+  });
+
+  afterEach(() => {
+    FEATURES.voice = false;
+  });
+
   it("auto-starts voice when initialMode='call'", async () => {
     let captured: ReturnType<typeof useConversation> | null = null;
     render(
@@ -361,6 +370,79 @@ describe("useConversation — call lifecycle", () => {
 
     expect(confirmSpy).toHaveBeenCalled();
     expect(mockVoiceState.startSession).not.toHaveBeenCalled();
+
+    confirmSpy.mockRestore();
+  });
+});
+
+describe("useConversation — appels vocaux coupés", () => {
+  beforeEach(() => {
+    FEATURES.voice = false;
+  });
+
+  it("does NOT auto-start voice even when initialMode='call'", async () => {
+    let captured: ReturnType<typeof useConversation> | null = null;
+    render(
+      <Harness
+        initialMode="call"
+        onResult={(r) => {
+          captured = r;
+        }}
+      />,
+    );
+
+    await waitFor(() => expect(captured?.loadingHistory).toBe(false));
+    expect(mockVoiceState.startSession).not.toHaveBeenCalled();
+    expect(captured?.voiceMode).toBe("off");
+  });
+
+  it("requestStartCall is a no-op (no confirm, no session)", async () => {
+    const confirmSpy = jest
+      .spyOn(window, "confirm")
+      .mockImplementation(() => true);
+
+    let captured: ReturnType<typeof useConversation> | null = null;
+    render(
+      <Harness
+        initialMode="chat"
+        onResult={(r) => {
+          captured = r;
+        }}
+      />,
+    );
+
+    await waitFor(() => expect(captured?.loadingHistory).toBe(false));
+    act(() => {
+      captured?.requestStartCall();
+    });
+
+    expect(confirmSpy).not.toHaveBeenCalled();
+    expect(mockVoiceState.startSession).not.toHaveBeenCalled();
+
+    confirmSpy.mockRestore();
+  });
+
+  it("clearHistory asks to clear the chat only, without mentioning voice", async () => {
+    const confirmSpy = jest
+      .spyOn(window, "confirm")
+      .mockImplementation(() => true);
+
+    let captured: ReturnType<typeof useConversation> | null = null;
+    render(
+      <Harness
+        initialMode="chat"
+        onResult={(r) => {
+          captured = r;
+        }}
+      />,
+    );
+
+    await waitFor(() => expect(captured?.loadingHistory).toBe(false));
+    await act(async () => {
+      await captured?.clearHistory();
+    });
+
+    expect(confirmSpy).toHaveBeenCalledWith("Effacer l'historique du chat ?");
 
     confirmSpy.mockRestore();
   });

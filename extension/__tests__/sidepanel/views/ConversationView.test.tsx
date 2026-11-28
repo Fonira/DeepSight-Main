@@ -12,6 +12,7 @@ import React from "react";
 import { render } from "@testing-library/react";
 import { ConversationView } from "../../../src/sidepanel/views/ConversationView";
 import type { UseConversationResult } from "../../../src/sidepanel/hooks/useConversation";
+import { FEATURES } from "../../../src/utils/features";
 
 let mockConv: UseConversationResult;
 
@@ -105,6 +106,37 @@ describe("ConversationView", () => {
     );
     expect(getByTestId("conversation-view")).toBeTruthy();
     expect(getByTestId("conversation-input")).toBeTruthy();
+  });
+
+  it("hides the mic button while voice calls are switched off", () => {
+    FEATURES.voice = false;
+    const { queryByTestId, getByTestId } = render(
+      <ConversationView
+        summaryId={42}
+        videoTitle="Test"
+        initialMode="chat"
+        onClose={jest.fn()}
+      />,
+    );
+    expect(getByTestId("conversation-input-field")).toBeTruthy();
+    expect(queryByTestId("conversation-mic-btn")).toBeNull();
+  });
+
+  it("shows the mic button when voice calls are enabled", () => {
+    FEATURES.voice = true;
+    try {
+      const { getByTestId } = render(
+        <ConversationView
+          summaryId={42}
+          videoTitle="Test"
+          initialMode="chat"
+          onClose={jest.fn()}
+        />,
+      );
+      expect(getByTestId("conversation-mic-btn")).toBeTruthy();
+    } finally {
+      FEATURES.voice = false;
+    }
   });
 
   it("renders empty-state suggestions when messages is empty", () => {

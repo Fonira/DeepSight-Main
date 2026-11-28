@@ -8,6 +8,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { resetChromeMocks } from "../setup/chrome-api-mock";
 import { App } from "../../src/sidepanel/App";
+import { FEATURES } from "../../src/utils/features";
 
 // Mock useTranslation to avoid chrome.storage.sync dependency in tests
 jest.mock("../../src/i18n/useTranslation", () => ({
@@ -284,6 +285,40 @@ describe("App — private mode", () => {
       expect(screen.getByText(fr.errors.privateMode)).toBeInTheDocument();
     });
     expect(screen.queryByText(/object Object/)).not.toBeInTheDocument();
+  });
+});
+
+// ── Appels vocaux coupés ──
+describe("App — appels vocaux coupés", () => {
+  beforeEach(() => {
+    FEATURES.voice = false;
+  });
+
+  afterEach(() => {
+    delete (chrome.storage as unknown as { session?: unknown }).session;
+  });
+
+  it("ignores a pending voice call left in session storage and purges it", async () => {
+    const get = jest.fn().mockResolvedValue({
+      pendingVoiceCall: { videoId: "abc123", videoTitle: "Vidéo" },
+      voicePanelContext: { summaryId: null, videoId: null },
+    });
+    const remove = jest.fn().mockResolvedValue(undefined);
+    (chrome.storage as unknown as { session: unknown }).session = {
+      get,
+      remove,
+    };
+    mockSwByAction({ CHECK_AUTH: { authenticated: false } });
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText("Adresse e-mail")).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId("conversation-view")).not.toBeInTheDocument();
+    expect(get).not.toHaveBeenCalledWith("pendingVoiceCall");
+    expect(remove).toHaveBeenCalledWith("pendingVoiceCall");
+    expect(remove).toHaveBeenCalledWith("voicePanelContext");
   });
 });
 
