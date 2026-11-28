@@ -74,6 +74,24 @@ describe("manifest.json — Spec #4 patches", () => {
     );
   });
 
+  // Chaque permission doit être justifiée dans la fiche Chrome Web Store
+  // (extension/CHROME_WEB_STORE.md) : liste exacte, pour qu'un ajout soit
+  // un choix explicite. `activeTab` est retiré : l'accès aux onglets YouTube
+  // et TikTok passe par host_permissions, aucune autre page n'est lue.
+  it("requests exactly the permissions justified for the store", () => {
+    expect([...(manifest.permissions ?? [])].sort()).toEqual(
+      [
+        "alarms",
+        "clipboardRead",
+        "clipboardWrite",
+        "identity",
+        "offscreen",
+        "sidePanel",
+        "storage",
+      ].sort(),
+    );
+  });
+
   it("references no former hosting provider", () => {
     const raw = fs.readFileSync(manifestPath, "utf8");
     expect(raw).not.toMatch(/89\.167\.23\.214|railway|vercel\.app|localhost/i);
