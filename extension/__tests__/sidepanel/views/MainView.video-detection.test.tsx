@@ -395,6 +395,23 @@ describe("MainView — video detection in side panel context", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows the video title without the tab's « (N) » prefix and « - YouTube » suffix", async () => {
+    installTabsMock({
+      id: 5,
+      url: "https://www.youtube.com/watch?v=abc123",
+      title: "(2) Mais qu'est-ce qu'un réseau de neurones ? - YouTube",
+    });
+
+    render(<MainView {...baseProps} />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Mais qu'est-ce qu'un réseau de neurones ?"),
+      ).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/- YouTube$/)).not.toBeInTheDocument();
+  });
+
   it("removes onActivated and onUpdated listeners on unmount (no leak)", async () => {
     const tabsApi = installTabsMock({
       id: 1,

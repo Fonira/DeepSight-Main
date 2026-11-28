@@ -6,7 +6,27 @@
  * partage/suivi « si », « pp », query TikTok…).
  */
 
-import { toApiVideoUrl } from "../../src/utils/video";
+import { cleanTabTitle, toApiVideoUrl } from "../../src/utils/video";
+
+describe("cleanTabTitle", () => {
+  it.each([
+    [
+      "(2) Mais qu'est-ce qu'un réseau de neurones ? - YouTube",
+      "Mais qu'est-ce qu'un réseau de neurones ?",
+    ],
+    ["(99+) Cours de physique — YouTube", "Cours de physique"],
+    ["Recette du pain | TikTok", "Recette du pain"],
+    ["Titre - sous-titre - YouTube", "Titre - sous-titre"],
+    ["Ma super vidéo YouTube", "Ma super vidéo YouTube"],
+  ])("%s → %s", (raw, expected) => {
+    expect(cleanTabTitle(raw)).toBe(expected);
+  });
+
+  it("returns an empty string when only the site name remains", () => {
+    expect(cleanTabTitle("(3) - YouTube")).toBe("");
+    expect(cleanTabTitle("")).toBe("");
+  });
+});
 
 describe("toApiVideoUrl", () => {
   it.each([

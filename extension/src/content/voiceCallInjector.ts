@@ -20,6 +20,7 @@
 // toujours injecté mais ne contient que le badge d'analyse visuelle.
 import { renderVoiceCallButton, renderVisualAnalysisBadge } from "./widget";
 import { FEATURES } from "../utils/features";
+import { cleanTabTitle } from "../utils/video";
 
 const HOST_ID = "ds-voice-call-host";
 
@@ -67,11 +68,7 @@ function getCleanVideoTitle(): string {
   if (h1Title) return h1Title;
 
   // Source 3 — fallback document.title strippé
-  return (document.title || "")
-    .replace(/^\(\d+\)\s*/, "")
-    .replace(/\s*[-—|]\s*YouTube\s*$/i, "")
-    .replace(/\s*[-—|]\s*TikTok\s*$/i, "")
-    .trim();
+  return cleanTabTitle(document.title || "");
 }
 
 /**

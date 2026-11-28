@@ -12,6 +12,7 @@ import {
   extractVideoId,
   getThumbnailUrl,
   detectPlatform,
+  cleanTabTitle,
 } from "../../utils/video";
 import {
   addRecentAnalysis,
@@ -145,7 +146,10 @@ export const MainView: React.FC<MainViewProps> = ({
         const platform = detectPlatform(url);
         const fallbackTitle =
           platform === "tiktok" ? "TikTok Video" : "YouTube Video";
-        setVideo({ url, videoId, title: tabs[0]?.title || fallbackTitle });
+        // tab.title = titre de l'onglet (« (2) Titre - YouTube ») : on garde
+        // seulement le titre de la vidéo.
+        const title = cleanTabTitle(tabs[0]?.title || "");
+        setVideo({ url, videoId, title: title || fallbackTitle });
       } else {
         // Important : reset à null si l'user navigue d'une vidéo vers un site
         // hors-vidéo (Google.com, etc.) — sinon la card vidéo resterait figée.
