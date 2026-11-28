@@ -22,7 +22,7 @@ import {
 } from "../../utils/storage";
 import Browser from "../../utils/browser-polyfill";
 import { WEBAPP_URL } from "../../utils/config";
-import { FEATURES } from "../../utils/features";
+import { isVoiceEnabled } from "../../utils/features";
 import { LogoutIcon, ExternalLinkIcon } from "../shared/Icons";
 import { SynthesisView } from "../shared/SynthesisView";
 import { SynthesisFull } from "../shared/SynthesisFull";
@@ -541,6 +541,7 @@ export const MainView: React.FC<MainViewProps> = ({
         platform={platform}
         initialMode="chat"
         userPlan={planInfo?.plan_id || user?.plan || "free"}
+        voiceAvailable={isVoiceEnabled(user)}
         onClose={() => setChatOpen(false)}
         onSessionExpired={onLogout}
       />
@@ -702,8 +703,9 @@ export const MainView: React.FC<MainViewProps> = ({
         {/* Voice Call — visible dès qu'une video est détectée, toutes phases.
             Killer feature Quick Voice Call : doit rester accessible même
             pendant analyzing/error/complete (cf. finding I1 audit).
-            Masqué tant que les appels vocaux sont coupés (utils/features). */}
-        {FEATURES.voice && video && (
+            Masqué si la voix n'est pas compilée ou pas branchée côté API
+            (utils/features). */}
+        {isVoiceEnabled(user) && video && (
           <VoiceCallButton
             plan={voicePlan}
             trialUsed={voiceTrialUsed}

@@ -52,7 +52,8 @@ import type {
 } from "../services/api";
 import { useAuth } from "../hooks/useAuth";
 import { useTranslation } from "../hooks/useTranslation";
-import { normalizePlanId, PLAN_LIMITS } from "../config/planPrivileges";
+import { normalizePlanId } from "../config/planPrivileges";
+import { useVoiceEnabled } from "../components/voice/hooks/useVoiceEnabled";
 import { VideoPlayer, VideoPlayerRef } from "../components/VideoPlayer";
 import {
   createTimecodeMarkdownComponents,
@@ -259,12 +260,7 @@ export const DashboardPage: React.FC = () => {
 
   const normalizedPlan = normalizePlanId(user?.plan);
   const isProUser = normalizedPlan === "pro";
-  const ADMIN_EMAIL_VOICE = "maximeleparc3@gmail.com";
-  const isAdminVoice =
-    user?.is_admin ||
-    user?.email?.toLowerCase() === ADMIN_EMAIL_VOICE.toLowerCase();
-  const voiceEnabled =
-    isAdminVoice || PLAN_LIMITS[normalizedPlan].voiceChatEnabled;
+  const { voiceEnabled } = useVoiceEnabled();
   // Note: isStarterPlus réservé pour futures fonctionnalités
   const _isExpertUser = normalizedPlan === "pro"; // Pro est le plan le plus élevé
   void _isExpertUser;

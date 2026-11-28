@@ -23,6 +23,7 @@ import {
 } from "./utils/apiError";
 import { expiresWithin } from "./utils/jwt";
 import { normalizePlanInfo } from "./utils/plan";
+import { isVoiceEnabled } from "./utils/features";
 import { EXTENSION_WELCOME_URL } from "./utils/webappLinks";
 import { drainCrashes } from "./utils/crash-logger";
 import { reportCrashes } from "./utils/sentry-reporter";
@@ -1044,7 +1045,8 @@ interface MicPermissionMessage {
   action:
     | "REQUEST_MIC_PERMISSION"
     | "OPEN_MIC_PERMISSION_POPUP"
-    | "MIC_PERMISSION_GRANTED";
+    | "MIC_PERMISSION_GRANTED"
+    | "MIC_PERMISSION_DISMISSED";
 }
 
 /**
@@ -1147,9 +1149,22 @@ export async function handleMessage(
     return { success: true };
   }
 
+  // Fenêtre micro fermée sans autorisation : le side panel reçoit le même
+  // message directement (sidepanel/micPermission.ts), rien à relayer.
+  if (
+    (message as MicPermissionMessage)?.action === "MIC_PERMISSION_DISMISSED"
+  ) {
+    return { success: true };
+  }
+
   // ── Quick Voice Call dispatch (type-based messages) ──
   const typed = message as VoiceCallMessage;
   if (typed?.type === "OPEN_VOICE_CALL") {
+    // Voix absente du build ou coupée côté API : aucun appel ne démarre, même
+    // depuis un bouton resté affiché sur un onglet ouvert avant la coupure.
+    if (!isVoiceEnabled(await getStoredUser())) {
+      return { success: false, error: "voice_unavailable" };
+    }
     const fullSender = sender as chrome.runtime.MessageSender | undefined;
     // Two valid sources for OPEN_VOICE_CALL:
     //   1. Content script in a YouTube tab → sender.tab.windowId is set
@@ -1580,6 +1595,8 @@ async function handleExtensionMessage(
           // (login, refresh, /auth/me). Absent → API plus ancienne, badge
           // masqué.
           visualAnalysisAvailable: stored.visual_analysis_available === true,
+          // Voix compilée et branchée côté API (user.voice_available).
+          voiceAvailable: isVoiceEnabled(stored),
         },
       };
     }

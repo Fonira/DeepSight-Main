@@ -26,11 +26,13 @@
     "test:coverage": "jest --coverage"
   },
   "dependencies": {
+    "@config-plugins/react-native-webrtc": "~13.0.0",
     "@elevenlabs/client": "^0.15.2",
     "@elevenlabs/react-native": "^0.5.12",
     "@expo/vector-icons": "^15.0.3",
     "@gorhom/bottom-sheet": "^5.2.8",
     "@livekit/react-native": "^2.9.6",
+    "@livekit/react-native-expo-plugin": "~1.1.0",
     "@livekit/react-native-webrtc": "^137.0.2",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/netinfo": "11.4.1",

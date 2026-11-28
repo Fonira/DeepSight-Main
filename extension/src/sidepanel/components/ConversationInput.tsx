@@ -23,8 +23,8 @@ interface ConversationInputProps {
   onToggleWebSearch: (enabled: boolean) => void;
 
   /**
-   * Appels vocaux disponibles ? `false` masque le bouton mic (voix coupée,
-   * cf. utils/features). Défaut `true`.
+   * Appels vocaux disponibles ? `false` masque le bouton mic (voix absente du
+   * build ou coupée côté API, cf. utils/features). Défaut `true`.
    */
   voiceAvailable?: boolean;
   /** Voice mode courant — change l'apparence du bouton mic. */

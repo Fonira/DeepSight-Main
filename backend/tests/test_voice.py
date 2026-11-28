@@ -696,27 +696,30 @@ class TestVoiceSchemas:
         assert resp.voice_enabled is True
 
     def test_voice_webhook_payload(self):
-        from voice.schemas import VoiceWebhookPayload
+        """Enveloppe ElevenLabs : {type, event_timestamp, data}."""
+        from voice.schemas import ElevenLabsPostCallData, VoiceWebhookPayload
         payload = VoiceWebhookPayload(
-            conversation_id="conv_123",
-            agent_id="agent_456",
-            status="completed",
-            duration_seconds=180,
-            transcript="User: Hello\nAI: Hi!",
+            type="post_call_transcription",
+            event_timestamp=1739537297,
+            data={
+                "agent_id": "agent_456",
+                "conversation_id": "conv_123",
+                "status": "done",
+                "transcript": [{"role": "user", "message": "Hello"}, {"role": "agent", "message": "Hi!"}],
+                "metadata": {"call_duration_secs": 180},
+            },
         )
-        assert payload.duration_seconds == 180
-        assert payload.transcript is not None
+        data = ElevenLabsPostCallData.model_validate(payload.data)
+        assert data.duration_seconds == 180
+        assert len(data.transcript) == 2
 
     def test_voice_webhook_payload_minimal(self):
-        from voice.schemas import VoiceWebhookPayload
-        payload = VoiceWebhookPayload(
-            conversation_id="conv_123",
-            agent_id="agent_456",
-            status="completed",
-            duration_seconds=0,
-        )
-        assert payload.transcript is None
-        assert payload.metadata is None
+        from voice.schemas import ElevenLabsPostCallData, VoiceWebhookPayload
+        payload = VoiceWebhookPayload(type="post_call_audio")
+        assert payload.data == {}
+        data = ElevenLabsPostCallData.model_validate(payload.data)
+        assert data.transcript == []
+        assert data.duration_seconds == 0
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

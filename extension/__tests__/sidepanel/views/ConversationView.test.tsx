@@ -9,16 +9,22 @@
  */
 
 import React from "react";
-import { render } from "@testing-library/react";
+import { act, fireEvent, render } from "@testing-library/react";
 import { ConversationView } from "../../../src/sidepanel/views/ConversationView";
-import type { UseConversationResult } from "../../../src/sidepanel/hooks/useConversation";
-import { FEATURES } from "../../../src/utils/features";
+import type {
+  UseConversationInput,
+  UseConversationResult,
+} from "../../../src/sidepanel/hooks/useConversation";
 
 let mockConv: UseConversationResult;
+let lastHookInput: UseConversationInput | null = null;
 
 jest.mock("../../../src/sidepanel/hooks/useConversation", () => ({
   __esModule: true,
-  useConversation: () => mockConv,
+  useConversation: (input: UseConversationInput) => {
+    lastHookInput = input;
+    return mockConv;
+  },
 }));
 
 jest.mock("../../../src/i18n/useTranslation", () => ({
@@ -61,6 +67,7 @@ jest.mock("../../../src/i18n/useTranslation", () => ({
         },
         errors: { callEnded: "ended" },
       },
+      errors: { dismiss: "Fermer le message" },
     },
     language: "fr",
   }),
@@ -108,8 +115,7 @@ describe("ConversationView", () => {
     expect(getByTestId("conversation-input")).toBeTruthy();
   });
 
-  it("hides the mic button while voice calls are switched off", () => {
-    FEATURES.voice = false;
+  it("hides the mic and keeps calls off unless voice is available", () => {
     const { queryByTestId, getByTestId } = render(
       <ConversationView
         summaryId={42}
@@ -120,23 +126,21 @@ describe("ConversationView", () => {
     );
     expect(getByTestId("conversation-input-field")).toBeTruthy();
     expect(queryByTestId("conversation-mic-btn")).toBeNull();
+    expect(lastHookInput?.voiceAvailable).toBe(false);
   });
 
-  it("shows the mic button when voice calls are enabled", () => {
-    FEATURES.voice = true;
-    try {
-      const { getByTestId } = render(
-        <ConversationView
-          summaryId={42}
-          videoTitle="Test"
-          initialMode="chat"
-          onClose={jest.fn()}
-        />,
-      );
-      expect(getByTestId("conversation-mic-btn")).toBeTruthy();
-    } finally {
-      FEATURES.voice = false;
-    }
+  it("shows the mic and lets the hook start calls when voice is available", () => {
+    const { getByTestId } = render(
+      <ConversationView
+        summaryId={42}
+        videoTitle="Test"
+        initialMode="chat"
+        voiceAvailable
+        onClose={jest.fn()}
+      />,
+    );
+    expect(getByTestId("conversation-mic-btn")).toBeTruthy();
+    expect(lastHookInput?.voiceAvailable).toBe(true);
   });
 
   it("renders empty-state suggestions when messages is empty", () => {
@@ -244,5 +248,59 @@ describe("ConversationView", () => {
     expect(getByText("typed")).toBeTruthy();
     // assistant voice bubble has the mic badge
     expect(getByTestId("voice-badge-mic")).toBeTruthy();
+  });
+
+  it("shows the errors the hook reports until they are dismissed", () => {
+    const { getByTestId, queryByTestId, getByLabelText } = render(
+      <ConversationView
+        summaryId={42}
+        videoTitle="Test"
+        initialMode="call"
+        voiceAvailable
+        onClose={jest.fn()}
+      />,
+    );
+    expect(queryByTestId("conversation-alert")).toBeNull();
+
+    act(() => {
+      lastHookInput?.onError?.("Le micro est bloqué pour DeepSight.");
+    });
+    expect(getByTestId("conversation-alert").textContent).toContain(
+      "Le micro est bloqué pour DeepSight.",
+    );
+    expect(getByTestId("conversation-alert").getAttribute("role")).toBe(
+      "alert",
+    );
+
+    fireEvent.click(getByLabelText("Fermer le message"));
+    expect(queryByTestId("conversation-alert")).toBeNull();
+  });
+
+  it("clears the error once a call is live", () => {
+    const view = render(
+      <ConversationView
+        summaryId={42}
+        videoTitle="Test"
+        initialMode="call"
+        voiceAvailable
+        onClose={jest.fn()}
+      />,
+    );
+    act(() => {
+      lastHookInput?.onError?.("Le service vocal ne répond pas.");
+    });
+    expect(view.queryByTestId("conversation-alert")).toBeTruthy();
+
+    mockConv = { ...baseConv, voiceMode: "live" };
+    view.rerender(
+      <ConversationView
+        summaryId={42}
+        videoTitle="Test"
+        initialMode="call"
+        voiceAvailable
+        onClose={jest.fn()}
+      />,
+    );
+    expect(view.queryByTestId("conversation-alert")).toBeNull();
   });
 });

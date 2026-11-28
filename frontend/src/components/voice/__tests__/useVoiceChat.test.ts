@@ -174,6 +174,56 @@ describe("useVoiceChat", () => {
     },
   );
 
+  it("montre à l'admin la raison donnée par ElevenLabs", async () => {
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 503,
+      json: () =>
+        Promise.resolve({
+          detail: {
+            code: "voice_service_unavailable",
+            provider_error: {
+              operation: "create_agent",
+              status: 401,
+              code: "missing_permissions",
+              message: "missing the permission convai_write",
+            },
+          },
+        }),
+    });
+
+    const { result } = renderHook(() => useVoiceChat({ summaryId: 42 }));
+    await act(async () => {
+      await result.current.start();
+    });
+
+    expect(result.current.status).toBe("error");
+    expect(result.current.error).toBe(
+      "Impossible de démarrer la session vocale. Réessayez. (ElevenLabs : 401 missing_permissions - missing the permission convai_write)",
+    );
+    expect(mockGetUserMedia).not.toHaveBeenCalled();
+  });
+
+  it("dit quand les appels sont coupés côté serveur", async () => {
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 503,
+      json: () =>
+        Promise.resolve({
+          detail: { code: "voice_call_disabled", message: "indisponible" },
+        }),
+    });
+
+    const { result } = renderHook(() => useVoiceChat({ summaryId: 42 }));
+    await act(async () => {
+      await result.current.start();
+    });
+
+    expect(result.current.error).toBe(
+      "Les appels vocaux sont coupés pour le moment.",
+    );
+  });
+
   it("gère le refus du microphone", async () => {
     const onError = vi.fn();
     mockGetUserMedia.mockRejectedValue(

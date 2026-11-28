@@ -373,6 +373,14 @@
     "userNotRegistered": "Aucun compte DeepSight n'est associé à ce compte Google. Créez un compte sur le site.",
     "invalidUrl": "Cette page n'est pas une vidéo YouTube ou TikTok reconnue.",
     "guestQuota": "Vous avez utilisé vos analyses gratuites. Créez un compte pour continuer.",
+    "voiceServiceError": "Le service vocal ne répond pas. Réessaie dans un instant.",
+    "voiceCallDisabled": "Les appels vocaux sont coupés pour le moment.",
+    "voiceConnectionFailed": "L'appel n'a pas pu se connecter à l'agent vocal.",
+    "voiceProviderReason": "(ElevenLabs : {reason})",
+    "micDenied": "Le micro est bloqué pour DeepSight. Autorise-le dans Chrome (Paramètres > Confidentialité et sécurité > Paramètres des sites > Micro), puis relance l'appel.",
+    "micDismissed": "Autorise le micro dans la fenêtre DeepSight qui s'est ouverte, puis relance l'appel.",
+    "micNotFound": "Aucun micro détecté sur cet ordinateur.",
+    "dismiss": "Fermer le message",
     "generic": "Une erreur est survenue. Réessayez."
   }
 }

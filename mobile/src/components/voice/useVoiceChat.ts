@@ -127,12 +127,39 @@ const ERROR_MESSAGES = {
   QUOTA_EXCEEDED:
     "Quota vocal épuisé. Passez à un plan supérieur pour continuer.",
   SESSION_FAILED: "Impossible de démarrer la session vocale. Réessayez.",
+  VOICE_DISABLED: "Les appels vocaux sont coupés pour le moment.",
   SDK_INIT_FAILED: "Impossible d'initialiser le module vocal.",
   SESSION_TIMEOUT: "Session terminée : durée maximale atteinte.",
   APP_BACKGROUNDED:
     "Session arrêtée car l'application est passée en arrière-plan.",
   UNKNOWN: "Une erreur inattendue est survenue. Réessayez.",
 } as const;
+
+interface ProviderError {
+  status?: number;
+  code?: string | null;
+  message?: string;
+}
+
+/**
+ * Refus de POST /api/voice/session que l'on sait expliquer : appels coupés
+ * côté serveur, ou raison ElevenLabs (`provider_error`, que l'API n'envoie
+ * qu'à un admin). ApiError garde le `detail` de l'API tel quel. `null` pour
+ * le message générique.
+ */
+function describeSessionRefusal(err: unknown): string | null {
+  const detail = (err as { detail?: unknown } | null)?.detail;
+  if (!detail || typeof detail !== "object") return null;
+  const { code, provider_error: provider } = detail as {
+    code?: unknown;
+    provider_error?: ProviderError;
+  };
+  if (code === "voice_call_disabled") return ERROR_MESSAGES.VOICE_DISABLED;
+  if (!provider?.message) return null;
+  const label = [provider.status, provider.code].filter(Boolean).join(" ");
+  const reason = label ? `${label} - ${provider.message}` : provider.message;
+  return `${ERROR_MESSAGES.SESSION_FAILED} (ElevenLabs : ${reason})`;
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Hook
@@ -384,6 +411,12 @@ export function useVoiceChat(
           return;
         }
 
+        const refusal = describeSessionRefusal(err);
+        if (refusal) {
+          reportError(refusal);
+          return;
+        }
+
         // Erreur réseau vs autre
         if (
           err instanceof TypeError ||
@@ -397,22 +430,18 @@ export function useVoiceChat(
       }
 
       // 3. Démarrer la session ElevenLabs via le SDK React Native
-      // Le SDK WebRTC (@elevenlabs/react-native) attend un conversationToken
-      // LiveKit JWT. Le backend l'expose désormais dans la réponse /session ;
-      // on retombe sur agentId seulement si le backend n'a pas pu le fournir.
+      // Le SDK WebRTC (@elevenlabs/react-native) attend le conversationToken
+      // LiveKit que l'API obtient pour l'agent. Les agents sont privés : sans
+      // ce jeton, l'agentId seul ne permet pas de se connecter. La langue est
+      // fixée à la création de l'agent ; un override côté client serait
+      // refusé (l'agent n'autorise aucun override).
+      const conversationToken = sessionData.conversation_token;
+      if (!conversationToken) {
+        reportError(ERROR_MESSAGES.SESSION_FAILED);
+        return;
+      }
       try {
-        const conversationToken = sessionData.conversation_token || undefined;
-
-        await conversation.startSession({
-          ...(conversationToken
-            ? { conversationToken }
-            : { agentId: sessionData.agent_id }),
-          overrides: {
-            agent: {
-              language: "fr",
-            },
-          },
-        });
+        await conversation.startSession({ conversationToken });
 
         isActiveRef.current = true;
 
@@ -438,8 +467,10 @@ export function useVoiceChat(
             return next;
           });
         }, 1000);
-      } catch {
-        reportError(ERROR_MESSAGES.SDK_INIT_FAILED);
+      } catch (err: unknown) {
+        const reason =
+          err instanceof Error && err.message ? ` (${err.message})` : "";
+        reportError(`${ERROR_MESSAGES.SDK_INIT_FAILED}${reason}`);
       }
     },
     [status, summaryId, agentType, onError, reportError, stop, conversation],

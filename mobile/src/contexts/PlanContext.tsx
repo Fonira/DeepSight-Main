@@ -356,13 +356,21 @@ export const useFeatureGate = (feature: keyof PlanFeatures) => {
   };
 };
 
-// Hook for voice chat feature gating
+// Hook for voice chat feature gating — même règle que le web et
+// l'extension : la voix doit être branchée côté API (`voice_available` de
+// /api/auth/me), puis le plan l'inclut ou c'est l'admin (POST /api/voice/session
+// laisse passer l'admin quel que soit son plan).
 export const useVoiceChatGate = () => {
   const { features } = usePlan();
+  const { user } = useAuth();
+  const available = user?.voice_available === true;
+  const planAllows = features.voiceChatEnabled || Boolean(user?.is_admin);
   return {
-    enabled: features.voiceChatEnabled,
+    /** Voix branchée côté API. Faux : ne rien proposer, ni appel ni offre. */
+    available,
+    enabled: available && planAllows,
     monthlyMinutes: features.voiceChatMonthlyMinutes,
-    requiresUpgrade: !features.voiceChatEnabled,
+    requiresUpgrade: available && !planAllows,
   };
 };
 

@@ -9,13 +9,31 @@
 //  2. Ouvrir le side panel sur la fenêtre source, ou sur la fenêtre courante
 //     quand l'appel vient du side panel lui-même (pas de `sender.tab`).
 //
+//  3. Ne rien faire si la voix n'est pas utilisable (absente du build, ou
+//     `voice_available` absent/faux sur le user stocké) : un bouton resté
+//     affiché sur un vieil onglet ne doit pas ouvrir d'appel.
+//
 // Note : on injecte ici les mocks `chrome.storage.session` et `chrome.sidePanel`
 // car le mock global ne les fournit pas (APIs Chrome 102+/114+ optionnelles).
 
 import { handleMessage } from "../../src/background";
+import { FEATURES } from "../../src/utils/features";
+import { resetChromeMocks, seedLocalStorage } from "../setup/chrome-api-mock";
+
+const voiceUser = {
+  id: 1,
+  email: "x@y.z",
+  username: "x",
+  plan: "pro",
+  credits: 0,
+  credits_monthly: 0,
+  voice_available: true,
+};
 
 describe("OPEN_VOICE_CALL handler", () => {
   beforeEach(() => {
+    resetChromeMocks();
+    seedLocalStorage({ accessToken: "tok", user: voiceUser });
     const c = global as unknown as {
       chrome: {
         storage: { session?: { set: jest.Mock; remove?: jest.Mock } };
@@ -89,6 +107,39 @@ describe("OPEN_VOICE_CALL handler", () => {
         pendingVoiceCall: { videoId: "abc", videoTitle: "Test" },
       });
       expect(chrome.sidePanel!.open).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("voix indisponible", () => {
+    const open = () =>
+      handleMessage(
+        {
+          type: "OPEN_VOICE_CALL",
+          videoId: "abc",
+          videoTitle: "Test",
+        } as unknown as Parameters<typeof handleMessage>[0],
+        { tab: { id: 42, windowId: 7 } } as chrome.runtime.MessageSender,
+      );
+
+    it("refuses the call when the API does not report voice", async () => {
+      seedLocalStorage({ user: { ...voiceUser, voice_available: false } });
+
+      const res = await open();
+
+      expect(res).toEqual({ success: false, error: "voice_unavailable" });
+      expect(chrome.storage.session!.set).not.toHaveBeenCalled();
+      expect(chrome.sidePanel!.open).not.toHaveBeenCalled();
+    });
+
+    it("refuses the call in a build without voice", async () => {
+      FEATURES.voice = false;
+      try {
+        const res = await open();
+        expect(res).toEqual({ success: false, error: "voice_unavailable" });
+        expect(chrome.storage.session!.set).not.toHaveBeenCalled();
+      } finally {
+        FEATURES.voice = true;
+      }
     });
   });
 });

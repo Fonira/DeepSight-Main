@@ -102,6 +102,7 @@ describe("VoiceButton placement (Spec #3)", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockUseVoiceChatGate.mockReturnValue({
+      available: true,
       enabled: true,
       requiresUpgrade: false,
     });

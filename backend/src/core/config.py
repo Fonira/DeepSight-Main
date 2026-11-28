@@ -1056,6 +1056,22 @@ def get_elevenlabs_key() -> Optional[str]:
     return _settings.ELEVENLABS_API_KEY or None
 
 
+def is_voice_call_available(is_admin: bool = False, email: str | None = None) -> bool:
+    """Appels vocaux ElevenLabs utilisables sur ce serveur.
+
+    Faux sans ELEVENLABS_API_KEY (/voice/session répondrait 503), ou quand le
+    kill switch VOICE_CALL_DISABLED est actif — sauf pour un admin, que
+    /voice/session laisse appeler. Admin au même sens que /voice/session :
+    flag is_admin ou email == ADMIN_EMAIL. Le plan n'entre pas en compte : les
+    quotas restent vérifiés à l'ouverture de chaque session.
+    """
+    if not get_elevenlabs_key():
+        return False
+    admin_email = (ADMIN_CONFIG.get("ADMIN_EMAIL") or "").lower()
+    effective_admin = is_admin or (bool(email) and email.lower() == admin_email)
+    return effective_admin or not VOICE_CALL_DISABLED
+
+
 # =============================================================================
 # VOXTRAL TTS CONFIG
 # =============================================================================

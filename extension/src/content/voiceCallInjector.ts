@@ -16,7 +16,8 @@
 // Pas de dépendance externe — `renderVoiceCallButton` est notre source de
 // vérité unique pour le rendu et l'envoi du message OPEN_VOICE_CALL.
 //
-// Appels vocaux coupés (`FEATURES.voice`, cf. utils/features) : le host ne
+// Bouton d'appel seulement si la voix est compilée dans ce build ET branchée
+// côté API (`state.voiceAvailable`, cf. utils/features). Sinon le host ne
 // contient que le badge d'analyse visuelle, et n'est pas injecté du tout
 // quand l'API n'a pas non plus la couche visuelle.
 import { renderVoiceCallButton, renderVisualAnalysisBadge } from "./widget";
@@ -165,8 +166,9 @@ export async function injectVoiceCallButton(): Promise<void> {
 
   // Rien à afficher (voix coupée, analyse visuelle coupée côté API) → pas
   // de host vide sur la page.
+  const showVoiceCall = FEATURES.voice && state.voiceAvailable === true;
   const showVisualBadge = state.visualAnalysisAvailable === true;
-  if (!FEATURES.voice && !showVisualBadge) return;
+  if (!showVoiceCall && !showVisualBadge) return;
 
   const anchor = findYouTubeAnchor();
   const useFloating = anchor === null;
@@ -175,7 +177,7 @@ export async function injectVoiceCallButton(): Promise<void> {
   // attachShadow renvoie un ShadowRoot ; renderVoiceCallButton accepte un
   // HTMLElement (DOM node avec appendChild). Cast minimaliste — on ne triche
   // pas sur la sémantique runtime.
-  if (FEATURES.voice) {
+  if (showVoiceCall) {
     await renderVoiceCallButton(shadow as unknown as HTMLElement, {
       plan: state.plan,
       trialUsed: state.trialUsed,

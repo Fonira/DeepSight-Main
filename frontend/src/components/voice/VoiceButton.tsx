@@ -6,8 +6,7 @@
 import React, { useCallback } from "react";
 import { motion, type Variants } from "framer-motion";
 import { Mic, Lock } from "lucide-react";
-import { useAuth } from "../../hooks/useAuth";
-import { PLAN_LIMITS, normalizePlanId } from "../../config/planPrivileges";
+import { useVoiceEnabled } from "./hooks/useVoiceEnabled";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Types
@@ -53,12 +52,7 @@ const VoiceButton: React.FC<VoiceButtonProps> = ({
   onOpen,
   disabled = false,
 }) => {
-  const { user } = useAuth();
-  const plan = normalizePlanId(user?.plan);
-  const ADMIN_EMAIL = "maximeleparc3@gmail.com";
-  const isAdmin =
-    user?.is_admin || user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
-  const voiceEnabled = isAdmin || PLAN_LIMITS[plan].voiceChatEnabled;
+  const { voiceEnabled, voiceAvailable } = useVoiceEnabled();
 
   // Determine visual state
   const state: VoiceState = disabled
@@ -83,6 +77,9 @@ const VoiceButton: React.FC<VoiceButtonProps> = ({
   );
 
   const isLocked = state === "locked";
+
+  // Voix coupée côté serveur : rien à proposer, ni appel ni offre.
+  if (!voiceAvailable) return null;
 
   return (
     <motion.div

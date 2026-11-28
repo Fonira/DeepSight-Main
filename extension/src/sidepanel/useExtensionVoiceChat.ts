@@ -12,7 +12,10 @@
 // expose les transcripts + le status, et délègue tout I/O au background.
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { localizeError, type ErrorTranslations } from "../i18n/errorMessages";
+import { useTranslation } from "../i18n/useTranslation";
 import Browser from "../utils/browser-polyfill";
+import { ensureMicPermission, type MicPermissionOutcome } from "./micPermission";
 import {
   pickAgentType,
   type VoicePanelContext,
@@ -145,15 +148,64 @@ interface UseExtensionVoiceChatOptions {
   context?: VoicePanelContext | null;
   /** Permet d'injecter un transport mock côté tests. */
   sendMessage?: <T>(message: unknown) => Promise<BackgroundResponse<T>>;
+  /** Vérification du micro avant l'appel (injectable côté tests). */
+  ensureMic?: () => Promise<MicPermissionOutcome>;
 }
 
 const defaultSend = <T>(message: unknown): Promise<BackgroundResponse<T>> =>
   Browser.runtime.sendMessage<unknown, BackgroundResponse<T>>(message);
 
+interface ProviderError {
+  status?: number;
+  code?: string | null;
+  message?: string;
+}
+
+/**
+ * Message affiché quand POST /api/voice/session échoue. Pour un admin, l'API
+ * ajoute `provider_error` : la raison donnée par ElevenLabs.
+ */
+export function describeSessionFailure(
+  errors: ErrorTranslations,
+  response: BackgroundResponse<unknown>,
+): string {
+  const message = localizeError(errors, response, errors.voiceUnavailable);
+  const provider = response.errorDetail?.provider_error as
+    | ProviderError
+    | undefined;
+  if (!provider?.message) return message;
+  const label = [provider.status, provider.code].filter(Boolean).join(" ");
+  const reason = label ? `${label} - ${provider.message}` : provider.message;
+  return `${message} ${errors.voiceProviderReason.replace("{reason}", reason)}`;
+}
+
+/** Message affiché quand le SDK ElevenLabs n'arrive pas à ouvrir l'appel. */
+export function describeConnectionFailure(
+  errors: ErrorTranslations,
+  error: unknown,
+): string {
+  const name = (error as { name?: unknown } | null)?.name;
+  if (name === "NotAllowedError" || name === "PermissionDeniedError") {
+    return errors.micDenied;
+  }
+  if (name === "NotFoundError" || name === "DevicesNotFoundError") {
+    return errors.micNotFound;
+  }
+  const detail = (error as { message?: unknown } | null)?.message;
+  return typeof detail === "string" && detail.trim()
+    ? `${errors.voiceConnectionFailed} (${detail.trim()})`
+    : errors.voiceConnectionFailed;
+}
+
 export function useExtensionVoiceChat(
   options: UseExtensionVoiceChatOptions,
 ): UseExtensionVoiceChatResult {
-  const { context, sendMessage = defaultSend } = options;
+  const {
+    context,
+    sendMessage = defaultSend,
+    ensureMic = ensureMicPermission,
+  } = options;
+  const { t } = useTranslation();
   const [status, setStatus] = useState<VoiceSessionStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const [transcripts, setTranscripts] = useState<VoiceTranscript[]>([]);
@@ -304,6 +356,20 @@ export function useExtensionVoiceChat(
       setError(null);
       setStatus("requesting");
       lastStartOptsRef.current = opts;
+
+      // Micro d'abord : inutile de créer un agent ElevenLabs pour un appel
+      // qui ne pourra pas démarrer.
+      const mic = await ensureMic();
+      if (cancelled.current) throw new Error("aborted");
+      if (mic !== "granted") {
+        const message = localizeError(t.errors, {
+          errorCode: mic === "denied" ? "mic_denied" : "mic_dismissed",
+        });
+        setStatus("error");
+        setError(message);
+        throw new Error(message);
+      }
+
       const payload: Record<string, unknown> = {
         agent_type: opts.agentType,
         video_id: opts.videoId,
@@ -333,9 +399,10 @@ export function useExtensionVoiceChat(
             detail,
           );
         }
+        const message = describeSessionFailure(t.errors, response);
         setStatus("error");
-        setError(response.error || "Impossible de créer la session vocale.");
-        throw new Error(response.error || "Voice session error");
+        setError(message);
+        throw new Error(message);
       }
 
       const session = response.result;
@@ -350,37 +417,40 @@ export function useExtensionVoiceChat(
       try {
         const sdk = await loadElevenLabsSdk();
         if (cancelled.current) throw new Error("aborted");
-        if (sdk && session.signed_url) {
-          await sdk.connect({
-            signedUrl: session.signed_url,
-            onMessage: (msg: { source: TranscriptSpeaker; text: string }) => {
-              void appendTranscript(msg.source, msg.text);
-            },
-          });
-          // Expose un objet conversation-like pour le hook SSE streaming
-          // ET pour la VoiceWaveform LIVE / AgentAvatar (V1.3).
-          setConversation({
-            sendUserMessage: (txt: string) => {
-              if (sdk.sendUserMessage) sdk.sendUserMessage(txt);
-            },
-            getInputByteFrequencyData: () =>
-              sdk.getInputByteFrequencyData?.() ?? null,
-            getOutputByteFrequencyData: () =>
-              sdk.getOutputByteFrequencyData?.() ?? null,
-            getInputVolume: () => sdk.getInputVolume?.() ?? 0,
-            getOutputVolume: () => sdk.getOutputVolume?.() ?? 0,
-          });
-        }
+        // Sans SDK ni URL signée, l'appel ne peut pas s'ouvrir : on le dit au
+        // lieu d'afficher un appel « en cours » muet.
+        if (!sdk) throw new Error("ElevenLabs SDK unavailable");
+        if (!session.signed_url) throw new Error("no signed_url in session");
+        await sdk.connect({
+          signedUrl: session.signed_url,
+          onMessage: (msg: { source: TranscriptSpeaker; text: string }) => {
+            void appendTranscript(msg.source, msg.text);
+          },
+        });
+        // Expose un objet conversation-like pour le hook SSE streaming
+        // ET pour la VoiceWaveform LIVE / AgentAvatar (V1.3).
+        setConversation({
+          sendUserMessage: (txt: string) => {
+            if (sdk.sendUserMessage) sdk.sendUserMessage(txt);
+          },
+          getInputByteFrequencyData: () =>
+            sdk.getInputByteFrequencyData?.() ?? null,
+          getOutputByteFrequencyData: () =>
+            sdk.getOutputByteFrequencyData?.() ?? null,
+          getInputVolume: () => sdk.getInputVolume?.() ?? 0,
+          getOutputVolume: () => sdk.getOutputVolume?.() ?? 0,
+        });
         if (!cancelled.current) setStatus("listening");
       } catch (e) {
         if (cancelled.current) throw new Error("aborted");
+        const message = describeConnectionFailure(t.errors, e);
         setStatus("error");
-        setError((e as Error).message || "ElevenLabs connection failed");
-        throw e;
+        setError(message);
+        throw new Error(message);
       }
       return session;
     },
-    [appendTranscript, sendMessage],
+    [appendTranscript, sendMessage, ensureMic, t],
   );
 
   const endSession = useCallback(async (): Promise<void> => {

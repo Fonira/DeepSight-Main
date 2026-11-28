@@ -136,6 +136,9 @@ export interface User {
   preferences?: Record<string, unknown>;
   // Couche visuelle activée sur le serveur (VISUAL_ANALYSIS_ENABLED)
   visual_analysis_available?: boolean;
+  // Appels vocaux branchés sur le serveur : clé ElevenLabs présente et
+  // VOICE_CALL_DISABLED coupé (toujours vrai pour l'admin si la clé existe)
+  voice_available?: boolean;
 }
 
 export interface TokenResponse {

@@ -29,8 +29,7 @@ import {
   DeepSightSpinner,
   DeepSightSpinnerSmall,
 } from "../ui/DeepSightSpinner";
-import { useAuth } from "../../hooks/useAuth";
-import { PLAN_LIMITS, normalizePlanId } from "../../config/planPrivileges";
+import { useVoiceEnabled } from "../voice/hooks/useVoiceEnabled";
 import { videoApi, shareApi } from "../../services/api";
 import { useToast } from "../Toast";
 import { AudioSummaryButton } from "../AudioSummaryButton";
@@ -207,14 +206,8 @@ export const AnalysisActionBar: React.FC<AnalysisActionBarProps> = ({
   showCitation = true,
   sticky = true,
 }) => {
-  const { user } = useAuth();
   const { showToast, ToastComponent } = useToast();
-  const plan = normalizePlanId(user?.plan);
-  const ADMIN_EMAIL = "maximeleparc3@gmail.com";
-  const isAdmin =
-    user?.is_admin || user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
-  const voiceEnabled =
-    isAdmin || (PLAN_LIMITS[plan]?.voiceChatEnabled ?? false);
+  const { voiceEnabled, voiceAvailable, isAdmin, plan } = useVoiceEnabled();
 
   const [copied, setCopied] = useState(false);
   const [sharing, setSharing] = useState(false);
@@ -370,93 +363,95 @@ export const AnalysisActionBar: React.FC<AnalysisActionBarProps> = ({
             {/* ═══════════════════════════════════════════════════════════
                  HERO CTA — Voice Agent (ElevenLabs)
                  ═══════════════════════════════════════════════════════════ */}
-            <motion.button
-              onClick={isVoiceLocked ? undefined : onOpenVoice}
-              disabled={isVoiceLocked}
-              className={`
-                relative flex items-center gap-2.5 sm:gap-3
-                px-4 sm:px-5 py-2.5 sm:py-3
-                rounded-xl
-                font-semibold text-sm
-                transition-all duration-300
-                outline-none
-                focus-visible:ring-2 focus-visible:ring-indigo-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0a0f]
-                ${
-                  isVoiceLocked
-                    ? "bg-white/[0.04] border border-white/10 text-white/40 cursor-not-allowed"
-                    : "cursor-pointer"
-                }
-                group min-w-0 lg:flex-shrink-0
-              `}
-              style={
-                !isVoiceLocked
-                  ? {
-                      background:
-                        "linear-gradient(135deg, rgba(99,102,241,0.2) 0%, rgba(139,92,246,0.2) 50%, rgba(6,182,212,0.15) 100%)",
-                      border: "1px solid rgba(99,102,241,0.35)",
-                    }
-                  : undefined
-              }
-              variants={heroGlow}
-              animate={isVoiceLocked ? "locked" : "idle"}
-              whileHover={!isVoiceLocked ? { scale: 1.02 } : undefined}
-              whileTap={!isVoiceLocked ? { scale: 0.98 } : undefined}
-            >
-              {/* Icon container */}
-              <div
+            {voiceAvailable && (
+              <motion.button
+                onClick={isVoiceLocked ? undefined : onOpenVoice}
+                disabled={isVoiceLocked}
                 className={`
-                relative flex-shrink-0 w-9 h-9 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center
-                ${isVoiceLocked ? "bg-white/5" : "bg-gradient-to-br from-indigo-500/30 to-violet-500/30"}
-              `}
+                  relative flex items-center gap-2.5 sm:gap-3
+                  px-4 sm:px-5 py-2.5 sm:py-3
+                  rounded-xl
+                  font-semibold text-sm
+                  transition-all duration-300
+                  outline-none
+                  focus-visible:ring-2 focus-visible:ring-indigo-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0a0f]
+                  ${
+                    isVoiceLocked
+                      ? "bg-white/[0.04] border border-white/10 text-white/40 cursor-not-allowed"
+                      : "cursor-pointer"
+                  }
+                  group min-w-0 lg:flex-shrink-0
+                `}
+                style={
+                  !isVoiceLocked
+                    ? {
+                        background:
+                          "linear-gradient(135deg, rgba(99,102,241,0.2) 0%, rgba(139,92,246,0.2) 50%, rgba(6,182,212,0.15) 100%)",
+                        border: "1px solid rgba(99,102,241,0.35)",
+                      }
+                    : undefined
+                }
+                variants={heroGlow}
+                animate={isVoiceLocked ? "locked" : "idle"}
+                whileHover={!isVoiceLocked ? { scale: 1.02 } : undefined}
+                whileTap={!isVoiceLocked ? { scale: 0.98 } : undefined}
               >
-                {isVoiceLocked ? (
-                  <Lock className="w-4 h-4 sm:w-5 sm:h-5 text-text-tertiary" />
-                ) : (
-                  <VoiceAgentIcon className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-300 group-hover:text-indigo-200 transition-colors" />
-                )}
+                {/* Icon container */}
+                <div
+                  className={`
+                  relative flex-shrink-0 w-9 h-9 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center
+                  ${isVoiceLocked ? "bg-white/5" : "bg-gradient-to-br from-indigo-500/30 to-violet-500/30"}
+                `}
+                >
+                  {isVoiceLocked ? (
+                    <Lock className="w-4 h-4 sm:w-5 sm:h-5 text-text-tertiary" />
+                  ) : (
+                    <VoiceAgentIcon className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-300 group-hover:text-indigo-200 transition-colors" />
+                  )}
+                  {!isVoiceLocked && (
+                    <div className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                  )}
+                </div>
+
+                {/* Text */}
+                <div className="flex flex-col items-start min-w-0">
+                  <span
+                    className={`
+                    font-bold tracking-tight truncate
+                    ${isVoiceLocked ? "text-white/40 text-[13px]" : "text-white/90 group-hover:text-white text-[13px] sm:text-sm"}
+                    transition-colors
+                  `}
+                  >
+                    {isVoiceLocked
+                      ? language === "fr"
+                        ? "Agent vocal verrouillé"
+                        : "Voice Agent locked"
+                      : language === "fr"
+                        ? "Parler avec l'Agent IA"
+                        : "Talk to AI Agent"}
+                  </span>
+                  <span
+                    className={`
+                    text-[11px] sm:text-xs truncate
+                    ${isVoiceLocked ? "text-white/25" : "text-white/45 group-hover:text-white/55"}
+                    transition-colors
+                  `}
+                  >
+                    {isVoiceLocked
+                      ? language === "fr"
+                        ? "Disponible dès le plan Étudiant"
+                        : "Available from Student plan"
+                      : language === "fr"
+                        ? "Propulsé par ElevenLabs"
+                        : "Powered by ElevenLabs"}
+                  </span>
+                </div>
+
                 {!isVoiceLocked && (
-                  <div className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <Sparkles className="w-4 h-4 text-indigo-400/50 group-hover:text-indigo-300/80 flex-shrink-0 transition-colors ml-auto hidden sm:block" />
                 )}
-              </div>
-
-              {/* Text */}
-              <div className="flex flex-col items-start min-w-0">
-                <span
-                  className={`
-                  font-bold tracking-tight truncate
-                  ${isVoiceLocked ? "text-white/40 text-[13px]" : "text-white/90 group-hover:text-white text-[13px] sm:text-sm"}
-                  transition-colors
-                `}
-                >
-                  {isVoiceLocked
-                    ? language === "fr"
-                      ? "Agent vocal verrouillé"
-                      : "Voice Agent locked"
-                    : language === "fr"
-                      ? "Parler avec l'Agent IA"
-                      : "Talk to AI Agent"}
-                </span>
-                <span
-                  className={`
-                  text-[11px] sm:text-xs truncate
-                  ${isVoiceLocked ? "text-white/25" : "text-white/45 group-hover:text-white/55"}
-                  transition-colors
-                `}
-                >
-                  {isVoiceLocked
-                    ? language === "fr"
-                      ? "Disponible dès le plan Étudiant"
-                      : "Available from Student plan"
-                    : language === "fr"
-                      ? "Propulsé par ElevenLabs"
-                      : "Powered by ElevenLabs"}
-                </span>
-              </div>
-
-              {!isVoiceLocked && (
-                <Sparkles className="w-4 h-4 text-indigo-400/50 group-hover:text-indigo-300/80 flex-shrink-0 transition-colors ml-auto hidden sm:block" />
-              )}
-            </motion.button>
+              </motion.button>
+            )}
 
             {/* ═══════════════════════════════════════════════════════════
                  ACTION BUTTONS — F8 : overflow-x-auto pour éviter

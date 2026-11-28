@@ -101,6 +101,7 @@ describe("VoiceButton (Mobile)", () => {
 
   it("rend le bouton avec accessibilité quand voice enabled", () => {
     mockUseVoiceChatGate.mockReturnValue({
+      available: true,
       enabled: true,
       requiresUpgrade: false,
     });
@@ -119,6 +120,7 @@ describe("VoiceButton (Mobile)", () => {
 
   it("affiche le label premium quand upgrade requis", () => {
     mockUseVoiceChatGate.mockReturnValue({
+      available: true,
       enabled: false,
       requiresUpgrade: true,
     });
@@ -137,6 +139,7 @@ describe("VoiceButton (Mobile)", () => {
 
   it("appelle onSessionStart quand pressé et voice enabled", () => {
     mockUseVoiceChatGate.mockReturnValue({
+      available: true,
       enabled: true,
       requiresUpgrade: false,
     });
@@ -155,6 +158,7 @@ describe("VoiceButton (Mobile)", () => {
 
   it("affiche l'Alert de upgrade au lieu d'appeler onSessionStart", () => {
     mockUseVoiceChatGate.mockReturnValue({
+      available: true,
       enabled: false,
       requiresUpgrade: true,
     });
@@ -178,6 +182,7 @@ describe("VoiceButton (Mobile)", () => {
 
   it("ne fait rien quand disabled=true", () => {
     mockUseVoiceChatGate.mockReturnValue({
+      available: true,
       enabled: true,
       requiresUpgrade: false,
     });
@@ -199,6 +204,7 @@ describe("VoiceButton (Mobile)", () => {
 
   it("inclut le titre de la vidéo dans l'accessibilityLabel", () => {
     mockUseVoiceChatGate.mockReturnValue({
+      available: true,
       enabled: true,
       requiresUpgrade: false,
     });
@@ -216,6 +222,7 @@ describe("VoiceButton (Mobile)", () => {
 
   it("a le hint d'accessibilité correct", () => {
     mockUseVoiceChatGate.mockReturnValue({
+      available: true,
       enabled: true,
       requiresUpgrade: false,
     });
@@ -235,6 +242,7 @@ describe("VoiceButton (Mobile)", () => {
 
   it("applique le bottomOffset custom passé en prop", () => {
     mockUseVoiceChatGate.mockReturnValue({
+      available: true,
       enabled: true,
       requiresUpgrade: false,
     });
@@ -264,6 +272,7 @@ describe("VoiceButton (Mobile)", () => {
 
   it("rend sans summaryId quand agentType=companion (mode sans vidéo)", () => {
     mockUseVoiceChatGate.mockReturnValue({
+      available: true,
       enabled: true,
       requiresUpgrade: false,
     });
@@ -281,6 +290,7 @@ describe("VoiceButton (Mobile)", () => {
 
   it("accepte agentType='explorer' avec summaryId présent", () => {
     mockUseVoiceChatGate.mockReturnValue({
+      available: true,
       enabled: true,
       requiresUpgrade: false,
     });
@@ -295,5 +305,23 @@ describe("VoiceButton (Mobile)", () => {
     );
 
     expect(getByLabelText(/Démarrer le chat vocal/)).toBeTruthy();
+  });
+
+  it("ne rend rien quand la voix est coupée côté serveur", () => {
+    mockUseVoiceChatGate.mockReturnValue({
+      available: false,
+      enabled: false,
+      requiresUpgrade: false,
+    });
+
+    const { toJSON } = render(
+      <VoiceButton
+        summaryId="42"
+        videoTitle="Test Vidéo"
+        onSessionStart={onSessionStart}
+      />,
+    );
+
+    expect(toJSON()).toBeNull();
   });
 });

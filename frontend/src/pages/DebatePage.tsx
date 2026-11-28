@@ -46,8 +46,7 @@ import { VoiceModal } from "../components/voice/VoiceModal";
 import { DebateVoiceHero } from "../components/voice/DebateVoiceHero";
 import { useVoiceChat } from "../components/voice/useVoiceChat";
 import { useMicLevel } from "../components/voice/hooks/useMicLevel";
-import { useAuth } from "../hooks/useAuth";
-import { PLAN_LIMITS, normalizePlanId } from "../config/planPrivileges";
+import { useVoiceEnabled } from "../components/voice/hooks/useVoiceEnabled";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // MOCK DATA — Fallback pour dev quand l'API n'est pas dispo
@@ -315,7 +314,6 @@ export const DebatePage: React.FC = () => {
   );
 
   // 🎙️ Voice Chat — Debate moderator agent
-  const { user } = useAuth();
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
   const [avatarData, setAvatarData] = useState<{
     url: string | null;
@@ -330,12 +328,7 @@ export const DebatePage: React.FC = () => {
   });
   const micLevel = useMicLevel(voiceChat.micStream, voiceChat.isTalking);
 
-  const ADMIN_EMAIL_VOICE = "maximeleparc3@gmail.com";
-  const isAdminVoice =
-    user?.is_admin ||
-    user?.email?.toLowerCase() === ADMIN_EMAIL_VOICE.toLowerCase();
-  const voiceEnabled =
-    isAdminVoice || PLAN_LIMITS[normalizePlanId(user?.plan)].voiceChatEnabled;
+  const { voiceEnabled } = useVoiceEnabled();
 
   // ─── Cleanup polling on unmount ───
   useEffect(() => {

@@ -11,8 +11,6 @@ Endpoints:
 """
 
 import asyncio
-import hashlib
-import hmac
 import json
 import logging
 import uuid
@@ -38,13 +36,14 @@ from core.config import (
     get_stripe_key,
 )
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from voice.schemas import (
     VoiceSessionRequest,
     VoiceSessionResponse,
     VoiceQuotaResponse,
     VoiceWebhookPayload,
+    ElevenLabsPostCallData,
     WebhookAckResponse,
     VoiceHistoryResponse,
     VoiceTranscriptResponse,
@@ -63,6 +62,7 @@ from voice.quota import (
     deduct_voice_usage,
 )
 from voice.elevenlabs import (
+    ElevenLabsAPIError,
     ElevenLabsClient,
     get_elevenlabs_client,
     VOICE_CALL_PROVIDER,
@@ -78,7 +78,9 @@ from voice.transcript_fetcher import fetch_for_video_url
 from voice.analysis_runner import run_for_video, final_digest_for_video
 from billing.voice_quota import (
     check_voice_quota as check_voice_quota_streaming,
+    consume_voice_minutes,
 )
+from voice.webhook import WebhookSignatureError, transcript_to_text, verify_elevenlabs_signature
 from voice.tools import search_in_transcript, get_analysis_section, get_sources, get_flashcards
 from voice.web_tools import web_search, deep_research, check_fact
 from voice.agent_types import get_agent_config, list_agent_types
@@ -1064,6 +1066,22 @@ async def _run_main_analysis_for_video(
         )
 
 
+def _call_duration_cap_seconds(quota_info: dict, plan_limits: dict, *, is_streaming: bool) -> int:
+    """Longest call the agent may hold, passed to ElevenLabs as max_duration_seconds.
+
+    The client timer only displays time, so the cap must live on the agent:
+    the remaining quota seconds, further bounded for classic voice chat by the
+    plan's per-session maximum. Quick Voice Call has no per-session limit in
+    its quota model (VOICE_LIMITS is the legacy table and has no Expert entry).
+    """
+    remaining = int(quota_info.get("seconds_remaining", 0) or 0)
+    if not is_streaming:
+        per_session = int(plan_limits.get("max_session_minutes", 0) or 0) * 60
+        if per_session > 0:
+            remaining = min(remaining, per_session)
+    return remaining
+
+
 @router.post("/session", response_model=VoiceSessionResponse)
 async def create_voice_session(
     request: VoiceSessionRequest,
@@ -1923,14 +1941,15 @@ async def create_voice_session(
         # eagerness renamed to turn_eagerness enum: "patient"|"normal"|"eager"
         eagerness_map = {"low": "patient", "medium": "normal", "high": "eager"}
         mapped_eagerness = eagerness_map.get(user_prefs.turn_eagerness, user_prefs.turn_eagerness)
+        # ElevenLabs' TurnConfig has no `mode` any more: push-to-talk is done by
+        # the client (mic muted until the key is held), the server keeps its
+        # end-of-turn detection.
         if user_prefs.input_mode == "ptt":
             turn_config = {
-                "mode": "turn",
                 "turn_timeout": user_prefs.turn_timeout,
             }
         else:
             turn_config = {
-                "mode": "silence",
                 "turn_eagerness": mapped_eagerness if mapped_eagerness in ("patient", "normal", "eager") else "normal",
                 "turn_timeout": user_prefs.turn_timeout,
             }
@@ -1958,6 +1977,10 @@ async def create_voice_session(
                 model_id=voice_chat_model,
                 voice_settings=voice_settings,
                 turn_config=turn_config,
+                max_duration_seconds=_call_duration_cap_seconds(
+                    quota_info, plan_limits, is_streaming=bool(request.is_streaming)
+                ),
+                name=f"DeepSight {agent_config.agent_type} {voice_session.id[:8]}",
             )
 
             # Get the signed WebSocket URL (legacy web / JS SDK transport)
@@ -1990,6 +2013,29 @@ async def create_voice_session(
             },
         )
 
+    except ElevenLabsAPIError as exc:
+        # ElevenLabs refused a tool, the agent or the signed URL. The log keeps
+        # its status and message; an admin also gets them in the response so
+        # the reason shows up without reading the server logs.
+        logger.error("ElevenLabs refused the voice session: %s", exc)
+        voice_session.status = "error"
+        await db.commit()
+        detail: dict = {
+            "code": "voice_service_unavailable" if exc.is_config_error else "voice_service_error",
+            "message": (
+                "Voice service is not configured properly. Please try again later."
+                if exc.is_config_error
+                else "Voice service is temporarily unavailable. Please try again later."
+            ),
+        }
+        if is_admin:
+            detail["provider_error"] = {
+                "operation": exc.operation,
+                "status": exc.status_code,
+                "code": exc.code,
+                "message": exc.message,
+            }
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=detail)
     except ValueError as exc:
         # Invalid API key or missing config
         logger.error("ElevenLabs config error: %s", exc)
@@ -2216,129 +2262,183 @@ async def append_transcript(
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
+async def _find_webhook_session(db: AsyncSession, data: ElevenLabsPostCallData) -> VoiceSession | None:
+    """Session DeepSight visée par un webhook post-appel.
+
+    Chaque session crée son propre agent ElevenLabs (supprimé après l'appel),
+    donc ``agent_id`` l'identifie. ``conversation_id`` n'est enregistré qu'au
+    premier webhook : il retrouve la session lors des livraisons répétées.
+    """
+    if data.conversation_id:
+        result = await db.execute(
+            select(VoiceSession).where(VoiceSession.elevenlabs_conversation_id == data.conversation_id).limit(1)
+        )
+        voice_session = result.scalars().first()
+        if voice_session is not None:
+            return voice_session
+
+    if data.agent_id:
+        result = await db.execute(
+            select(VoiceSession)
+            .where(VoiceSession.elevenlabs_agent_id == data.agent_id)
+            .order_by(VoiceSession.started_at.desc())
+            .limit(1)
+        )
+        return result.scalars().first()
+
+    return None
+
+
+async def _record_voice_usage(db: AsyncSession, voice_session: VoiceSession, duration_seconds: int) -> float:
+    """Décompte l'appel dans le quota qui l'a autorisé, puis commit.
+
+    * Quick Voice Call (``is_streaming_session``) : quota ``voice_quota``
+      (essai Free, minutes Pro/Expert puis packs achetés) ;
+    * sinon : quota mensuel historique ``voice_quotas`` (5 s facturées au minimum).
+
+    Les champs de fin de session déjà posés sur ``voice_session`` partent dans
+    le même commit. Retourne les minutes décomptées.
+    """
+    if not voice_session.is_streaming_session:
+        try:
+            return await deduct_voice_usage(voice_session.user_id, duration_seconds=duration_seconds, db=db)
+        except ValueError:
+            # Utilisateur supprimé pendant l'appel : on clôt la session sans quota.
+            await db.commit()
+            return 0.0
+
+    user = await db.get(User, voice_session.user_id)
+    if user is None or duration_seconds <= 0:
+        # Un appel de 0 s ne consomme pas l'essai Free.
+        await db.commit()
+        return 0.0
+
+    minutes = duration_seconds / 60.0
+    await consume_voice_minutes(user, minutes, db)
+    return minutes
+
+
+def _schedule_voice_session_digest(voice_session_id: str) -> None:
+    """Lance le digest de fin de session en tâche de fond, sur sa propre session DB.
+
+    Mistral répond en ~500 ms : on n'attend pas, l'acquittement du webhook doit
+    rester rapide sinon ElevenLabs relivre.
+    """
+    from voice.context_digest import generate_voice_session_digest
+    from db.database import async_session_maker
+
+    async def _digest_task() -> None:
+        try:
+            async with async_session_maker() as bg_db:
+                await generate_voice_session_digest(bg_db, voice_session_id)
+        except Exception as digest_exc:
+            logger.exception(
+                "voice end-of-session digest failed",
+                extra={"voice_session_id": voice_session_id, "error": str(digest_exc)},
+            )
+
+    asyncio.create_task(_digest_task())
+    logger.info(
+        "Voice end-of-session digest task scheduled",
+        extra={"voice_session_id": voice_session_id},
+    )
+
+
 @router.post("/webhook", response_model=WebhookAckResponse)
 async def voice_webhook(
     request: Request,
     db: AsyncSession = Depends(get_session),
-):
-    """
-    Receive ElevenLabs webhook after a voice conversation ends.
-    Public endpoint — no Bearer auth required.
-    HMAC-SHA256 signature verification protects against spoofing.
-    """
-    # ── HMAC signature verification ──────────────────────────────────────
-    from core.config import _settings
+) -> WebhookAckResponse:
+    """Webhook post-appel ElevenLabs (public, signé en HMAC).
 
-    webhook_secret = _settings.ELEVENLABS_WEBHOOK_SECRET
+    Décompte la durée de l'appel dans le quota de l'utilisateur, enregistre le
+    transcript et supprime l'agent ElevenLabs de la session. Tout événement
+    correctement signé reçoit un 200, même ignoré : ElevenLabs désactive un
+    webhook qui échoue trop souvent.
+    """
+    from core.config import _settings
 
     raw_body = await request.body()
 
-    if webhook_secret:
-        signature_header = request.headers.get("X-ElevenLabs-Signature", "")
-        if not signature_header:
-            logger.warning("Voice webhook: missing X-ElevenLabs-Signature header")
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "code": "invalid_signature",
-                    "message": "Missing webhook signature.",
-                },
-            )
-
-        expected = hmac.new(
-            webhook_secret.encode("utf-8"),
-            raw_body,
-            hashlib.sha256,
-        ).hexdigest()
-
-        if not hmac.compare_digest(expected, signature_header):
-            logger.warning("Voice webhook: HMAC signature mismatch")
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "code": "invalid_signature",
-                    "message": "Invalid webhook signature.",
-                },
-            )
-    else:
-        logger.debug("Voice webhook: HMAC verification skipped (no secret configured)")
-
-    # ── Parse payload ────────────────────────────────────────────────────
-    import json
+    webhook_secret = _settings.ELEVENLABS_WEBHOOK_SECRET
+    if not webhook_secret:
+        # Sans secret, n'importe qui pourrait écrire dans les quotas : on refuse.
+        logger.error("Voice webhook rejected: ELEVENLABS_WEBHOOK_SECRET is not configured")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "code": "webhook_not_configured",
+                "message": "Voice webhook is not configured.",
+            },
+        )
 
     try:
-        body = json.loads(raw_body)
-    except (json.JSONDecodeError, TypeError):
+        verify_elevenlabs_signature(raw_body, request.headers.get("ElevenLabs-Signature"), webhook_secret)
+    except WebhookSignatureError as exc:
+        logger.warning("Voice webhook: signature rejected", extra={"reason": exc.code})
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={
+                "code": exc.code,
+                "message": "Invalid webhook signature.",
+            },
+        )
+
+    try:
+        payload = VoiceWebhookPayload.model_validate_json(raw_body)
+        data = (
+            ElevenLabsPostCallData.model_validate(payload.data) if payload.type == "post_call_transcription" else None
+        )
+    except ValidationError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={
                 "code": "invalid_payload",
-                "message": "Invalid JSON payload.",
+                "message": "Invalid webhook payload.",
             },
         )
 
-    payload = VoiceWebhookPayload(**body)
+    if data is None:
+        # post_call_audio, call_initiation_failure… : rien à décompter.
+        logger.info("Voice webhook: event ignored", extra={"event_type": payload.type})
+        return WebhookAckResponse(status="ignored")
 
-    # Find the voice session by conversation_id or metadata session_id
-    session_query = None
-    if payload.conversation_id:
-        session_query = select(VoiceSession).where(VoiceSession.elevenlabs_conversation_id == payload.conversation_id)
-    elif payload.metadata and payload.metadata.get("session_id"):
-        session_query = select(VoiceSession).where(VoiceSession.id == payload.metadata["session_id"])
-
-    # Also try matching by agent_id if conversation_id didn't match
-    if session_query is None and payload.agent_id:
-        session_query = select(VoiceSession).where(
-            VoiceSession.elevenlabs_agent_id == payload.agent_id,
-            VoiceSession.status == "active",
+    voice_session = await _find_webhook_session(db, data)
+    if voice_session is None:
+        # Agent étranger à DeepSight dans le même workspace, ou session supprimée.
+        logger.warning(
+            "Voice webhook: no matching session",
+            extra={"agent_id": data.agent_id, "conversation_id": data.conversation_id},
         )
+        return WebhookAckResponse(status="ignored")
 
-    if session_query is None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "code": "missing_session_identifier",
-                "message": "No conversation_id, agent_id, or session_id provided in webhook payload.",
-            },
-        )
+    if voice_session.ended_at is not None:
+        # ElevenLabs relivre après un échec ou un timeout : appel déjà décompté.
+        logger.info("Voice webhook: duplicate delivery", extra={"session_id": voice_session.id})
+        return WebhookAckResponse(status="duplicate", session_id=voice_session.id)
 
-    result = await db.execute(session_query)
-    voice_session = result.scalar_one_or_none()
-
-    if not voice_session:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={
-                "code": "session_not_found",
-                "message": "Voice session not found.",
-            },
-        )
-
-    # Update session with webhook data
-    voice_session.elevenlabs_conversation_id = payload.conversation_id
-    voice_session.duration_seconds = payload.duration_seconds
-    voice_session.status = payload.status or "completed"
+    duration_seconds = data.duration_seconds
+    if data.conversation_id:
+        voice_session.elevenlabs_conversation_id = data.conversation_id
+    voice_session.duration_seconds = duration_seconds
+    voice_session.status = "failed" if data.status == "failed" else "completed"
     voice_session.ended_at = datetime.utcnow()
-    if payload.transcript:
-        voice_session.conversation_transcript = payload.transcript
+    transcript_text = transcript_to_text(data.transcript)
+    if transcript_text:
+        voice_session.conversation_transcript = transcript_text
 
-    await db.commit()
-
-    # Deduct voice usage
-    minutes_deducted = (payload.duration_seconds or 0) / 60.0
-    await deduct_voice_usage(
-        voice_session.user_id,
-        duration_seconds=payload.duration_seconds or 0,
-        db=db,
-    )
+    # Fin de session et décompte partent dans le même commit : si le décompte
+    # échoue, ended_at reste vide et le retry d'ElevenLabs recommence.
+    minutes_deducted = await _record_voice_usage(db, voice_session, duration_seconds)
 
     logger.info(
         "Voice webhook processed",
         extra={
             "session_id": voice_session.id,
-            "conversation_id": payload.conversation_id,
-            "duration": payload.duration_seconds,
+            "conversation_id": data.conversation_id,
+            "duration": duration_seconds,
             "status": voice_session.status,
+            "streaming": voice_session.is_streaming_session,
         },
     )
 
@@ -2348,10 +2448,7 @@ async def voice_webhook(
     # the canonical, server-side transcript: we INSERT what was missed and
     # UPDATE rows whose live content drifted from the canonical version.
     try:
-        canonical_payload = body.get("data", {}).get("transcript") if isinstance(body, dict) else None
-        if canonical_payload is None:
-            canonical_payload = payload.transcript
-        canonical_turns = parse_transcript_canonical(canonical_payload)
+        canonical_turns = parse_transcript_canonical([turn.model_dump() for turn in data.transcript])
         if canonical_turns:
             report = await reconcile_voice_transcript(
                 db,
@@ -2379,34 +2476,10 @@ async def voice_webhook(
         )
 
     # ── Spec merge voice ↔ chat (2026-04-29), Task 6 ────────────────────
-    # End-of-session hook : enqueue the digest generator on a fresh DB
-    # session (the request-scoped one above is about to be closed once the
-    # response is returned). Mistral-small-2603 latency is ~500ms, so we
-    # intentionally fire-and-forget instead of awaiting in-line — the
-    # webhook ACK to ElevenLabs must stay snappy or it will be retried.
+    # End-of-session hook : the digest runs on a fresh DB session, the
+    # request-scoped one is closed once the response is returned.
     try:
-        import asyncio
-        from voice.context_digest import generate_voice_session_digest
-        from db.database import async_session_maker
-
-        _digest_session_id = voice_session.id
-
-        async def _digest_task() -> None:
-            """Run with an independent DB session (the request-scoped one is closed by then)."""
-            try:
-                async with async_session_maker() as bg_db:
-                    await generate_voice_session_digest(bg_db, _digest_session_id)
-            except Exception as digest_exc:
-                logger.exception(
-                    "voice end-of-session digest failed",
-                    extra={"voice_session_id": _digest_session_id, "error": str(digest_exc)},
-                )
-
-        asyncio.create_task(_digest_task())
-        logger.info(
-            "Voice end-of-session digest task scheduled",
-            extra={"voice_session_id": _digest_session_id},
-        )
+        _schedule_voice_session_digest(voice_session.id)
     except Exception as schedule_exc:
         logger.warning(
             "Voice webhook: failed to schedule end-of-session digest (non-fatal)",
