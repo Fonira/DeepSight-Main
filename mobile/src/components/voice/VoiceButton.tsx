@@ -91,7 +91,7 @@ export const VoiceButton: React.FC<VoiceButtonProps> = ({
   disabled = false,
 }) => {
   useTheme();
-  const { enabled, requiresUpgrade } = useVoiceChatGate();
+  const { available, enabled, requiresUpgrade } = useVoiceChatGate();
   // useTabBarFootprint() = TAB_BAR_HEIGHT (56) + max(insets.bottom, sp.sm) + sp.md
   // cohérent avec sprint UX 2026-05-03 (PR #274) — TabBar fullscreen edge-to-edge.
   const tabFootprint = useTabBarFootprint();
@@ -155,7 +155,8 @@ export const VoiceButton: React.FC<VoiceButtonProps> = ({
     onSessionStart?.();
   }, [disabled, requiresUpgrade, onSessionStart]);
 
-  if (!VOICE_CHAT_UI_ENABLED) {
+  // Voix coupée côté serveur (pas de clé, interrupteur) : pas de bouton.
+  if (!VOICE_CHAT_UI_ENABLED || !available) {
     return null;
   }
 
