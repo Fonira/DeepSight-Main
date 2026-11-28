@@ -1,11 +1,11 @@
 // extension/src/sidepanel/components/UpgradeCTA.tsx
 //
 // CTA d'upgrade post-call ou bloquant — pousse vers Expert (19,99€/mois)
-// avec 30 min de voice call inclus.
+// avec 120 min de voice call/mois inclus (pricing v2).
 //
 // 3 reasons supportées :
 //  - trial_used     → "Tu viens d'utiliser ton essai gratuit"
-//  - monthly_quota  → "Tu as épuisé tes 30 min ce mois"
+//  - monthly_quota  → quota voice du mois épuisé
 //  - pro_no_voice   → "Pro n'inclut pas le voice call"
 import React from "react";
 import { useTranslation } from "../../i18n/useTranslation";

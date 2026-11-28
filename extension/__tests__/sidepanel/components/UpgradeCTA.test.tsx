@@ -3,13 +3,13 @@
 // Tests — UpgradeCTA (extension/src/sidepanel/components/UpgradeCTA.tsx)
 //
 // Composant final post-call (essai gratuit consommé) ou bloquant (Pro
-// sans voice). Pousse vers Expert (19,99€/mois, 30 min voice).
+// sans voice). Pousse vers Expert (19,99€/mois, 120 min voice — pricing v2).
 import React from "react";
 import { render, fireEvent, screen } from "@testing-library/react";
 import { UpgradeCTA } from "../../../src/sidepanel/components/UpgradeCTA";
 
 describe("UpgradeCTA", () => {
-  it("renders Expert plan card with 19,99€ and 30 min/mois", () => {
+  it("renders Expert plan card with 19,99€ and 120 min/mois", () => {
     render(
       <UpgradeCTA
         reason="trial_used"
@@ -18,8 +18,8 @@ describe("UpgradeCTA", () => {
       />,
     );
     expect(screen.getByText(/19,99€/)).toBeInTheDocument();
-    // "30 min" apparaît plusieurs fois (headline + bullet) — getAllByText.
-    expect(screen.getAllByText(/30 min/).length).toBeGreaterThan(0);
+    // "120 min" apparaît plusieurs fois (headline + bullet) — getAllByText.
+    expect(screen.getAllByText(/120 min/).length).toBeGreaterThan(0);
   });
 
   it("clicking 'Passer en Expert' calls onUpgrade", () => {
