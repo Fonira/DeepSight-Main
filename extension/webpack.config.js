@@ -99,15 +99,12 @@ module.exports = (env, argv) => {
           { from: "src/styles/viewer.css", to: "viewer.css" },
           { from: "src/styles/tokens.css", to: "tokens.css" },
           { from: "icons", to: "icons" },
+          // Logo du header (affiché en 28 px) : copie 96 px propre à
+          // l'extension. L'original du frontend (1024 px, 1,3 Mo) gonflait
+          // le paquet ; l'ancien logo.png copié ici n'était utilisé nulle part.
           {
-            from: "../frontend/public/logo.png",
-            to: "assets/deep-sight-logo.png",
-            noErrorOnMissing: true,
-          },
-          {
-            from: "../frontend/public/deepsight-logo-cosmic.png",
+            from: "public/assets/deepsight-logo-cosmic.png",
             to: "assets/deepsight-logo-cosmic.png",
-            noErrorOnMissing: true,
           },
           {
             from: "../frontend/public/spinner-cosmic.jpg",
