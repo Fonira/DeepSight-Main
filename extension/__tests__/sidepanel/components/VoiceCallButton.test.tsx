@@ -180,18 +180,18 @@ describe("VoiceCallButton", () => {
 
   it("clicking ⚙ opens the VoiceSettingsDrawer (aria-hidden=false)", () => {
     render(<VoiceCallButton plan="pro" videoId="abc" />);
-    const drawer = document.querySelector(
-      '[role="dialog"][aria-label="Réglages voix"]',
-    ) as HTMLElement | null;
-    expect(drawer).not.toBeNull();
-    // Initialement fermé.
-    expect(drawer?.getAttribute("aria-hidden")).toBe("true");
+    const findDrawer = (): HTMLElement | null =>
+      document.querySelector('[role="dialog"][aria-label="Réglages voix"]');
+    // Fermé, le drawer n'est pas monté (VoiceSettingsDrawer renvoie null).
+    expect(findDrawer()).toBeNull();
 
     const settingsBtn = screen.getByTestId("voice-settings-btn-precall");
     act(() => {
       settingsBtn.click();
     });
 
+    const drawer = findDrawer();
+    expect(drawer).not.toBeNull();
     expect(drawer?.getAttribute("aria-hidden")).toBe("false");
     expect(drawer?.classList.contains("is-open")).toBe(true);
   });

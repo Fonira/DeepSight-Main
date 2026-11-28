@@ -15,15 +15,16 @@
 //
 // Pas de dépendance externe — `renderVoiceCallButton` est notre source de
 // vérité unique pour le rendu et l'envoi du message OPEN_VOICE_CALL.
+//
+// Appels vocaux coupés (`FEATURES.voice`, cf. utils/features) : le host ne
+// contient que le badge d'analyse visuelle, et n'est pas injecté du tout
+// quand l'API n'a pas non plus la couche visuelle.
 import { renderVoiceCallButton, renderVisualAnalysisBadge } from "./widget";
+import { FEATURES } from "../utils/features";
+import { cleanTabTitle } from "../utils/video";
+import type { VoiceButtonState } from "../types";
 
 const HOST_ID = "ds-voice-call-host";
-
-interface VoiceButtonState {
-  plan: "free" | "pro" | "expert";
-  trialUsed: boolean;
-  monthlyMinutesUsed: number;
-}
 
 interface MessageResponseShape {
   success?: boolean;
@@ -63,11 +64,7 @@ function getCleanVideoTitle(): string {
   if (h1Title) return h1Title;
 
   // Source 3 — fallback document.title strippé
-  return (document.title || "")
-    .replace(/^\(\d+\)\s*/, "")
-    .replace(/\s*[-—|]\s*YouTube\s*$/i, "")
-    .replace(/\s*[-—|]\s*TikTok\s*$/i, "")
-    .trim();
+  return cleanTabTitle(document.title || "");
 }
 
 /**
@@ -166,6 +163,11 @@ export async function injectVoiceCallButton(): Promise<void> {
   // injecté entretemps.
   if (document.getElementById(HOST_ID)) return;
 
+  // Rien à afficher (voix coupée, analyse visuelle coupée côté API) → pas
+  // de host vide sur la page.
+  const showVisualBadge = state.visualAnalysisAvailable === true;
+  if (!FEATURES.voice && !showVisualBadge) return;
+
   const anchor = findYouTubeAnchor();
   const useFloating = anchor === null;
   const { host, shadow } = createHost(useFloating);
@@ -173,23 +175,30 @@ export async function injectVoiceCallButton(): Promise<void> {
   // attachShadow renvoie un ShadowRoot ; renderVoiceCallButton accepte un
   // HTMLElement (DOM node avec appendChild). Cast minimaliste — on ne triche
   // pas sur la sémantique runtime.
-  await renderVoiceCallButton(shadow as unknown as HTMLElement, {
-    plan: state.plan,
-    trialUsed: state.trialUsed,
-    monthlyMinutesUsed: state.monthlyMinutesUsed,
-    videoId,
-    videoTitle: getCleanVideoTitle(),
-  });
-
-  // Phase 2 Visual Analysis badge — sous le bouton Voice Call.
-  // Best-effort : si le rendu échoue, le bouton Voice Call reste fonctionnel.
-  try {
-    await renderVisualAnalysisBadge(shadow as unknown as HTMLElement, {
+  if (FEATURES.voice) {
+    await renderVoiceCallButton(shadow as unknown as HTMLElement, {
       plan: state.plan,
+      trialUsed: state.trialUsed,
+      monthlyMinutesUsed: state.monthlyMinutesUsed,
       videoId,
+      videoTitle: getCleanVideoTitle(),
     });
-  } catch {
-    /* graceful degradation — le badge est non-critique */
+  }
+
+  // Phase 2 Visual Analysis badge — sous le bouton Voice Call (seul élément
+  // du host quand la voix est coupée). Affiché seulement si l'API a la
+  // couche visuelle (VISUAL_ANALYSIS_ENABLED) : sinon il vendrait, ou
+  // ouvrirait, une analyse qui ne sera jamais produite.
+  // Best-effort : si le rendu échoue, le bouton Voice Call reste fonctionnel.
+  if (showVisualBadge) {
+    try {
+      await renderVisualAnalysisBadge(shadow as unknown as HTMLElement, {
+        plan: state.plan,
+        videoId,
+      });
+    } catch {
+      /* graceful degradation — le badge est non-critique */
+    }
   }
 
   if (useFloating) {

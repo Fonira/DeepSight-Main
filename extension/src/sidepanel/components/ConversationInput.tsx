@@ -22,6 +22,11 @@ interface ConversationInputProps {
   webSearchEnabled: boolean;
   onToggleWebSearch: (enabled: boolean) => void;
 
+  /**
+   * Appels vocaux disponibles ? `false` masque le bouton mic (voix coupée,
+   * cf. utils/features). Défaut `true`.
+   */
+  voiceAvailable?: boolean;
   /** Voice mode courant — change l'apparence du bouton mic. */
   voiceMode: "off" | "live" | "ended" | "quota_exceeded";
   /** Mute state (rendu visuel du bouton mic en mode live). */
@@ -64,6 +69,7 @@ export const ConversationInput: React.FC<ConversationInputProps> = ({
   webSearchAvailable,
   webSearchEnabled,
   onToggleWebSearch,
+  voiceAvailable = true,
   voiceMode,
   isMuted,
   onMicTap,
@@ -108,18 +114,20 @@ export const ConversationInput: React.FC<ConversationInputProps> = ({
       />
 
       {/* Mic toggle (gauche) */}
-      <button
-        type="button"
-        className={`chat-mic-btn ${voiceMode === "live" && !isMuted ? "chat-mic-active" : ""}`}
-        onClick={onMicTap}
-        disabled={voiceMode === "quota_exceeded"}
-        title={micTitle}
-        aria-label={micTitle}
-        aria-pressed={voiceMode === "live" && !isMuted}
-        data-testid="conversation-mic-btn"
-      >
-        <MicIcon size={14} muted={voiceMode === "live" && isMuted} />
-      </button>
+      {voiceAvailable && (
+        <button
+          type="button"
+          className={`chat-mic-btn ${voiceMode === "live" && !isMuted ? "chat-mic-active" : ""}`}
+          onClick={onMicTap}
+          disabled={voiceMode === "quota_exceeded"}
+          title={micTitle}
+          aria-label={micTitle}
+          aria-pressed={voiceMode === "live" && !isMuted}
+          data-testid="conversation-mic-btn"
+        >
+          <MicIcon size={14} muted={voiceMode === "live" && isMuted} />
+        </button>
+      )}
 
       {/* Web search toggle */}
       <button

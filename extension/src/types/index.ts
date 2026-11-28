@@ -20,6 +20,12 @@ export interface User {
   credits_monthly: number;
   default_lang?: string;
   default_mode?: string;
+  /**
+   * Couche visuelle (frames + Mistral Vision) activée sur le serveur
+   * (`VISUAL_ANALYSIS_ENABLED`). Champ calculé de `UserResponse`, renvoyé
+   * par login, refresh et /auth/me.
+   */
+  visual_analysis_available?: boolean;
 }
 
 export interface AuthTokens {
@@ -201,6 +207,11 @@ export interface ChatMessage {
   content: string;
   /** ISO 8601 timestamp from backend ChatHistoryItem.timestamp. */
   timestamp?: string;
+  /**
+   * Date de création renvoyée par GET /chat/{id}/history (`ChatMessage`
+   * backend) : ISO 8601 en UTC, sans suffixe de fuseau.
+   */
+  created_at?: string;
   web_search_used?: boolean;
   /** Source du message — "text" pour un chat clavier, "voice" pour un
    *  transcript ElevenLabs persisté côté backend. Défaut "text" si omis
@@ -339,10 +350,13 @@ export interface ExtensionMessage {
   data?: Record<string, unknown>;
 }
 
+/** État renvoyé au content script YouTube par GET_VOICE_BUTTON_STATE. */
 export interface VoiceButtonState {
   plan: "free" | "pro" | "expert";
   trialUsed: boolean;
   monthlyMinutesUsed: number;
+  /** Couche visuelle activée côté API (`user.visual_analysis_available`). */
+  visualAnalysisAvailable: boolean;
 }
 
 export interface MessageResponse {

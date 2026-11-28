@@ -53,7 +53,28 @@ describe("GET_VOICE_BUTTON_STATE handler", () => {
       plan: "expert",
       trialUsed: false,
       monthlyMinutesUsed: 0,
+      visualAnalysisAvailable: false,
     });
+  });
+
+  it("reports the API's visual layer from user.visual_analysis_available", async () => {
+    seedLocalStorage({
+      accessToken: "tok",
+      user: {
+        id: 1,
+        email: "x@y.z",
+        username: "x",
+        plan: "pro",
+        credits: 0,
+        credits_monthly: 0,
+        visual_analysis_available: true,
+      },
+    });
+    const res = await handleMessage({
+      action: "GET_VOICE_BUTTON_STATE",
+    });
+    expect(res.success).toBe(true);
+    expect(res.state?.visualAnalysisAvailable).toBe(true);
   });
 
   it("maps user.plan='pro' to voice plan 'pro'", async () => {

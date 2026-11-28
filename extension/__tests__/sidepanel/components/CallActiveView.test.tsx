@@ -23,13 +23,21 @@ describe("CallActiveView", () => {
     expect(screen.getByText(/00:23/)).toBeInTheDocument();
   });
 
-  it("renders Mute and Raccrocher buttons", () => {
+  // Sans préférences chargées, le mode d'entrée par défaut est le
+  // push-to-talk : le bouton micro se maintient pour parler au lieu de
+  // basculer « Couper / Activer le micro » (mode VAD).
+  it("renders the push-to-talk and Raccrocher buttons", () => {
     render(
-      <CallActiveView elapsedSec={0} onMute={jest.fn()} onHangup={jest.fn()} />,
+      <CallActiveView
+        elapsedSec={0}
+        onMute={jest.fn()}
+        onHangup={jest.fn()}
+        isMuted
+      />,
     );
     // aria-label dominate accessible name → on cherche par aria-label FR.
     expect(
-      screen.getByRole("button", { name: /Couper le micro/ }),
+      screen.getByRole("button", { name: /Maintenir pour parler/ }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /Terminer l'appel/ }),
@@ -45,13 +53,34 @@ describe("CallActiveView", () => {
     expect(onHangup).toHaveBeenCalled();
   });
 
-  it("mute callback fires on click", () => {
+  it("push-to-talk: holding unmutes, releasing mutes again", () => {
     const onMute = jest.fn();
-    render(
-      <CallActiveView elapsedSec={0} onMute={onMute} onHangup={jest.fn()} />,
+    const { rerender } = render(
+      <CallActiveView
+        elapsedSec={0}
+        onMute={onMute}
+        onHangup={jest.fn()}
+        isMuted
+      />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /Couper le micro/ }));
-    expect(onMute).toHaveBeenCalled();
+    fireEvent.pointerDown(
+      screen.getByRole("button", { name: /Maintenir pour parler/ }),
+    );
+    expect(onMute).toHaveBeenCalledTimes(1);
+
+    // Le parent reflète le micro ouvert ; relâcher le recoupe.
+    rerender(
+      <CallActiveView
+        elapsedSec={0}
+        onMute={onMute}
+        onHangup={jest.fn()}
+        isMuted={false}
+      />,
+    );
+    fireEvent.pointerUp(
+      screen.getByRole("button", { name: /Relâche pour envoyer/ }),
+    );
+    expect(onMute).toHaveBeenCalledTimes(2);
   });
 
   it("formats elapsed seconds as MM:SS for >60s", () => {

@@ -1576,6 +1576,10 @@ async function handleExtensionMessage(
           plan: voicePlan,
           trialUsed,
           monthlyMinutesUsed,
+          // Couche visuelle activée côté API : champ calculé du user
+          // (login, refresh, /auth/me). Absent → API plus ancienne, badge
+          // masqué.
+          visualAnalysisAvailable: stored.visual_analysis_available === true,
         },
       };
     }

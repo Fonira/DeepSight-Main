@@ -87,6 +87,19 @@ export function extractVideoId(url: string): string | null {
   return extractYouTubeVideoId(url) || extractTikTokVideoId(url);
 }
 
+/**
+ * Titre de vidéo tiré d'un titre d'onglet (`tab.title`, `document.title`).
+ * YouTube préfixe « (N) » quand des notifications sont en attente et
+ * suffixe « - YouTube » ; TikTok suffixe « | TikTok ». Renvoie le titre
+ * nettoyé, ou une chaîne vide s'il ne reste rien.
+ */
+export function cleanTabTitle(rawTitle: string): string {
+  return rawTitle
+    .replace(/^\(\d+\+?\)\s*/, "")
+    .replace(/\s*[-–—|]\s*(?:YouTube|TikTok)\s*$/i, "")
+    .trim();
+}
+
 const YOUTUBE_ID_RE = /^[A-Za-z0-9_-]{11}$/;
 
 /**

@@ -52,7 +52,12 @@ describe("voiceCallInjector", () => {
     );
     mockBackgroundResponse({
       success: true,
-      state: { plan: "free", trialUsed: false, monthlyMinutesUsed: 0 },
+      state: {
+        plan: "free",
+        trialUsed: false,
+        monthlyMinutesUsed: 0,
+        visualAnalysisAvailable: true,
+      },
     });
     await injectVoiceCallButton();
     expect(document.getElementById("ds-voice-call-host")).toBeNull();
@@ -87,7 +92,12 @@ describe("voiceCallInjector", () => {
 
     mockBackgroundResponse({
       success: true,
-      state: { plan: "free", trialUsed: false, monthlyMinutesUsed: 0 },
+      state: {
+        plan: "free",
+        trialUsed: false,
+        monthlyMinutesUsed: 0,
+        visualAnalysisAvailable: true,
+      },
     });
     await injectVoiceCallButton();
 
@@ -100,7 +110,12 @@ describe("voiceCallInjector", () => {
     setupYouTubeWatch();
     mockBackgroundResponse({
       success: true,
-      state: { plan: "expert", trialUsed: false, monthlyMinutesUsed: 5 },
+      state: {
+        plan: "expert",
+        trialUsed: false,
+        monthlyMinutesUsed: 5,
+        visualAnalysisAvailable: true,
+      },
     });
     await injectVoiceCallButton();
 
@@ -114,7 +129,12 @@ describe("voiceCallInjector", () => {
     setupYouTubeWatch();
     mockBackgroundResponse({
       success: true,
-      state: { plan: "free", trialUsed: false, monthlyMinutesUsed: 0 },
+      state: {
+        plan: "free",
+        trialUsed: false,
+        monthlyMinutesUsed: 0,
+        visualAnalysisAvailable: true,
+      },
     });
     await injectVoiceCallButton();
     await injectVoiceCallButton();
@@ -125,7 +145,12 @@ describe("voiceCallInjector", () => {
     setupYouTubeWatch();
     mockBackgroundResponse({
       success: true,
-      state: { plan: "free", trialUsed: false, monthlyMinutesUsed: 0 },
+      state: {
+        plan: "free",
+        trialUsed: false,
+        monthlyMinutesUsed: 0,
+        visualAnalysisAvailable: true,
+      },
     });
     await injectVoiceCallButton();
     expect(document.getElementById("ds-voice-call-host")).not.toBeNull();
@@ -141,7 +166,12 @@ describe("voiceCallInjector", () => {
     setupYouTubeWatch();
     const mock = mockBackgroundResponse({
       success: true,
-      state: { plan: "free", trialUsed: false, monthlyMinutesUsed: 0 },
+      state: {
+        plan: "free",
+        trialUsed: false,
+        monthlyMinutesUsed: 0,
+        visualAnalysisAvailable: true,
+      },
     });
     await injectVoiceCallButton();
     expect(mock).toHaveBeenCalledWith({ action: "GET_VOICE_BUTTON_STATE" });

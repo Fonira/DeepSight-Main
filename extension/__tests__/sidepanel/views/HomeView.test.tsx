@@ -53,9 +53,12 @@ describe("HomeView", () => {
       />,
     );
     expect(screen.getByPlaceholderText(/url youtube/i)).toBeInTheDocument();
+    // La carte URL porte aussi un bouton « Analyser cette vidéo », inactif
+    // tant qu'aucune URL n'est saisie. Pas de carte « vidéo détectée ».
     expect(
-      screen.queryByRole("button", { name: /analyser cette vidéo/i }),
-    ).toBeNull();
+      screen.getByRole("button", { name: /analyser cette vidéo/i }),
+    ).toBeDisabled();
+    expect(document.querySelector(".ds-analyze-platform")).toBeNull();
   });
 
   it("renders Video mode (VideoDetectedCard) when on YouTube", () => {

@@ -12,6 +12,7 @@ import {
   extractVideoId,
   getThumbnailUrl,
   detectPlatform,
+  cleanTabTitle,
 } from "../../utils/video";
 import {
   addRecentAnalysis,
@@ -21,6 +22,7 @@ import {
 } from "../../utils/storage";
 import Browser from "../../utils/browser-polyfill";
 import { WEBAPP_URL } from "../../utils/config";
+import { FEATURES } from "../../utils/features";
 import { LogoutIcon, ExternalLinkIcon } from "../shared/Icons";
 import { SynthesisView } from "../shared/SynthesisView";
 import { SynthesisFull } from "../shared/SynthesisFull";
@@ -144,7 +146,10 @@ export const MainView: React.FC<MainViewProps> = ({
         const platform = detectPlatform(url);
         const fallbackTitle =
           platform === "tiktok" ? "TikTok Video" : "YouTube Video";
-        setVideo({ url, videoId, title: tabs[0]?.title || fallbackTitle });
+        // tab.title = titre de l'onglet (« (2) Titre - YouTube ») : on garde
+        // seulement le titre de la vidéo.
+        const title = cleanTabTitle(tabs[0]?.title || "");
+        setVideo({ url, videoId, title: title || fallbackTitle });
       } else {
         // Important : reset à null si l'user navigue d'une vidéo vers un site
         // hors-vidéo (Google.com, etc.) — sinon la card vidéo resterait figée.
@@ -546,11 +551,7 @@ export const MainView: React.FC<MainViewProps> = ({
     ? t.plans[planInfo.plan_id as keyof typeof t.plans] || planInfo.plan_name
     : null;
   const isFree = !user || user.plan === "free";
-  const planLabel = isGuest
-    ? t.common.login
-    : isFree
-      ? planName || t.plans.free
-      : planName || "";
+  const planLabel = isFree ? planName || t.plans.free : planName || "";
 
   const platform = video ? detectPlatform(video.url) : null;
   const isTikTok = platform === "tiktok";
@@ -573,9 +574,15 @@ export const MainView: React.FC<MainViewProps> = ({
             style={{ borderRadius: "50%", objectFit: "cover" }}
           />
           <span className="v3-brand">DeepSight</span>
-          <span className={`v3-plan-chip${isFree ? " v3-plan-chip-free" : ""}`}>
-            {planLabel}
-          </span>
+          {/* Invité : pas de pastille de plan, le lien « Se connecter » à
+              droite porte déjà l'action (la pastille le dupliquait). */}
+          {!isGuest && (
+            <span
+              className={`v3-plan-chip${isFree ? " v3-plan-chip-free" : ""}`}
+            >
+              {planLabel}
+            </span>
+          )}
           <button
             className="v3-icon-btn"
             onClick={() => Browser.tabs.create({ url: WEBAPP_URL })}
@@ -694,8 +701,9 @@ export const MainView: React.FC<MainViewProps> = ({
 
         {/* Voice Call — visible dès qu'une video est détectée, toutes phases.
             Killer feature Quick Voice Call : doit rester accessible même
-            pendant analyzing/error/complete (cf. finding I1 audit). */}
-        {video && (
+            pendant analyzing/error/complete (cf. finding I1 audit).
+            Masqué tant que les appels vocaux sont coupés (utils/features). */}
+        {FEATURES.voice && video && (
           <VoiceCallButton
             plan={voicePlan}
             trialUsed={voiceTrialUsed}

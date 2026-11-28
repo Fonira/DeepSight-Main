@@ -4,8 +4,10 @@
 //
 // L'handler doit :
 //  1. Stocker le contexte de l'appel dans `chrome.storage.session.pendingVoiceCall`
-//     (clé éphémère, vidée au reboot Chrome — sécurité)
-//  2. Ouvrir le side panel sur la fenêtre source.
+//     (clé éphémère, vidée au reboot Chrome — sécurité), même sans fenêtre
+//     cible : un side panel déjà ouvert le récupère via storage.onChanged.
+//  2. Ouvrir le side panel sur la fenêtre source, ou sur la fenêtre courante
+//     quand l'appel vient du side panel lui-même (pas de `sender.tab`).
 //
 // Note : on injecte ici les mocks `chrome.storage.session` et `chrome.sidePanel`
 // car le mock global ne les fournit pas (APIs Chrome 102+/114+ optionnelles).
@@ -46,17 +48,47 @@ describe("OPEN_VOICE_CALL handler", () => {
     expect(chrome.sidePanel!.open).toHaveBeenCalledWith({ windowId: 7 });
   });
 
-  it("no-op when sender has no tab.windowId", async () => {
-    await handleMessage(
-      {
-        type: "OPEN_VOICE_CALL",
-        videoId: "abc",
-        videoTitle: "Test",
-      } as unknown as Parameters<typeof handleMessage>[0],
-      {} as chrome.runtime.MessageSender,
-    );
+  describe("sender without a tab (side panel caller)", () => {
+    const g = global as unknown as {
+      chrome: { windows?: { getCurrent?: jest.Mock } };
+    };
 
-    expect(chrome.sidePanel!.open).not.toHaveBeenCalled();
-    expect(chrome.storage.session!.set).not.toHaveBeenCalled();
+    afterEach(() => {
+      delete g.chrome.windows;
+    });
+
+    it("opens the side panel on the current window", async () => {
+      g.chrome.windows = { getCurrent: jest.fn().mockResolvedValue({ id: 3 }) };
+
+      await handleMessage(
+        {
+          type: "OPEN_VOICE_CALL",
+          videoId: "abc",
+          videoTitle: "Test",
+        } as unknown as Parameters<typeof handleMessage>[0],
+        {} as chrome.runtime.MessageSender,
+      );
+
+      expect(chrome.storage.session!.set).toHaveBeenCalledWith({
+        pendingVoiceCall: { videoId: "abc", videoTitle: "Test" },
+      });
+      expect(chrome.sidePanel!.open).toHaveBeenCalledWith({ windowId: 3 });
+    });
+
+    it("only stores the pending call when no window can be resolved", async () => {
+      await handleMessage(
+        {
+          type: "OPEN_VOICE_CALL",
+          videoId: "abc",
+          videoTitle: "Test",
+        } as unknown as Parameters<typeof handleMessage>[0],
+        {} as chrome.runtime.MessageSender,
+      );
+
+      expect(chrome.storage.session!.set).toHaveBeenCalledWith({
+        pendingVoiceCall: { videoId: "abc", videoTitle: "Test" },
+      });
+      expect(chrome.sidePanel!.open).not.toHaveBeenCalled();
+    });
   });
 });

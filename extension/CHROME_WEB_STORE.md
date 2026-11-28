@@ -1,202 +1,244 @@
-# Chrome Web Store Listing — DeepSight
+# Fiche Chrome Web Store — DeepSight
+
+État : **préparée, non publiée**. L'ancienne fiche n'est plus accessible : on
+crée une **nouvelle fiche**, donc un **nouvel ID d'extension**.
 
-## Nom
+Ce document suit l'ordre du dashboard Chrome Web Store. Les textes en anglais
+sont ceux de la fiche par défaut (`default_locale: en`) ; la version française
+va dans la fiche localisée `fr`.
 
-DeepSight - AI Video Analysis
+---
 
-## Description courte (132 caracteres max)
+## 1. Prérequis avant la soumission
 
-Analyze YouTube & TikTok videos with AI. Fact-checked summaries, contextual chat, flashcards. Powered by Mistral AI.
+- [ ] **Compte développeur Chrome Web Store** sur le compte Google DeepSight
+      (frais d'inscription unique, à régler dans le dashboard).
+- [ ] **Le relecteur doit pouvoir tester** : sortir du mode privé (aujourd'hui
+      l'API répond `private_mode` à tout autre compte que l'admin et au mode
+      invité) ou lui fournir un compte de test.
+- [ ] **Politique de confidentialité à jour** —
+      `https://www.deepsightsynthesis.com/legal/privacy`, section 4
+      « Extension Chrome » (`frontend/src/pages/PrivacyPolicy.tsx`). Elle ne
+      parle que de YouTube ; il manque :
+  - TikTok (mêmes données que YouTube) ;
+  - la reprise de session sur `www.deepsightsynthesis.com` (le script lit les
+    jetons que le site stocke dans son propre `localStorage`) ;
+  - la lecture du presse-papiers, uniquement au clic sur « Coller le lien ».
+- [ ] **Connexion Google** : soit on la laisse coupée côté API (le bouton se
+      masque tout seul), soit on ajoute l'URI de redirection
+      `https://<ID>.chromiumapp.org/` au client OAuth Google une fois l'ID
+      connu (§ 2).
+- [ ] **Version** : `version` de `public/manifest.json` à augmenter à chaque
+      nouveau téléversement (2.0.0 pour le premier).
 
-## Description longue (EN)
+## 2. Figer l'ID de l'extension (une seule fois)
 
-DeepSight transforms YouTube and TikTok videos into structured, fact-checked analyses — directly from your browser.
+Procédure officielle (doc Chrome « Manifest – key ») :
 
-Unlike simple summarizers, DeepSight goes deeper: every key claim is verified against reliable sources, and you get a full analysis with timestamps, not just bullet points.
+1. `npm run package:cws`, puis dans le dashboard **Add new item** → téléverser
+   le zip de `release/`. **Ne pas publier.**
+2. Onglet **Package** → **View public key** → copier ce qu'il y a entre
+   `-----BEGIN PUBLIC KEY-----` et `-----END PUBLIC KEY-----`, sur une ligne.
+3. L'ajouter dans `public/manifest.json` : `"key": "<clé>"`, puis rebuild.
+   L'extension chargée en local a alors le même ID que la fiche.
+4. Rien d'autre à faire pour les téléversements suivants :
+   `package:cws` retire `key` du zip (le Store refuse un manifest qui le
+   contient).
 
-KEY FEATURES:
+À mettre à jour avec le nouvel ID :
 
-- AI-Powered Analysis: Paste a video URL, get a structured analysis with key insights, timestamps and critical evaluation in seconds
-- Contextual Chat: Ask follow-up questions about any analyzed video — the AI responds with full context
-- Fact-Checking: Claims are automatically verified against web sources (Pro plan)
-- Quick Chat: Chat about any YouTube video without using credits — completely free
-- 3 Analysis Modes: Accessible, Standard, Expert — adapts to your level
-- TikTok Support: Analyze TikTok videos too, not just YouTube
+- client OAuth Google (si la connexion Google est activée) ;
+- le site, quand la fiche sera publique : aucun lien vers le Store
+  n'existe aujourd'hui dans `frontend/`.
 
-STUDY TOOLS (on the web app):
+Rien à changer côté API : le CORS accepte toute origine
+`chrome-extension://<id>`.
 
-- Auto-generated flashcards with FSRS spaced repetition (same algorithm as Anki)
-- Interactive quizzes from video content
-- Mind maps showing concept relationships (Pro)
-- Academic paper search from arXiv, Semantic Scholar, CrossRef, OpenAlex
+## 3. Le paquet
 
-WHAT MAKES DEEPSIGHT DIFFERENT:
+```powershell
+cd C:\Users\33667\DeepSight\extension ; npm run package:cws
+```
 
-1. Not a summarizer — a research platform. We verify, not just summarize.
-2. European AI (Mistral) — your data stays in Europe. GDPR compliant.
-3. AI Debate — compare arguments from 2 videos on the same topic (unique feature)
-4. Academic enrichment — link video content to scientific papers
-5. Tri-platform — web + mobile + extension, one account
+→ `release\deepsight-extension-v<version>.zip` (≈ 720 Ko). Le script
+`scripts/package-cws.mjs` :
 
-FREE TO START:
+- retire `key` du manifest et exclut les source maps ;
+- tant que `FEATURES.voice` est à `false` (`src/utils/features.ts`) : exclut
+  les fichiers propres aux appels vocaux, retire la permission `offscreen` et
+  les hôtes ElevenLabs de la CSP. Le SDK ElevenLabs référence un worklet
+  hébergé sur un CDN : le laisser dans le zip pourrait être lu comme du code
+  distant, interdit en MV3.
 
-- 3 free analyses without an account
-- 5 analyses/month with a free account
-- No credit card required
+Permissions du paquet : `storage`, `alarms`, `identity`, `clipboardWrite`,
+`clipboardRead`, `sidePanel`. À l'installation, Chrome avertit de l'accès aux
+données sur YouTube, TikTok et les sites DeepSight (hôtes et scripts du
+manifest) et de la lecture des données copiées (`clipboardRead`).
 
-PLANS:
+## 4. Onglet « Store listing »
 
-- Free: 5 analyses/month, chat, flashcards
-- Pro (8.99 EUR/month): 30 analyses, 2h videos, fact-checking, mind maps, web search, PDF export, playlists
-- Expert (19.99 EUR/month): 100 analyses, 4h videos, voice chat 30min/month (ElevenLabs), Mistral Large, deep research, priority queue
+### Nom et résumé
 
-Built by an independent European developer. Made in France.
+Lus dans le manifest (`public/_locales/<langue>/messages.json`) :
 
-Website: https://www.deepsightsynthesis.com
+| | EN | FR |
+| --- | --- | --- |
+| Nom | DeepSight - AI Video Analysis | DeepSight - Analyse vidéo IA |
+| Résumé (≤ 132) | Analyze YouTube & TikTok videos in one click in Chrome's side panel: structured summary, reliability check, chat. European AI. | Analysez une vidéo YouTube ou TikTok en un clic depuis le panneau latéral : synthèse structurée, fiabilité, chat. IA européenne. |
 
-## Description longue (FR)
+### Description détaillée (EN)
 
-DeepSight transforme les videos YouTube et TikTok en analyses structurees et fact-checkees — directement depuis votre navigateur.
+```text
+Analyze the YouTube or TikTok video you're watching in one click, without leaving the page.
 
-Contrairement aux simples resumeurs, DeepSight va plus loin : chaque affirmation cle est verifiee avec des sources fiables, et vous obtenez une analyse complete avec timestamps, pas juste des bullet points.
+DeepSight opens in Chrome's side panel, next to the video. Click "Analyze this video" and get a structured analysis written by Mistral AI:
 
-FONCTIONNALITES CLES :
+• Verdict and key points of the video
+• Main concepts and tags
+• A reliability indicator: reliable, to verify or unreliable
+• Three levels of detail: Accessible, Standard, Expert
+• Analyses in English, French, Spanish or German
 
-- Analyse IA : Collez un lien video, obtenez une analyse structuree avec points cles, timestamps et evaluation critique en quelques secondes
-- Chat contextuel : Posez des questions sur n'importe quelle video analysee — l'IA repond avec le contexte complet
-- Fact-checking : Les affirmations sont automatiquement verifiees avec des sources web (plan Pro)
-- Quick Chat : Discutez de n'importe quelle video YouTube sans utiliser de credits — entierement gratuit
-- 3 modes d'analyse : Accessible, Standard, Expert — s'adapte a votre niveau
-- Support TikTok : Analysez aussi les videos TikTok, pas seulement YouTube
+Then keep going:
 
-OUTILS D'ETUDE (sur l'app web) :
+• Chat with the video: ask follow-up questions, answers are grounded in the video
+• Quick Chat: start chatting about a video without running a full analysis
+• Share an analysis as a summary card, or print it to PDF
+• Find your recent analyses in one place
 
-- Flashcards automatiques avec repetition espacee FSRS (meme algorithme qu'Anki)
-- Quiz interactifs generes depuis le contenu video
-- Cartes mentales montrant les relations entre concepts (Pro)
-- Recherche de papiers academiques depuis arXiv, Semantic Scholar, CrossRef, OpenAlex
+Flashcards, quizzes, mind maps, playlists and exports are in the DeepSight web app, one click away, with the same account.
 
-CE QUI REND DEEPSIGHT DIFFERENT :
+FREE TO START
+• 3 analyses without an account
+• Free account: 5 analyses per month
+• Paid plans from €8.99/month on deepsightsynthesis.com
 
-1. Pas un resumeur — une plateforme de recherche. On verifie, on ne resume pas seulement.
-2. IA europeenne (Mistral) — vos donnees restent en Europe. Conforme RGPD.
-3. Debat IA — confrontez les arguments de 2 videos sur le meme sujet (fonctionnalite unique)
-4. Enrichissement academique — reliez le contenu video a des papiers scientifiques
-5. Tri-plateforme — web + mobile + extension, un seul compte
+PRIVACY
+• Only the video you choose to analyze is sent to DeepSight. The extension does not read your browsing history.
+• Analyses are generated by Mistral AI, a European provider.
+• Privacy policy: https://www.deepsightsynthesis.com/legal/privacy
 
-GRATUIT POUR COMMENCER :
+Built by an independent developer in France.
+```
 
-- 3 analyses gratuites sans compte
-- 5 analyses/mois avec un compte gratuit
-- Pas de carte bancaire requise
+### Description détaillée (FR)
 
-PLANS :
+```text
+Analysez la vidéo YouTube ou TikTok que vous regardez en un clic, sans quitter la page.
 
-- Gratuit : 5 analyses/mois, chat, flashcards
-- Pro (8,99 EUR/mois) : 30 analyses, videos 2h, fact-checking, cartes mentales, web search, export PDF, playlists
-- Expert (19,99 EUR/mois) : 100 analyses, videos 4h, chat vocal 30 min/mois (ElevenLabs), Mistral Large, recherche approfondie, file prioritaire
+DeepSight s'ouvre dans le panneau latéral de Chrome, à côté de la vidéo. Cliquez sur « Analyser cette vidéo » et obtenez une analyse structurée, rédigée par l'IA française Mistral :
 
-Developpe par un developpeur independant europeen. Made in France.
+• Verdict et points clés de la vidéo
+• Concepts principaux et tags
+• Un indicateur de fiabilité : fiable, à vérifier ou peu fiable
+• Trois niveaux de détail : Accessible, Standard, Expert
+• Analyses en français, anglais, espagnol ou allemand
 
-Site web : https://www.deepsightsynthesis.com
+Et ensuite :
 
-## Categorie
+• Discutez avec la vidéo : posez vos questions, les réponses s'appuient sur la vidéo
+• Quick Chat : discutez d'une vidéo sans lancer d'analyse complète
+• Partagez une analyse sous forme de fiche, ou imprimez-la en PDF
+• Retrouvez vos analyses récentes au même endroit
 
-Productivity
+Flashcards, quiz, cartes mentales, playlists et exports sont dans l'app web DeepSight, à un clic, avec le même compte.
 
-## Langue
+GRATUIT POUR COMMENCER
+• 3 analyses sans compte
+• Compte gratuit : 5 analyses par mois
+• Offres payantes dès 8,99 €/mois sur deepsightsynthesis.com
 
-Francais, English
+CONFIDENTIALITÉ
+• Seule la vidéo que vous choisissez d'analyser est envoyée à DeepSight. L'extension ne lit pas votre historique de navigation.
+• Les analyses sont générées par Mistral AI, un fournisseur européen.
+• Politique de confidentialité : https://www.deepsightsynthesis.com/legal/privacy
 
-## Mots-cles (tags)
+Développé par un développeur indépendant, en France.
+```
 
-youtube summary, video analysis, AI, fact-check, flashcards, TikTok, Mistral AI, study tool, transcript, European AI
+Avant de coller : vérifier que ces chiffres sont encore vrais
+(`backend/src/billing/plan_config.py` pour les plans,
+`backend/src/core/task_store.py` pour les 3 analyses invité par 24 h).
 
-## Politique de confidentialite
+### Catégorie, langue, liens
 
-https://www.deepsightsynthesis.com/privacy
+- Catégorie : Productivité (sous-catégorie Éducation ou Outils, selon la
+  liste du dashboard).
+- Langues : English (par défaut), Français.
+- Site officiel : `https://www.deepsightsynthesis.com`
+- Support : `maxime@deepsightsynthesis.com`
 
-## Screenshots a preparer
+### Visuels
 
-1. Sidebar d'analyse sur YouTube (synthese structuree)
-2. Chat contextuel en action (question + reponse)
-3. Quick Chat (0 credits, chat rapide)
-4. Popup avec analyse en cours (progression)
-5. Analyse TikTok (sidebar sur TikTok)
+Exigés par le dashboard : l'icône 128 × 128 (déjà dans le paquet :
+`icons/icon128.png`), au moins une capture 1280 × 800, et la petite tuile
+promo 440 × 280. La tuile marquee 1400 × 560 est facultative.
 
-## Permissions justifications (Chrome Web Store form)
+Captures à faire sur une vraie vidéo, sur Windows (5 maximum) :
 
-These justifications are pasted as-is into the CWS submission form, one per
-permission. Keep them short, factual, and tied to a user-facing feature.
+1. Side panel ouvert à côté d'une vidéo YouTube, analyse terminée
+   (verdict + points clés).
+2. Chat avec la vidéo (question + réponse).
+3. Indicateur de fiabilité et concepts.
+4. Une vidéo TikTok analysée.
+5. Analyses récentes.
 
-### Standard permissions
+## 5. Onglet « Privacy practices »
 
-- **storage** — Persist authentication tokens (access + refresh), user
-  preferences (UI language, voice settings), and a small cache of recent
-  analyses for offline access. No tracking, no third-party sharing.
+### Single purpose
 
-- **activeTab** — Read the URL of the YouTube or TikTok video currently
-  active in the user's tab so the user can trigger an AI analysis with one
-  click. Only the video ID is sent to our backend; no DOM scraping is
-  performed.
+```text
+DeepSight analyzes the YouTube or TikTok video open in the current tab and shows an AI-generated structured summary of it in Chrome's side panel, where the user can also ask follow-up questions about that video.
+```
 
-- **tabs** — Detect URL changes (e.g. user navigates to a new YouTube
-  video) to refresh the Side Panel context (video detected card, analysis
-  state). Used solely on YouTube and TikTok.
+### Justification des permissions
 
-- **alarms** — Periodic background refresh of the OAuth access token
-  (15-minute lifespan) using the refresh token, so the user does not need
-  to re-login every 15 minutes.
+| Permission | Justification (à coller) |
+| --- | --- |
+| `storage` | Keeps the user's session (access and refresh tokens), their settings (language, analysis mode) and a short list of recent analyses on the device. |
+| `alarms` | Renews the session token every 30 minutes so the user stays signed in, and wakes the background service worker every 30 seconds so an analysis in progress is not interrupted. |
+| `identity` | Google sign-in through chrome.identity.launchWebAuthFlow, only when the user clicks "Continue with Google". |
+| `clipboardRead` | Reads the clipboard only when the user clicks "Paste link", to analyze a YouTube or TikTok link they copied. |
+| `clipboardWrite` | Copies a share link to the clipboard when the user clicks Copy or Share. |
+| `sidePanel` | The whole interface lives in Chrome's side panel, opened from the toolbar icon or Alt+Shift+D. |
+| Hôtes YouTube et TikTok | Detect the video open in the current tab so the side panel can offer to analyze it, and show the DeepSight badge on YouTube watch pages. Only the video ID is sent to the DeepSight API, when the user starts an analysis. |
+| `api.deepsightsynthesis.com` | The DeepSight API: sign-in, analyses, chat and plan information. |
+| Script sur `www.deepsightsynthesis.com` | Reuses the DeepSight web session (tokens the site stores in its own localStorage), so a user signed in on the website is signed in in the extension. |
 
-- **identity** — Used by chrome.identity.launchWebAuthFlow() to perform
-  Google OAuth login. The flow opens the standard Google consent screen
-  in a popup and returns an OAuth code we exchange server-side for a JWT.
+### Code distant
 
-- **clipboardWrite** — Allow the user to copy generated content
-  (summaries, fact-check results, flashcards) to the system clipboard with
-  one click, from the Side Panel "Copy" buttons.
+« No, I am not using remote code » — vrai pour le zip de `package:cws` (tout
+le JS est dans le paquet ; le SDK ElevenLabs est exclu tant que la voix est
+coupée).
 
-- **sidePanel** — Display the DeepSight interface in Chrome's native Side
-  Panel (Chrome 114+), persistent across tab switches. Toggle via
-  Alt+Shift+D or the toolbar icon.
+### Données collectées
 
-- **offscreen** — Required by the ElevenLabs voice SDK on Chrome MV3 to
-  host an offscreen document for audio capture and playback (service
-  workers cannot access getUserMedia directly).
+Ce que l'extension envoie réellement à l'API DeepSight (pas d'analytics, pas
+de rapport de crash envoyé : `utils/analytics.ts` et `sentry-reporter.ts` ne
+sortent rien du navigateur) :
 
-### Optional permissions
+| Donnée | Quand | Case du formulaire (proposée) |
+| --- | --- | --- |
+| E-mail (+ mot de passe à la connexion) | création de compte, connexion | Personally identifiable information, Authentication information |
+| Jetons de session | chaque appel API | Authentication information |
+| URL / ID de la vidéo | au clic sur Analyser ou Quick Chat | Web history |
+| Questions posées dans le chat | à l'envoi d'une question | Personal communications |
 
-- **audioCapture** (optional, requested only when the user starts a voice
-  chat session) — Capture microphone input for the ElevenLabs ConvAI
-  voice agent. Audio is streamed directly to ElevenLabs over a secure
-  WebSocket; no audio is persisted on our servers.
+Le classement « Web history » et « Personal communications » est une
+interprétation prudente des définitions du Store : à confirmer au moment de
+remplir le formulaire.
 
-### Host permissions
+Cocher les trois certifications : pas de vente des données, pas d'usage
+étranger à la fonction de l'extension, pas d'usage pour du crédit.
 
-- **https://www.youtube.com/_, https://youtube.com/_** — Detect the
-  currently watched video and inject the optional content-script overlay
-  showing the analyze button. No analytics, no DOM modification beyond
-  the overlay.
+URL de la politique de confidentialité :
+`https://www.deepsightsynthesis.com/legal/privacy`
 
-- **https://www.tiktok.com/_, https://tiktok.com/_, https://vm.tiktok.com/_,
-  https://m.tiktok.com/_** — Same as YouTube, for TikTok video detection.
+## 6. Quand la voix reviendra
 
-- **https://www.deepsightsynthesis.com/*** — Cross-domain authentication
-  sync between the extension and the web app, so a user logged in on the
-  web is automatically logged in on the extension (and vice versa).
-
-- **https://api.deepsightsynthesis.com/*** — Backend API endpoints for
-  analyses, chat, billing, voice sessions, etc.
-
-- **https://api.elevenlabs.io/_, wss://api.elevenlabs.io/_,
-  https://_.elevenlabs.io/_, wss://_.elevenlabs.io/\_** — ElevenLabs
-  ConvAI voice chat over WebSocket. Required by the @elevenlabs/client
-  SDK; CSP whitelist already restricts connect-src to these domains.
-
-## Single purpose statement (Chrome Web Store form)
-
-DeepSight is an AI-powered analysis tool for YouTube and TikTok videos.
-Its single purpose is to help users understand, fact-check, and study
-video content via AI-generated summaries, contextual chat, flashcards,
-and an optional voice agent — all from a persistent Side Panel inside
-Chrome.
+Passer `FEATURES.voice` à `true` suffit côté code. Avant de republier :
+héberger dans le paquet le worklet libsamplerate que le SDK ElevenLabs va
+chercher sur un CDN (comme `rawAudioProcessor.js` et
+`audioConcatProcessor.js` dans `webpack.config.js`), puis ajouter à ce
+document la justification de `offscreen` (capture micro dans un document
+offscreen, `getUserMedia` n'étant pas disponible dans le service worker).
